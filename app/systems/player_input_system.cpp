@@ -28,37 +28,85 @@ void push_haptic(entt::registry& reg, HapticEvent event) {
 
 }  // namespace
 
-void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
+namespace {
+
+void try_lane_shift(entt::registry& reg, int8_t delta) {
     if (!gameplay_input_enabled(reg)) return;
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
     for (auto [entity, pshape, swindow, lane] : view.each()) {
         lane_utils::normalize(lane);
-        const bool horizontal_input = evt.dir == Direction::Left || evt.dir == Direction::Right;
         const bool lane_switch_active =
             lane_utils::is_valid(lane.target) && lane.target != lane.current;
-
-        int8_t delta = 0;
-        if (horizontal_input && !lane_switch_active) {
-            if (evt.dir == Direction::Left && lane.current > 0) {
-                delta = -1;
-            } else if (evt.dir == Direction::Right && lane.current < constants::LANE_COUNT - 1) {
-                delta = 1;
-            }
+        if (lane_switch_active) {
+            (void)pshape;
+            (void)swindow;
+            continue;
         }
-
-        const bool grounded = !reg.any_of<Jumping, Sliding>(entity);
-        if (delta != 0) {
-            lane.target = lane.current + delta;
-            lane.lerp_t = 0.0f;
-            push_haptic(reg, HapticEvent::LaneSwitch);
-        } else if (!horizontal_input && evt.dir == Direction::Up && grounded) {
-            reg.emplace<Jumping>(entity, Jumping{constants::JUMP_DURATION, 0.0f});
-        } else if (!horizontal_input && evt.dir == Direction::Down && grounded) {
-            reg.emplace<Sliding>(entity, Sliding{constants::SLIDE_DURATION});
+        const int8_t next = static_cast<int8_t>(lane.current + delta);
+        if (next < 0 || next >= constants::LANE_COUNT) {
+            (void)pshape;
+            (void)swindow;
+            continue;
         }
+        lane.target = next;
+        lane.lerp_t = 0.0f;
+        push_haptic(reg, HapticEvent::LaneSwitch);
         (void)pshape;
         (void)swindow;
     }
+}
+
+// Vertical inputs (jump/slide) are ignored when a horizontal lane switch is
+// in flight — preserves the pre-#1279 guard (`horizontal_input` short-
+// circuited the jump/slide arms when the player was committed to a swipe)
+// and the "grounded" requirement (no `Jumping`/`Sliding` already on the
+// player). Each kind has its own emplace below.
+template <typename Op>
+void try_vertical(entt::registry& reg, Op&& op) {
+    if (!gameplay_input_enabled(reg)) return;
+    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
+    for (auto [entity, pshape, swindow, lane] : view.each()) {
+        const bool grounded = !reg.any_of<Jumping, Sliding>(entity);
+        if (!grounded) {
+            (void)pshape;
+            (void)swindow;
+            (void)lane;
+            continue;
+        }
+        lane_utils::normalize(lane);
+        const bool lane_switch_active =
+            lane_utils::is_valid(lane.target) && lane.target != lane.current;
+        if (lane_switch_active) {
+            (void)pshape;
+            (void)swindow;
+            continue;
+        }
+        op(entity);
+        (void)pshape;
+        (void)swindow;
+    }
+}
+
+}  // namespace
+
+void player_input_handle_go_left(entt::registry& reg, const GoLeftEvent&) {
+    try_lane_shift(reg, int8_t{-1});
+}
+
+void player_input_handle_go_right(entt::registry& reg, const GoRightEvent&) {
+    try_lane_shift(reg, int8_t{+1});
+}
+
+void player_input_handle_go_up(entt::registry& reg, const GoUpEvent&) {
+    try_vertical(reg, [&reg](entt::entity entity) {
+        reg.emplace<Jumping>(entity, Jumping{constants::JUMP_DURATION, 0.0f});
+    });
+}
+
+void player_input_handle_go_down(entt::registry& reg, const GoDownEvent&) {
+    try_vertical(reg, [&reg](entt::entity entity) {
+        reg.emplace<Sliding>(entity, Sliding{constants::SLIDE_DURATION});
+    });
 }
 
 namespace {

@@ -198,7 +198,7 @@ TEST_CASE("player_action: swipe left works in rhythm mode", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoLeftEvent>({});
 
     run_semantic_input_tick(reg, 0.016f);
 
@@ -209,7 +209,7 @@ TEST_CASE("player_action: jump works in rhythm mode", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoUpEvent>({});
 
     run_semantic_input_tick(reg, 0.016f);
 
@@ -225,7 +225,7 @@ TEST_CASE("player_input: GoEvents consumed after first tick, lane lerp_t not res
 
     REQUIRE(lane.current == 1);
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoLeftEvent>({});
 
     // First tick: starts lane transition, consumes the event.
     run_semantic_input_tick(reg, 1.0f / 60.0f);

@@ -307,7 +307,8 @@ struct SongResults {
 ```
   ┌─ INPUT ────────────────────────────────────────────────────┐
   │ input_system                                  [no change]  │
-  │   → enqueues ButtonPressEvent / GoEvent                    │
+  │   → enqueues ShapePress*Event / Menu*Event / Go{Up,Down,   │
+  │     Left,Right}Event                                       │
   └────────────────────────────────────────────────────────────┘
            ↓
   ┌─ RHYTHM ENGINE ────────────────────────────────────────────┐

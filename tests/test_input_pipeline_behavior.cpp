@@ -41,7 +41,7 @@ struct SemanticInputOrderCapture {
         if (cursor < 2) order[cursor++] = 1;
     }
 
-    void on_go(const GoEvent&) {
+    void on_go(const GoRightEvent&) {
         if (cursor < 2) order[cursor++] = 2;
     }
 };
@@ -64,7 +64,7 @@ TEST_CASE("pipeline: swipe right produces lane change in same pipeline call — 
     auto& lane = reg.get<Lane>(player);
     REQUIRE(lane.current == 1);
 
-    push_go(reg, Direction::Right);
+    push_go_right(reg);
     run_pipeline(reg);
 
     CHECK(lane.target == 2);
@@ -77,7 +77,7 @@ TEST_CASE("pipeline: swipe left produces lane change in same pipeline call — n
     auto& lane = reg.get<Lane>(player);
     REQUIRE(lane.current == 1);
 
-    push_go(reg, Direction::Left);
+    push_go_left(reg);
     run_pipeline(reg);
 
     CHECK(lane.target == 0);
@@ -92,8 +92,8 @@ TEST_CASE("pipeline: swipe Up/Down has no lane effect",
     // Settle lane.target to current so we have a clear baseline.
     lane.target = lane.current;   // both == 1
 
-    push_go(reg, Direction::Up);
-    push_go(reg, Direction::Down);
+    push_go_up(reg);
+    push_go_down(reg);
     run_pipeline(reg);
 
     CHECK(lane.target == 1);   // unchanged: Up/Down produce no lane delta
@@ -106,7 +106,7 @@ TEST_CASE("pipeline: swipe up starts jump in same pipeline call",
     auto player = make_rhythm_player(reg);
     REQUIRE_FALSE(reg.any_of<Jumping, Sliding>(player));
 
-    push_go(reg, Direction::Up);
+    push_go_up(reg);
     run_pipeline(reg);
 
     REQUIRE(reg.all_of<Jumping>(player));
@@ -119,7 +119,7 @@ TEST_CASE("pipeline: swipe down starts slide in same pipeline call",
     auto player = make_rhythm_player(reg);
     REQUIRE_FALSE(reg.any_of<Jumping, Sliding>(player));
 
-    push_go(reg, Direction::Down);
+    push_go_down(reg);
     run_pipeline(reg);
 
     REQUIRE(reg.all_of<Sliding>(player));
@@ -136,7 +136,7 @@ TEST_CASE("pipeline: swipe right at right boundary does not wrap lane",
     lane.current = static_cast<int8_t>(constants::LANE_COUNT - 1);
     lane.target  = lane.current;
 
-    push_go(reg, Direction::Right);
+    push_go_right(reg);
     run_pipeline(reg);
 
     // At boundary delta==0: the go-event handler skips the assignment block.
@@ -234,7 +234,7 @@ TEST_CASE("pipeline: mobile button-zone touch release is collected independently
     input.button_touch_up = true;
     input.button_end_x = square_bounds.x + square_bounds.width * 0.5f;
     input.button_end_y = square_bounds.y + square_bounds.height * 0.5f;
-    push_go(reg, Direction::Right);
+    push_go_right(reg);
 
     gameplay_hud_process_button_input(reg);
     run_pipeline(reg);
@@ -259,7 +259,7 @@ TEST_CASE("pipeline: swipe-zone touch release over shape HUD does not press shap
     input.button_touch_up = false;
     input.end_x = square_bounds.x + square_bounds.width * 0.5f;
     input.end_y = square_bounds.y + square_bounds.height * 0.5f;
-    push_go(reg, Direction::Right);
+    push_go_right(reg);
 
     gameplay_hud_process_button_input(reg);
     run_pipeline(reg);
@@ -339,8 +339,8 @@ TEST_CASE("pipeline: pending phase transition blocks queued go input",
     REQUIRE_FALSE(reg.any_of<Jumping, Sliding>(player));
 
     request_phase_transition<NextPhasePausedTag>(reg);
-    push_go(reg, Direction::Right);
-    push_go(reg, Direction::Up);
+    push_go_right(reg);
+    push_go_up(reg);
 
     run_pipeline(reg);
 
@@ -432,7 +432,7 @@ TEST_CASE("pipeline: mixed swipe and tap both take effect within a single pipeli
     REQUIRE(lane.current == 1);
     REQUIRE(window_phase_is_idle(reg, player));
 
-    push_go(reg, Direction::Right);
+    push_go_right(reg);
     reg.ctx().get<entt::dispatcher>().enqueue<ShapePressTriangleEvent>({});
 
     run_pipeline(reg);
@@ -449,9 +449,9 @@ TEST_CASE("pipeline: same-frame shape tap drains before movement",
     auto& disp = reg.ctx().get<entt::dispatcher>();
     SemanticInputOrderCapture capture;
     disp.sink<ShapePressTriangleEvent>().connect<&SemanticInputOrderCapture::on_press_triangle>(capture);
-    disp.sink<GoEvent>().connect<&SemanticInputOrderCapture::on_go>(capture);
+    disp.sink<GoRightEvent>().connect<&SemanticInputOrderCapture::on_go>(capture);
 
-    push_go(reg, Direction::Right);
+    push_go_right(reg);
     disp.enqueue<ShapePressTriangleEvent>({});
 
     run_pipeline(reg);
@@ -475,7 +475,7 @@ TEST_CASE("pipeline: swipe effect visible immediately — lane.target differs fr
     auto& lane = reg.get<Lane>(player);
     REQUIRE(lane.current == 1);
 
-    push_go(reg, Direction::Left);
+    push_go_left(reg);
     run_pipeline(reg);
 
     CHECK(lane.target != lane.current);  // must differ: effect is immediate, not deferred
@@ -498,7 +498,7 @@ TEST_CASE("pipeline: swipe consumed after first sub-tick — second sub-tick doe
     auto& lane = reg.get<Lane>(player);
 
     // Sub-tick 1: inject swipe and run pipeline.
-    push_go(reg, Direction::Right);
+    push_go_right(reg);
     run_pipeline(reg);
     CHECK(lane.target  == 2);
     CHECK(lane.lerp_t  == 0.0f);

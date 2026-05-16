@@ -437,25 +437,17 @@ struct InputState {
 ```cpp
 // systems/input_events.h
 
-/// Directional intent shared by gesture producers (input_system,
-/// test_player_system) and listeners (player_input_system, level_select
-/// controller). Lives next to `GoEvent` — its only carrier (issue #1194).
-enum class Direction : uint8_t { Left, Right, Up, Down };
-```
-
-```cpp
-// systems/input_events.h (continued)
-
 /// Semantic input events — produced by input_system, HUD controllers, and
 /// test_player_system; consumed by listeners wired through entt::dispatcher.
 /// Carry concrete values rather than entity handles so consumers stay safe if
 /// the producing UI entity is destroyed between enqueue and dispatch.
 
-/// Per Fabian's existential processing (#1202/#1204/#1277), each former
-/// (kind × shape) combination and each former MenuActionKind value is now
-/// its own event type. Listeners subscribe to the specific event they
-/// handle; the type IS the choice — no enum discriminator field, no
-/// `switch (kind)` / `switch (action)` at consumers. Events carry concrete
+/// Per Fabian's existential processing (#1202/#1204/#1277/#1278/#1279),
+/// each former (kind × shape) combination, each former MenuActionKind
+/// value, and each former Direction value is now its own event type.
+/// Listeners subscribe to the specific event they handle; the type IS
+/// the choice — no enum discriminator field, no `switch (kind)` /
+/// `switch (action)` / `if (dir == X)` at consumers. Events carry concrete
 /// values (or nothing) — never entity handles — so consumers stay safe if
 /// the producing UI entity is destroyed between enqueue and dispatch.
 
@@ -473,9 +465,12 @@ struct MenuGoMainMenuEvent    {};
 struct MenuSelectLevelEvent { uint8_t index = 0; };
 struct MenuSelectDiffEvent  { uint8_t index = 0; };
 
-struct GoEvent {
-    Direction dir = Direction::Up;
-};
+// Per-direction navigation events — replace the former
+// `GoEvent { Direction dir; }` (issue #1279).
+struct GoUpEvent    {};
+struct GoDownEvent  {};
+struct GoLeftEvent  {};
+struct GoRightEvent {};
 ```
 
 ### 2.8 — COLD: Game State (singleton)
@@ -672,7 +667,8 @@ system in the same frame (unidirectional data flow).
  │  │                                                        │
  │  │  2. input_system          Read raylib input queue.     │
  │  │                           Update InputState and enqueue│
- │  │                           GoEvent/ButtonPressEvent.    │
+ │  │                           Go*Event / ShapePress*Event /│
+ │  │                           Menu*Event.                  │
  │  │                                                        │
  │  │  3. other producers       gameplay_hud_process_button_ │
  │  │                           input and test_player_system │
@@ -1233,7 +1229,7 @@ int main(int argc, char* argv[]) {
                ▼                          │
     ┌──────────────────────────┐          │
     │ entt::dispatcher        │          │
-    │   GoEvent{Left}         │          │
+    │   GoLeftEvent{}         │          │
     └──────────┬───────────────┘          │
                │                          │
                ▼                          ▼
@@ -1241,8 +1237,9 @@ int main(int argc, char* argv[]) {
     │ dispatcher listeners:                                  │
     │                                                        │
     │   // 1. Process shape button (rhythm mode)             │
-    │   player_input_handle_press(ButtonPressEvent) {        │
-    │       ShapeWindow.target_shape = event.shape;          │──▶ ShapeWindow
+    │   player_input_handle_press_square(                    │
+    │       ShapePressSquareEvent) {                         │
+    │       ShapeWindow.target_shape = Shape::Square;        │──▶ ShapeWindow
     │       ShapeWindow.phase        = MorphIn;              │    { target: Square,
     │       PlayerShape.morph_t      = 0.0f;                 │      phase: MorphIn }
     │       disp.enqueue(PlaySfxEvent{ShapeShift});          │
@@ -1251,20 +1248,20 @@ int main(int argc, char* argv[]) {
     │       // (shape_window_activation_system).             │      morph_t: 1.0 }
     │   }                                                    │
     │                                                        │
-    │   // 2. Process direction                              │
-    │   player_input_handle_go(GoEvent) {                    │
-    │       if (event.dir == Left) {                         │
-    │           if (Lane.current > 0) {                      │──▶ Lane
-    │               Lane.target = Lane.current - 1;          │    { current: 1,
-    │               Lane.lerp_t = 0.0f;                      │      target: 0,
-    │           }                                            │      lerp_t: 0.0 }
-    │       } else if (event.dir == Up) {                    │
-    │           if (VertState.mode == Grounded) {             │──▶ VerticalState
-    │               VertState.mode  = Jumping;               │    { mode: Jumping,
-    │               VertState.timer = JUMP_DURATION;         │      timer: 0.45,
-    │           }                                            │      y_offset: 0.0 }
-    │       }                                                │
-    │       // ... Right, Down ...                           │
+    │   // 2. Process direction — one handler per direction  │
+    │   player_input_handle_go_left(GoLeftEvent) {           │
+    │       if (Lane.current > 0) {                          │──▶ Lane
+    │           Lane.target = Lane.current - 1;              │    { current: 1,
+    │           Lane.lerp_t = 0.0f;                          │      target: 0,
+    │       }                                                │      lerp_t: 0.0 }
+    │   }                                                    │
+    │   player_input_handle_go_up(GoUpEvent) {               │
+    │       if (VertState.mode == Grounded) {                │──▶ VerticalState
+    │           VertState.mode  = Jumping;                   │    { mode: Jumping,
+    │           VertState.timer = JUMP_DURATION;             │      timer: 0.45,
+    │       }                                                │      y_offset: 0.0 }
+    │   }                                                    │
+    │   // ... GoRightEvent, GoDownEvent handlers similar ...│
     │   }                                                    │
     └────────────────────────────────────────────────────────┘
 ```
@@ -1610,8 +1607,9 @@ app/
 │   │                              OnsetMarkerTag) and requirements
 │   │                              (RequiredShape, RequiredLane, ShapeGateLane)
 │   ├── scoring.h                ← ScoreState, ScorePopup
-│   ├── input_events.h           ← Direction, GoEvent, per-shape ShapePress*Event,
-│   │                              per-action Menu*Event (in systems/, #1277)
+│   ├── input_events.h           ← per-shape ShapePress*Event, per-action
+│   │                              Menu*Event, per-direction Go*Event
+│   │                              (in systems/, #1277/#1278/#1279)
 │   ├── game_state.h             ← GameState, GamePhase, LevelSelectState
 │   ├── rendering.h              ← DrawSize, ScreenPosition; back-compat shim
 │   │                              for the camera/mesh splits (issue #1194)
@@ -1626,7 +1624,7 @@ app/
 │   ├── game_state_system.cpp    ← phase transitions
 │   ├── song_playback_system.cpp ← music stream timing
 │   ├── beat_log_system.cpp      ← session beat telemetry
-│   ├── player_input_system.cpp  ← ButtonPressEvent/GoEvent dispatcher callbacks
+│   ├── player_input_system.cpp  ← ShapePress*Event / Go*Event dispatcher callbacks
 │   ├── test_player_system.cpp   ← automated test player (enqueues semantic events)
 │   ├── player_movement_system.cpp ← lane lerp, jump parabola
 │   ├── beat_scheduler_system.cpp ← song-authored obstacle entities

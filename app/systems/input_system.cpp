@@ -41,42 +41,51 @@ struct WebInputPolicy {
     bool touch_capable = false;
 };
 
-bool classify_swipe(float dx, float dy, float duration, Direction& out) {
+// Per-direction enqueue thunks. Producers below (swipe classifier, raylib
+// gesture detector, multi-touch deferred-fire path) thread a function
+// pointer through their pipeline instead of a `Direction` enum value, so
+// no enum discriminator survives in `app/` (issue #1279). Matches the
+// `kEnqueueShapePress` function-pointer-table pattern from #1277.
+using GoEnqueueFn = void (*)(entt::dispatcher&);
+
+void enqueue_go_up   (entt::dispatcher& d) { d.enqueue<GoUpEvent>({});    }
+void enqueue_go_down (entt::dispatcher& d) { d.enqueue<GoDownEvent>({});  }
+void enqueue_go_left (entt::dispatcher& d) { d.enqueue<GoLeftEvent>({});  }
+void enqueue_go_right(entt::dispatcher& d) { d.enqueue<GoRightEvent>({}); }
+
+// Returns the matching per-direction enqueuer for a classified swipe, or
+// nullptr if the candidate fails the distance/duration test (i.e., not a
+// swipe).
+GoEnqueueFn classify_swipe(float dx, float dy, float duration) {
     const float distance_sq = dx * dx + dy * dy;
     if (distance_sq < constants::MIN_SWIPE_DIST * constants::MIN_SWIPE_DIST ||
         duration > constants::MAX_SWIPE_TIME) {
-        return false;
+        return nullptr;
     }
 
     if (std::fabs(dx) >= std::fabs(dy)) {
-        out = (dx >= 0.0f) ? Direction::Right : Direction::Left;
-    } else {
-        out = (dy >= 0.0f) ? Direction::Down : Direction::Up;
+        return (dx >= 0.0f) ? &enqueue_go_right : &enqueue_go_left;
     }
-    return true;
+    return (dy >= 0.0f) ? &enqueue_go_down : &enqueue_go_up;
 }
 
-bool raylib_gesture_swipe_direction(Direction& out) {
+GoEnqueueFn raylib_gesture_swipe_direction() {
     const int gesture = GetGestureDetected();
     if (IsGestureDetected(GESTURE_SWIPE_RIGHT) || (gesture & GESTURE_SWIPE_RIGHT) != 0) {
-        out = Direction::Right;
-        return true;
+        return &enqueue_go_right;
     }
     if (IsGestureDetected(GESTURE_SWIPE_LEFT) || (gesture & GESTURE_SWIPE_LEFT) != 0) {
-        out = Direction::Left;
-        return true;
+        return &enqueue_go_left;
     }
     if (IsGestureDetected(GESTURE_SWIPE_UP) || (gesture & GESTURE_SWIPE_UP) != 0) {
-        out = Direction::Up;
-        return true;
+        return &enqueue_go_up;
     }
     if (IsGestureDetected(GESTURE_SWIPE_DOWN) || (gesture & GESTURE_SWIPE_DOWN) != 0) {
-        out = Direction::Down;
-        return true;
+        return &enqueue_go_down;
     }
 
     const Vector2 drag = GetGestureDragVector();
-    return classify_swipe(drag.x, drag.y, GetGestureHoldDuration(), out);
+    return classify_swipe(drag.x, drag.y, GetGestureHoldDuration());
 }
 
 int find_touch_slot(InputState& input, int touch_id) {
@@ -118,8 +127,7 @@ bool has_active_touch_in_zone(const InputState& input, bool button_zone) {
 
 void release_touch_slot(TouchSlot& slot,
                         InputState& input,
-                        Direction& latest_swipe_dir,
-                        bool& has_latest_swipe,
+                        GoEnqueueFn& latest_swipe,
                         bool& had_swipe_zone_release) {
     input.touch_up = true;
     input.end_x = slot.curr_x;
@@ -130,11 +138,10 @@ void release_touch_slot(TouchSlot& slot,
         input.button_end_y = slot.curr_y;
     } else {
         had_swipe_zone_release = true;
-        if (classify_swipe(slot.curr_x - slot.start_x,
-                           slot.curr_y - slot.start_y,
-                           slot.duration,
-                           latest_swipe_dir)) {
-            has_latest_swipe = true;
+        if (auto fn = classify_swipe(slot.curr_x - slot.start_x,
+                                     slot.curr_y - slot.start_y,
+                                     slot.duration)) {
+            latest_swipe = fn;
         }
     }
     slot = TouchSlot{};
@@ -285,8 +292,7 @@ void input_system(entt::registry& reg, float raw_dt) {
         !mouse_owns_gesture() &&
         touch_point_count > 0) {
         const float zone_y = constants::SCREEN_H_F * constants::SWIPE_ZONE_SPLIT;
-        Direction latest_swipe_dir = Direction::Up;
-        bool has_latest_swipe = false;
+        GoEnqueueFn latest_swipe = nullptr;
         bool had_swipe_zone_release = false;
 
         for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
@@ -294,8 +300,7 @@ void input_system(entt::registry& reg, float raw_dt) {
             if (slot.active && !touch_id_is_current(slot.id, touch_point_count)) {
                 release_touch_slot(slot,
                                    input,
-                                   latest_swipe_dir,
-                                   has_latest_swipe,
+                                   latest_swipe,
                                    had_swipe_zone_release);
             }
         }
@@ -336,13 +341,13 @@ void input_system(entt::registry& reg, float raw_dt) {
             input.curr_y = tp.y;
         }
 
-        if (!has_latest_swipe &&
-            had_swipe_zone_release &&
-            raylib_gesture_swipe_direction(latest_swipe_dir)) {
-            has_latest_swipe = true;
+        if (!latest_swipe && had_swipe_zone_release) {
+            if (auto fn = raylib_gesture_swipe_direction()) {
+                latest_swipe = fn;
+            }
         }
-        if (has_latest_swipe) {
-            disp.enqueue<GoEvent>(GoEvent{latest_swipe_dir});
+        if (latest_swipe) {
+            latest_swipe(disp);
         }
 
         input.touching = false;
@@ -364,8 +369,7 @@ void input_system(entt::registry& reg, float raw_dt) {
     } else if (allow_touch_input &&
                !mouse_owns_gesture() &&
                input.touching && touch_owns_gesture()) {
-        Direction latest_swipe_dir = Direction::Up;
-        bool has_latest_swipe = false;
+        GoEnqueueFn latest_swipe = nullptr;
         bool had_swipe_zone_release = false;
         input.touch_up  = true;
         input.touching  = false;
@@ -378,27 +382,26 @@ void input_system(entt::registry& reg, float raw_dt) {
             }
             release_touch_slot(slot,
                                input,
-                               latest_swipe_dir,
-                               has_latest_swipe,
+                               latest_swipe,
                                had_swipe_zone_release);
         }
-        if (!has_latest_swipe &&
-            had_swipe_zone_release &&
-            raylib_gesture_swipe_direction(latest_swipe_dir)) {
-            has_latest_swipe = true;
+        if (!latest_swipe && had_swipe_zone_release) {
+            if (auto fn = raylib_gesture_swipe_direction()) {
+                latest_swipe = fn;
+            }
         }
-        if (has_latest_swipe) {
-            disp.enqueue<GoEvent>(GoEvent{latest_swipe_dir});
+        if (latest_swipe) {
+            latest_swipe(disp);
         }
         input.duration = 0.0f;
     }
 
 #ifdef PLATFORM_HAS_KEYBOARD
     // ── Keyboard — IsKeyPressed fires once per press (no repeat) ──
-    if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP))    { disp.enqueue<GoEvent>({Direction::Up}); }
-    if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN))  { disp.enqueue<GoEvent>({Direction::Down}); }
-    if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT))  { disp.enqueue<GoEvent>({Direction::Left}); }
-    if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) { disp.enqueue<GoEvent>({Direction::Right}); }
+    if (IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP))    { disp.enqueue<GoUpEvent>({}); }
+    if (IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN))  { disp.enqueue<GoDownEvent>({}); }
+    if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT))  { disp.enqueue<GoLeftEvent>({}); }
+    if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) { disp.enqueue<GoRightEvent>({}); }
 
     // Keyboard shape-button presses: each key emits its own zero-column
     // event type directly (#1202/#1204 — no discriminator field, identity
@@ -434,8 +437,7 @@ void input_system(entt::registry& reg, float raw_dt) {
     if (!mouse_owns_gesture() &&
         !input.touching &&
         !input.touch_up) {
-        Direction gesture_dir = Direction::Up;
-        const bool has_gesture_swipe = raylib_gesture_swipe_direction(gesture_dir);
+        const GoEnqueueFn gesture_enqueue = raylib_gesture_swipe_direction();
 
         // Gesture fired after the touch already ended: use the captured swipe
         // start (set at touch-down) instead of GetTouchPosition(0), which would
@@ -444,9 +446,9 @@ void input_system(entt::registry& reg, float raw_dt) {
         const float gesture_origin_y = input.click ? input.end_y : input.start_y;
         const bool gesture_started_in_swipe_zone = gesture_origin_y < zone_threshold;
 
-        if (has_gesture_swipe && gesture_started_in_swipe_zone) {
+        if (gesture_enqueue && gesture_started_in_swipe_zone) {
             input.click = false;
-            disp.enqueue<GoEvent>(GoEvent{gesture_dir});
+            gesture_enqueue(disp);
         }
     }
 }

@@ -127,8 +127,8 @@ while (accumulator >= FIXED_DT) {
        │                │                      │
     clears           writes                 reads
     key_* flags      key_* flags           key_* flags
-                                            drains ButtonPressEvent /
-                                            GoEvent
+                                            drains ShapePress*Event /
+                                            Menu*Event / Go*Event
 
   tick_playing_systems ──▶ obstacle_despawn_system ──▶ popup/energy/particle systems
        │                              │
@@ -265,20 +265,20 @@ Helper functions are free functions, not methods. The write entry point is
 ## Injection Target: EnTT Dispatcher
 
 `test_player_system` does not poke hardware-facing input state. It enqueues
-the same semantic events (`ButtonPressEvent`, `GoEvent`) that the real
-`input_system` produces from keyboard / touch / mouse, then lets the rest of
-the pipeline run unchanged:
+the same semantic events (`ShapePress*Event`, `Menu*Event`, `Go*Event`) that
+the real `input_system` produces from keyboard / touch / mouse, then lets the
+rest of the pipeline run unchanged:
 
 ```
   test_player enqueues:                 consumed by:
   ─────────────────────────             ───────────────────────────────
-  ButtonPressEvent(Shape, Circle)       player_input_system → ShapeWindow
-  ButtonPressEvent(Shape, Triangle)     player_input_system → ShapeWindow
-  ButtonPressEvent(Shape, Square)       player_input_system → ShapeWindow
-  ButtonPressEvent(Menu, Confirm)       game_state_system  → phase transitions
-  ButtonPressEvent(Menu, Restart)       game_state_system  → phase transitions
-  GoEvent(Left|Right)                   player_movement_system → Lane change
-  GoEvent(Up|Down)                      player_movement_system → Jump / Slide
+  ShapePressCircleEvent                 player_input_system → ShapeWindow
+  ShapePressTriangleEvent               player_input_system → ShapeWindow
+  ShapePressSquareEvent                 player_input_system → ShapeWindow
+  MenuConfirmEvent                      game_state_system  → phase transitions
+  MenuRestartEvent                      game_state_system  → phase transitions
+  GoLeftEvent / GoRightEvent            player_movement_system → Lane change
+  GoUpEvent / GoDownEvent               player_movement_system → Jump / Slide
 ```
 
 Because the injection target is the dispatcher (not a platform-guarded
@@ -293,9 +293,9 @@ frame:
 ```cpp
   bool key_injected = false;
   for (int ei = 0; ei < state->action_count && !key_injected; ++ei) {
-      // Priority 1: Shape press → enqueue ButtonPressEvent, set key_injected
-      // Priority 2: Lane change → enqueue GoEvent(Left|Right), set key_injected
-      // Priority 3: Vertical    → enqueue GoEvent(Up|Down),    set key_injected
+      // Priority 1: Shape press → enqueue ShapePress*Event,    set key_injected
+      // Priority 2: Lane change → enqueue Go{Left,Right}Event, set key_injected
+      // Priority 3: Vertical    → enqueue Go{Up,Down}Event,    set key_injected
   }
 ```
 
@@ -560,9 +560,10 @@ inside `tick_playing_systems`.
   │     │  EnTT dispatcher is a multi-event queue.               │
   ├─────┼────────────────────────────────────────────────────────┤
   │ 🟢2 │  test_player_system enqueues semantic events directly  │
-  │     │  on the dispatcher (ButtonPressEvent, GoEvent), so it  │
-  │     │  is platform-portable. No InputState.key_* fields, no  │
-  │     │  PLATFORM_DESKTOP compile guard required.              │
+  │     │  on the dispatcher (ShapePress*Event / Menu*Event /    │
+  │     │  Go*Event), so it is platform-portable. No             │
+  │     │  InputState.key_* fields, no PLATFORM_DESKTOP compile  │
+  │     │  guard required.                                       │
   ├─────┼────────────────────────────────────────────────────────┤
   │ 🟡3 │  Original design used std::vector for action queue     │
   │     │  and planned list. Heap allocation in a per-frame      │

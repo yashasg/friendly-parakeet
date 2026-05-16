@@ -44,13 +44,24 @@ void latch_end_choice_restart(entt::registry& reg) {
 }
 } // namespace
 
-void game_state_handle_go(entt::registry& reg, const GoEvent& /*evt*/) {
+namespace {
+// Resume from pause on any directional input (#1279). The former
+// `game_state_handle_go` ignored `evt.dir` entirely — any direction
+// produced the same resume request. Per-direction handlers below
+// preserve that semantics with no Direction enum involvement.
+void resume_from_pause_if_eligible(entt::registry& reg) {
     auto& gs = reg.ctx().get<GameState>();
     if (!reg.ctx().contains<GamePhasePausedTag>()) return;
     if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
     // Deferred per #482 — let game_state_system perform the resume swap.
     request_phase_transition<NextPhasePlayingTag>(reg);
 }
+}  // namespace
+
+void game_state_handle_go_up   (entt::registry& reg, const GoUpEvent&)    { resume_from_pause_if_eligible(reg); }
+void game_state_handle_go_down (entt::registry& reg, const GoDownEvent&)  { resume_from_pause_if_eligible(reg); }
+void game_state_handle_go_left (entt::registry& reg, const GoLeftEvent&)  { resume_from_pause_if_eligible(reg); }
+void game_state_handle_go_right(entt::registry& reg, const GoRightEvent&) { resume_from_pause_if_eligible(reg); }
 
 void game_state_handle_confirm(entt::registry& reg, const MenuConfirmEvent&) {
     auto& gs  = reg.ctx().get<GameState>();

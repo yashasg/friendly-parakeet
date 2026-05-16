@@ -135,7 +135,7 @@ TEST_CASE("player_input_rhythm: lane change works in rhythm mode", "[player][rhy
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoLeftEvent>({});
 
     run_semantic_input_tick(reg);
 

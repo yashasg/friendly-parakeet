@@ -143,9 +143,9 @@ TEST_CASE("test_player: pro executes lane before shape for shape+lane actions", 
         auto press = drain_press_events(reg);
         bool has_shape_press = press.shape_count() > 0;
 
-        if (go.count > 0 || has_shape_press) {
-            saw_go_first = (go.count > 0);
-            saw_shape_first = has_shape_press && go.count == 0;
+        if (go.count() > 0 || has_shape_press) {
+            saw_go_first = (go.count() > 0);
+            saw_shape_first = has_shape_press && go.count() == 0;
             break;
         }
     }
@@ -169,7 +169,7 @@ TEST_CASE("test_player: ignores visual obstacle leftovers without Obstacle paylo
 
     CHECK_FALSE(reg.all_of<TestPlayerPlannedTag>(visual_leftover));
     CHECK(drain_press_events(reg).count() == 0);
-    CHECK(drain_go_events(reg).count == 0);
+    CHECK(drain_go_events(reg).count() == 0);
 }
 
 // ── KEY FIX: shape gate then split path in sequence ──────────
@@ -242,7 +242,7 @@ TEST_CASE("test_player: swipe cooldown blocks immediate second swipe", "[test_pl
     reg.emplace<TestPlayerPlannedTag>(obs);
 
     test_player_system(reg, 0.016f);
-    bool has_go = drain_go_events(reg).count > 0;
+    bool has_go = drain_go_events(reg).count() > 0;
     CHECK_FALSE(has_go);
 }
 

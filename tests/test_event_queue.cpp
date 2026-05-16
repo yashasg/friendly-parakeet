@@ -6,35 +6,38 @@ TEST_CASE("dispatcher: GoEvent clear discards without firing listeners", "[event
     reg.ctx().emplace<entt::dispatcher>();
 
     int fired = 0;
-    struct Counter { int* count; void on_evt(const GoEvent&) { ++(*count); } } c{&fired};
+    struct Counter { int* count; void on_evt(const GoUpEvent&) { ++(*count); } } c{&fired};
 
     auto& disp = reg.ctx().get<entt::dispatcher>();
-    disp.sink<GoEvent>().connect<&Counter::on_evt>(c);
-    disp.enqueue<GoEvent>({Direction::Up});
-    disp.clear<GoEvent>();
-    disp.sink<GoEvent>().disconnect<&Counter::on_evt>(c);
+    disp.sink<GoUpEvent>().connect<&Counter::on_evt>(c);
+    disp.enqueue<GoUpEvent>({});
+    disp.clear<GoUpEvent>();
+    disp.sink<GoUpEvent>().disconnect<&Counter::on_evt>(c);
 
     CHECK(fired == 0);
 }
 
-// ── GoEvent dispatcher tests ──────────────────────────────────────────────
+// ── Per-direction Go*Event dispatcher tests (#1279) ───────────────────────
 
-TEST_CASE("dispatcher: GoEvent enqueue/update flows to listeners", "[events]") {
+TEST_CASE("dispatcher: Go*Event enqueue/update flows to listeners", "[events]") {
     entt::registry reg;
     reg.ctx().emplace<entt::dispatcher>();
 
     auto& disp = reg.ctx().get<entt::dispatcher>();
     GoCapture cap;
-    disp.sink<GoEvent>().connect<&GoCapture::capture>(cap);
+    disp.sink<GoUpEvent>()   .connect<&GoCapture::on_up>   (cap);
+    disp.sink<GoRightEvent>().connect<&GoCapture::on_right>(cap);
 
-    disp.enqueue<GoEvent>({Direction::Right});
-    disp.enqueue<GoEvent>({Direction::Up});
-    disp.update<GoEvent>();
-    disp.sink<GoEvent>().disconnect<&GoCapture::capture>(cap);
+    disp.enqueue<GoRightEvent>({});
+    disp.enqueue<GoUpEvent>({});
+    disp.update<GoUpEvent>();
+    disp.update<GoRightEvent>();
+    disp.sink<GoUpEvent>()   .disconnect<&GoCapture::on_up>   (cap);
+    disp.sink<GoRightEvent>().disconnect<&GoCapture::on_right>(cap);
 
-    REQUIRE(cap.count == 2);
-    CHECK(cap.buf[0].dir == Direction::Right);
-    CHECK(cap.buf[1].dir == Direction::Up);
+    REQUIRE(cap.count() == 2);
+    CHECK(cap.right == 1);
+    CHECK(cap.up    == 1);
 }
 
 // ── Per-shape press event tests (#1202/#1204) ─────────────────────────────

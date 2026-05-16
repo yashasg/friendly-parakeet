@@ -11,21 +11,45 @@ bool level_select_press_gate(entt::registry& reg) {
     if (!reg.ctx().contains<GamePhaseLevelSelectTag>()) return false;
     return reg.ctx().get<GameState>().phase_timer >= 0.05f;
 }
+
+// Gate for the directional handlers: ignore presses outside the
+// level-select phase. No debounce — directional input was never gated on
+// the entry timer (only the confirm/select-press paths were).
+bool level_select_dir_gate(entt::registry& reg) {
+    return reg.ctx().contains<GamePhaseLevelSelectTag>();
+}
+
+void step_level(entt::registry& reg, int delta) {
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    const int count = static_cast<int>(content_config::LEVEL_COUNT);
+    lss.selected_level = (lss.selected_level + delta + count) % count;
+}
+
+void step_difficulty(entt::registry& reg, int delta) {
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    const int count = static_cast<int>(content_config::DIFFICULTY_COUNT);
+    lss.selected_difficulty = (lss.selected_difficulty + delta + count) % count;
+}
 } // namespace
 
-void level_select_handle_go(entt::registry& reg, const GoEvent& evt) {
-    if (!reg.ctx().contains<GamePhaseLevelSelectTag>()) return;
+void level_select_handle_go_up(entt::registry& reg, const GoUpEvent&) {
+    if (!level_select_dir_gate(reg)) return;
+    step_level(reg, -1);
+}
 
-    auto& lss = reg.ctx().get<LevelSelectState>();
-    if (evt.dir == Direction::Up) {
-        lss.selected_level = (lss.selected_level - 1 + content_config::LEVEL_COUNT) % content_config::LEVEL_COUNT;
-    } else if (evt.dir == Direction::Down) {
-        lss.selected_level = (lss.selected_level + 1) % content_config::LEVEL_COUNT;
-    } else if (evt.dir == Direction::Left) {
-        lss.selected_difficulty = (lss.selected_difficulty - 1 + content_config::DIFFICULTY_COUNT) % content_config::DIFFICULTY_COUNT;
-    } else if (evt.dir == Direction::Right) {
-        lss.selected_difficulty = (lss.selected_difficulty + 1) % content_config::DIFFICULTY_COUNT;
-    }
+void level_select_handle_go_down(entt::registry& reg, const GoDownEvent&) {
+    if (!level_select_dir_gate(reg)) return;
+    step_level(reg, +1);
+}
+
+void level_select_handle_go_left(entt::registry& reg, const GoLeftEvent&) {
+    if (!level_select_dir_gate(reg)) return;
+    step_difficulty(reg, -1);
+}
+
+void level_select_handle_go_right(entt::registry& reg, const GoRightEvent&) {
+    if (!level_select_dir_gate(reg)) return;
+    step_difficulty(reg, +1);
 }
 
 void level_select_handle_confirm(entt::registry& reg, const MenuConfirmEvent&) {
