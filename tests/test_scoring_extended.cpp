@@ -5,12 +5,14 @@
 
 namespace {
 
-int score_shape_gate_with_tier(entt::registry& reg, TimingTier tier) {
+using TierEmplace = void(*)(entt::registry&, entt::entity, float);
+
+int score_shape_gate_with_tier(entt::registry& reg, TierEmplace emplace_tag) {
     auto& score = reg.ctx().get<ScoreState>();
     const int before = score.score;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, tier, 0.0f);
+    emplace_tag(reg, obs, 0.0f);
 
     scoring_system(reg, 0.0f);
     return score.score - before;
@@ -33,7 +35,7 @@ TEST_CASE("scoring: perfect timing multiplier gives 1.5x base", "[scoring][rhyth
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Perfect, 1.0f);
+    emplace_timing_perfect(reg, obs, 1.0f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
@@ -48,7 +50,7 @@ TEST_CASE("scoring: bad timing multiplier gives 0.25x base", "[scoring][rhythm]"
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Bad, 0.0f);
+    emplace_timing_bad(reg, obs, 0.0f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
@@ -63,18 +65,18 @@ TEST_CASE("scoring: bad timing multiplier gives 0.25x base", "[scoring][rhythm]"
 TEST_CASE("scoring: timing multiplier applies end-to-end for good ok and bad", "[scoring][rhythm][issue221]") {
     {
         auto reg = make_registry();
-        CHECK(score_shape_gate_with_tier(reg, TimingTier::Good) == 200);
+        CHECK(score_shape_gate_with_tier(reg, &emplace_timing_good) == 200);
     }
     {
         auto reg = make_registry();
-        CHECK(score_shape_gate_with_tier(reg, TimingTier::Ok) == 100);
+        CHECK(score_shape_gate_with_tier(reg, &emplace_timing_ok) == 100);
     }
     {
         auto reg = make_registry();
         auto& energy = reg.ctx().get<EnergyState>();
         energy.energy = 1.0f;
 
-        CHECK(score_shape_gate_with_tier(reg, TimingTier::Bad) == 50);
+        CHECK(score_shape_gate_with_tier(reg, &emplace_timing_bad) == 50);
         energy_system(reg, 0.0f);
 
         CHECK_THAT(energy.energy,
@@ -86,7 +88,7 @@ TEST_CASE("scoring: perfect timing and base points combine correctly", "[scoring
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Perfect, 1.0f);
+    emplace_timing_perfect(reg, obs, 1.0f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
@@ -116,7 +118,7 @@ TEST_CASE("scoring: zero-point passive obstacles do not extend chain", "[scoring
     auto reg = make_registry();
     auto& score = reg.ctx().get<ScoreState>();
 
-    CHECK(score_shape_gate_with_tier(reg, TimingTier::Good) == 200);
+    CHECK(score_shape_gate_with_tier(reg, &emplace_timing_good) == 200);
     CHECK(score.chain_count == 1);
 
     for (int i = 0; i < 3; ++i) {
@@ -127,7 +129,7 @@ TEST_CASE("scoring: zero-point passive obstacles do not extend chain", "[scoring
     CHECK(score.chain_count == 1);
     const int expected_chain2_points = static_cast<int>(
         std::floor(static_cast<float>(constants::PTS_SHAPE_GATE) * (1.0f + constants::CHAIN_MULT_STEP)));
-    CHECK(score_shape_gate_with_tier(reg, TimingTier::Good) == expected_chain2_points);
+    CHECK(score_shape_gate_with_tier(reg, &emplace_timing_good) == expected_chain2_points);
     CHECK(score.chain_count == 2);
 }
 
@@ -145,30 +147,36 @@ TEST_CASE("scoring: TimingGrade removed from entity after scoring", "[scoring]")
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
+    emplace_timing_good(reg, obs, 0.5f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
     energy_system(reg, 0.016f);
 
     CHECK_FALSE(reg.all_of<TimingGrade>(obs));
+    CHECK_FALSE(reg.all_of<TimingPerfectTag>(obs));
+    CHECK_FALSE(reg.all_of<TimingGoodTag>(obs));
+    CHECK_FALSE(reg.all_of<TimingOkTag>(obs));
+    CHECK_FALSE(reg.all_of<TimingBadTag>(obs));
 }
 
 TEST_CASE("scoring: popup timing_tier set for graded obstacles", "[scoring][rhythm]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
+    emplace_timing_good(reg, obs, 0.5f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
     energy_system(reg, 0.016f);
 
     auto popup_view = reg.view<ScorePopup>();
-    for (auto [e, popup] : popup_view.each()) {
-        CHECK(popup.has_timing_tier);
-        CHECK(popup.timing_tier == TimingTier::Good);
+    int popup_count = 0;
+    for (auto e : popup_view) {
+        CHECK(reg.all_of<TimingGoodTag>(e));
+        ++popup_count;
     }
+    CHECK(popup_count == 1);
 }
 
 TEST_CASE("scoring: popup timing_tier is absent for ungraded obstacles", "[scoring]") {
@@ -182,8 +190,11 @@ TEST_CASE("scoring: popup timing_tier is absent for ungraded obstacles", "[scori
     energy_system(reg, 0.016f);
 
     auto popup_view = reg.view<ScorePopup>();
-    for (auto [e, popup] : popup_view.each()) {
-        CHECK(!popup.has_timing_tier);
+    for (auto e : popup_view) {
+        CHECK_FALSE(reg.all_of<TimingPerfectTag>(e));
+        CHECK_FALSE(reg.all_of<TimingGoodTag>(e));
+        CHECK_FALSE(reg.all_of<TimingOkTag>(e));
+        CHECK_FALSE(reg.all_of<TimingBadTag>(e));
     }
 }
 
@@ -237,7 +248,7 @@ TEST_CASE("scoring: mixed miss and perfect at zero preserves per-event clamp ord
 
     auto hit = make_shape_gate(reg, Shape::Square, constants::PLAYER_Y + 1.0f);
     reg.emplace<ScoredTag>(hit);
-    reg.emplace<TimingGrade>(hit, TimingTier::Perfect, 1.0f);
+    emplace_timing_perfect(reg, hit, 1.0f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);

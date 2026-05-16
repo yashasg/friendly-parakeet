@@ -5,57 +5,63 @@
 #include "ui/screen_controllers/screen_controller_base.h"
 #include "util/rhythm_math.h"
 
-// ── timing_multiplier ────────────────────────────────────────
+// ── timing_multiplier_from_delta_abs ─────────────────────────
+// Per #1202/#1204: TimingTier eradicated; multiplier is now derived from the
+// absolute delta-seconds via the threshold ladder. Each canonical delta below
+// sits squarely inside the corresponding former-tier band.
 
-TEST_CASE("timing_multiplier: Perfect gives 1.50x", "[timing]") {
-    CHECK(timing_multiplier(TimingTier::Perfect) == 1.50f);
+TEST_CASE("timing_multiplier: delta=0 (Perfect band) gives 1.50x", "[timing]") {
+    CHECK(timing_multiplier_from_delta_abs(0.0f) == 1.50f);
 }
 
-TEST_CASE("timing_multiplier: Good gives 1.00x", "[timing]") {
-    CHECK(timing_multiplier(TimingTier::Good) == 1.00f);
+TEST_CASE("timing_multiplier: just past Perfect (Good band) gives 1.00x", "[timing]") {
+    CHECK(timing_multiplier_from_delta_abs(kTimingPerfectSeconds + 0.001f) == 1.00f);
 }
 
-TEST_CASE("timing_multiplier: Ok gives 0.50x", "[timing]") {
-    CHECK(timing_multiplier(TimingTier::Ok) == 0.50f);
+TEST_CASE("timing_multiplier: just past Good (Ok band) gives 0.50x", "[timing]") {
+    CHECK(timing_multiplier_from_delta_abs(kTimingGoodSeconds + 0.001f) == 0.50f);
 }
 
-TEST_CASE("timing_multiplier: Bad gives 0.25x", "[timing]") {
-    CHECK(timing_multiplier(TimingTier::Bad) == 0.25f);
+TEST_CASE("timing_multiplier: just past Ok (Bad band) gives 0.25x", "[timing]") {
+    CHECK(timing_multiplier_from_delta_abs(kTimingOkSeconds + 0.001f) == 0.25f);
 }
 
-// ── window_scale_for_tier ────────────────────────────────────
+// ── window_scale_from_delta_abs ──────────────────────────────
 // Spec (rhythm-spec.md §5/§7): better timing → smaller scale → window collapses sooner.
 
-TEST_CASE("window_scale: Perfect gives 0.50", "[timing]") {
-    CHECK(window_scale_for_tier(TimingTier::Perfect) == 0.50f);
+TEST_CASE("window_scale: delta=0 (Perfect band) gives 0.50", "[timing]") {
+    CHECK(window_scale_from_delta_abs(0.0f) == 0.50f);
 }
 
-TEST_CASE("window_scale: Good gives 0.75", "[timing]") {
-    CHECK(window_scale_for_tier(TimingTier::Good) == 0.75f);
+TEST_CASE("window_scale: just past Perfect (Good band) gives 0.75", "[timing]") {
+    CHECK(window_scale_from_delta_abs(kTimingPerfectSeconds + 0.001f) == 0.75f);
 }
 
-TEST_CASE("window_scale: Ok gives 1.00", "[timing]") {
-    CHECK(window_scale_for_tier(TimingTier::Ok) == 1.00f);
+TEST_CASE("window_scale: just past Good (Ok band) gives 1.00", "[timing]") {
+    CHECK(window_scale_from_delta_abs(kTimingGoodSeconds + 0.001f) == 1.00f);
 }
 
-TEST_CASE("window_scale: Bad gives 1.00 (no-op, miss handled elsewhere)", "[timing]") {
-    CHECK(window_scale_for_tier(TimingTier::Bad) == 1.00f);
+TEST_CASE("window_scale: just past Ok (Bad band) gives 1.00 (no-op, miss handled elsewhere)", "[timing]") {
+    CHECK(window_scale_from_delta_abs(kTimingOkSeconds + 0.001f) == 1.00f);
 }
 
 // Regression for issue #223 — values must be strictly ordered:
 // Perfect(0.50) < Good(0.75) < Ok(1.00) == Bad(1.00).
 // If this order inverts again the inversion bug has regressed.
-TEST_CASE("window_scale: ordering — better tier gives smaller scale", "[timing][regression]") {
-    CHECK(window_scale_for_tier(TimingTier::Perfect) < window_scale_for_tier(TimingTier::Good));
-    CHECK(window_scale_for_tier(TimingTier::Good)    < window_scale_for_tier(TimingTier::Ok));
-    CHECK(window_scale_for_tier(TimingTier::Ok)     == window_scale_for_tier(TimingTier::Bad));
+TEST_CASE("window_scale: ordering — better timing gives smaller scale", "[timing][regression]") {
+    CHECK(window_scale_from_delta_abs(0.0f) <
+          window_scale_from_delta_abs(kTimingPerfectSeconds + 0.001f));
+    CHECK(window_scale_from_delta_abs(kTimingPerfectSeconds + 0.001f) <
+          window_scale_from_delta_abs(kTimingGoodSeconds + 0.001f));
+    CHECK(window_scale_from_delta_abs(kTimingGoodSeconds + 0.001f) ==
+          window_scale_from_delta_abs(kTimingOkSeconds + 0.001f));
 }
 
-TEST_CASE("window_scale: Perfect strictly shrinks, Ok/Bad are neutral", "[timing][regression]") {
-    CHECK(window_scale_for_tier(TimingTier::Perfect) <  1.0f);
-    CHECK(window_scale_for_tier(TimingTier::Good)    <  1.0f);
-    CHECK(window_scale_for_tier(TimingTier::Ok)      == 1.0f);
-    CHECK(window_scale_for_tier(TimingTier::Bad)     == 1.0f);
+TEST_CASE("window_scale: Perfect/Good strictly shrink, Ok/Bad are neutral", "[timing][regression]") {
+    CHECK(window_scale_from_delta_abs(0.0f)                              <  1.0f);
+    CHECK(window_scale_from_delta_abs(kTimingPerfectSeconds + 0.001f)    <  1.0f);
+    CHECK(window_scale_from_delta_abs(kTimingGoodSeconds    + 0.001f)    == 1.0f);
+    CHECK(window_scale_from_delta_abs(kTimingOkSeconds      + 0.001f)    == 1.0f);
 }
 
 // ── song_state_compute_derived ───────────────────────────────
@@ -144,12 +150,10 @@ TEST_CASE("ToString: ObstacleKind covers all kinds", "[ToString]") {
     CHECK(magic_enum::enum_name(ObstacleKind::OnsetMarker) == "OnsetMarker");
 }
 
-TEST_CASE("ToString: TimingTier covers all tiers", "[ToString]") {
-    CHECK(magic_enum::enum_name(TimingTier::Bad) == "Bad");
-    CHECK(magic_enum::enum_name(TimingTier::Ok) == "Ok");
-    CHECK(magic_enum::enum_name(TimingTier::Good) == "Good");
-    CHECK(magic_enum::enum_name(TimingTier::Perfect) == "Perfect");
-}
+// TimingTier enum was eradicated in issue #1202/#1204 (per Fabian's existential
+// processing); each former value is now a zero-column tag in app/tags/tags.h
+// (TimingPerfectTag/TimingGoodTag/TimingOkTag/TimingBadTag) and the
+// magic_enum reflection check no longer applies.
 
 // ── dispatcher helpers ───────────────────────────────────────
 

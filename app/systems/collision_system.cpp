@@ -93,14 +93,14 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
         song.half_window > 0.0f && p_window.press_time >= 0.0f;
     auto grade_shape_timing = [&](entt::entity entity, float arrival_time) {
         float delta_seconds = std::abs(p_window.press_time - arrival_time);
-        TimingTier tier = compute_timing_tier_from_delta(delta_seconds);
         float precision = 1.0f - (delta_seconds / kTimingOkSeconds);
         if (precision < 0.0f) precision = 0.0f;
         if (precision > 1.0f) precision = 1.0f;
-        reg.get_or_emplace<TimingGrade>(entity) = TimingGrade{tier, precision};
+        reg.emplace_or_replace<TimingGrade>(entity, TimingGrade{precision});
+        emplace_timing_tier_tag_for_delta_abs(reg, entity, delta_seconds);
 
         if (!p_window.graded) {
-            float scale = window_scale_for_tier(tier);
+            float scale = window_scale_from_delta_abs(delta_seconds);
             const float active_elapsed = song.song_time - p_window.window_start;
             float remaining = song.window_duration - active_elapsed;
             if (remaining > 0.0f && scale < 1.0f) {

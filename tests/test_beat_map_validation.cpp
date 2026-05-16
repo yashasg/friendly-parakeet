@@ -379,19 +379,22 @@ TEST_CASE("init_song_state: computes derived fields", "[init_song]") {
 
 // ── rhythm helper functions ──────────────────────────────────
 
-TEST_CASE("timing_multiplier: returns correct values", "[rhythm_helpers]") {
-    CHECK(timing_multiplier(TimingTier::Perfect) == 1.50f);
-    CHECK(timing_multiplier(TimingTier::Good) == 1.00f);
-    CHECK(timing_multiplier(TimingTier::Ok) == 0.50f);
-    CHECK(timing_multiplier(TimingTier::Bad) == 0.25f);
+TEST_CASE("timing_multiplier_from_delta_abs: returns correct values per band", "[rhythm_helpers]") {
+    // Post-#1202/#1204: tier discriminator eradicated; multiplier ladder is
+    // keyed by the absolute delta-seconds. Each canonical sample below sits
+    // squarely inside the corresponding former-tier band.
+    CHECK(timing_multiplier_from_delta_abs(0.0f)                              == 1.50f);
+    CHECK(timing_multiplier_from_delta_abs(kTimingPerfectSeconds + 0.001f)    == 1.00f);
+    CHECK(timing_multiplier_from_delta_abs(kTimingGoodSeconds    + 0.001f)    == 0.50f);
+    CHECK(timing_multiplier_from_delta_abs(kTimingOkSeconds      + 0.001f)    == 0.25f);
 }
 
-TEST_CASE("window_scale_for_tier: returns correct values", "[rhythm_helpers]") {
+TEST_CASE("window_scale_from_delta_abs: returns correct values per band", "[rhythm_helpers]") {
     // Post-#223 inversion: smaller scale = better timing = faster window collapse.
-    CHECK(window_scale_for_tier(TimingTier::Perfect) == 0.50f);
-    CHECK(window_scale_for_tier(TimingTier::Good) == 0.75f);
-    CHECK(window_scale_for_tier(TimingTier::Ok) == 1.00f);
-    CHECK(window_scale_for_tier(TimingTier::Bad) == 1.00f);
+    CHECK(window_scale_from_delta_abs(0.0f)                              == 0.50f);
+    CHECK(window_scale_from_delta_abs(kTimingPerfectSeconds + 0.001f)    == 0.75f);
+    CHECK(window_scale_from_delta_abs(kTimingGoodSeconds    + 0.001f)    == 1.00f);
+    CHECK(window_scale_from_delta_abs(kTimingOkSeconds      + 0.001f)    == 1.00f);
 }
 
 TEST_CASE("song_state_compute_derived: beat_period calculation", "[rhythm_helpers]") {

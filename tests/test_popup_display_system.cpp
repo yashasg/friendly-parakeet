@@ -1,17 +1,22 @@
-// Regression tests for GitHub issues #208 and #288.
+// Regression tests for GitHub issues #208, #288, #1202.
 //
 // #208: popup_display_system had zero test coverage.
 // #288: timing_tier migrated from raw uint8_t sentinel (255) to optional<TimingTier>.
+// #1202: TimingTier enum eradicated (Fabian existential processing). Each
+//        former tier is now an empty tag on the popup entity itself
+//        (TimingPerfectTag / TimingGoodTag / TimingOkTag / TimingBadTag).
+//        The discriminator field on ScorePopup is gone — tier identity is
+//        carried by the popup entity's component signature.
 //
 // Covers popup_display_system — the system that converts ScorePopup entities
 // into renderable PopupDisplay structs (text label, font size, RGBA alpha).
 //
-// Test matrix:
-//   timing_tier == TimingTier::Perfect → text "PERFECT",  FontSize::Medium
-//   timing_tier == TimingTier::Good    → text "GOOD",     FontSize::Medium
-//   timing_tier == TimingTier::Ok      → text "OK",       FontSize::Medium
-//   timing_tier == TimingTier::Bad     → text "BAD",      FontSize::Medium
-//   timing_tier == nullopt             → numeric score string (e.g. "150"), FontSize::Small
+// Test matrix (post-#1202):
+//   TimingPerfectTag on entity → text "PERFECT",  FontSize::Medium
+//   TimingGoodTag    on entity → text "GOOD",     FontSize::Medium
+//   TimingOkTag      on entity → text "OK",       FontSize::Medium
+//   TimingBadTag     on entity → text "BAD",      FontSize::Medium
+//   no tier tag                → numeric score string (e.g. "150"), FontSize::Small
 //   alpha at half lifetime → ≈ 127  (50 % × 255 truncated to uint8_t)
 //
 // The tests operate on in-memory registry entities and do not touch files.
@@ -19,60 +24,102 @@
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entt.hpp>
 #include <cstring>
-#include <optional>
 #include <tuple>
 
 #include "components/scoring.h"   // ScorePopup, PopupDisplay
 #include "components/rendering.h" // ScreenPosition, Color (via raylib)
 #include "systems/popup_display_system.h"
 #include "components/text.h"      // FontSize
-#include "components/rhythm.h"    // TimingTier
+#include "tags/tags.h"            // TimingPerfectTag / Good / Ok / Bad
 #include "components/transform.h" // WorldTransform, Vector2
-#include "entities/settings.h"        // SettingsState (reduce_motion)
+#include "entities/settings.h"    // SettingsState (reduce_motion)
 #include "systems/all_systems.h"  // popup_display_system declaration
 #include "entities/popup_entity.h"
 #include "constants.h"
 
-// ── Helper ────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────
 //
-// Build a minimal entity that popup_display_system can process.
+// Build a minimal popup entity that popup_display_system can process. One
+// helper per former TimingTier value (existential processing — no enum).
 
-static entt::entity make_popup_entity(entt::registry& reg,
-                                      std::optional<TimingTier> timing_tier,
-                                      int32_t value,
-                                      float   remaining,
-                                      float   max_time) {
+namespace {
+
+void seed_popup_common(entt::registry& reg,
+                       entt::entity   e,
+                       int32_t        value,
+                       float          remaining,
+                       float          max_time) {
     if (!reg.ctx().contains<PopupDisplayScratch>()) {
         runtime_system_scratch_init(reg);
     }
-    auto e = reg.create();
-
     ScorePopup sp{};
-    sp.has_timing_tier = timing_tier.has_value();
-    sp.timing_tier = timing_tier.value_or(TimingTier::Ok);
-    sp.value       = value;
-    sp.remaining   = remaining;
-    sp.max_time    = max_time;
+    sp.value     = value;
+    sp.remaining = remaining;
+    sp.max_time  = max_time;
     reg.emplace<ScorePopup>(e, sp);
 
     reg.emplace<ScreenPosition>(e, 0.0f, 0.0f);
     reg.emplace<Color>(e, Color{255, 255, 255, 255});
+}
 
-    // #251: PopupDisplay's static fields (text, font size, base RGB) are
-    // initialized once at spawn — popup_display_system only fades alpha.
+entt::entity make_perfect_popup(entt::registry& reg, int32_t v, float rem, float max) {
+    auto e = reg.create();
+    seed_popup_common(reg, e, v, rem, max);
+    reg.emplace<TimingPerfectTag>(e);
     PopupDisplay pd{};
-    init_popup_display(pd, sp, Color{255, 255, 255, 255});
+    init_popup_display_perfect(pd, Color{255, 255, 255, 255});
     reg.emplace<PopupDisplay>(e, pd);
-
     return e;
 }
 
+entt::entity make_good_popup(entt::registry& reg, int32_t v, float rem, float max) {
+    auto e = reg.create();
+    seed_popup_common(reg, e, v, rem, max);
+    reg.emplace<TimingGoodTag>(e);
+    PopupDisplay pd{};
+    init_popup_display_good(pd, Color{255, 255, 255, 255});
+    reg.emplace<PopupDisplay>(e, pd);
+    return e;
+}
+
+entt::entity make_ok_popup(entt::registry& reg, int32_t v, float rem, float max) {
+    auto e = reg.create();
+    seed_popup_common(reg, e, v, rem, max);
+    reg.emplace<TimingOkTag>(e);
+    PopupDisplay pd{};
+    init_popup_display_ok(pd, Color{255, 255, 255, 255});
+    reg.emplace<PopupDisplay>(e, pd);
+    return e;
+}
+
+entt::entity make_bad_popup(entt::registry& reg, int32_t v, float rem, float max) {
+    auto e = reg.create();
+    seed_popup_common(reg, e, v, rem, max);
+    reg.emplace<TimingBadTag>(e);
+    PopupDisplay pd{};
+    init_popup_display_bad(pd, Color{255, 255, 255, 255});
+    reg.emplace<PopupDisplay>(e, pd);
+    return e;
+}
+
+entt::entity make_untimed_popup(entt::registry& reg, int32_t v, float rem, float max) {
+    auto e = reg.create();
+    seed_popup_common(reg, e, v, rem, max);
+    PopupDisplay pd{};
+    const auto& sp = reg.get<ScorePopup>(e);
+    init_popup_display_untimed(pd, sp, Color{255, 255, 255, 255});
+    reg.emplace<PopupDisplay>(e, pd);
+    return e;
+}
+
+}  // namespace
+
 // ── Grade text + font size ────────────────────────────────────────────────
 
-TEST_CASE("popup_display_system: TimingTier::Perfect → PERFECT, Medium font",
-          "[popup_display][issue208][issue288]") {
+TEST_CASE("popup_display_system: TimingPerfectTag → PERFECT, Medium font",
+          "[popup_display][issue208][issue288][issue1202]") {
     entt::registry reg;
-    auto e = make_popup_entity(reg, TimingTier::Perfect, 0, 1.0f, 1.0f);
+    auto e = make_perfect_popup(reg, 0, 1.0f, 1.0f);
 
     popup_display_system(reg, 0.0f);
 
@@ -82,10 +129,10 @@ TEST_CASE("popup_display_system: TimingTier::Perfect → PERFECT, Medium font",
     CHECK(pd.font_size == FontSize::Medium);
 }
 
-TEST_CASE("popup_display_system: TimingTier::Good → GOOD, Medium font",
-          "[popup_display][issue208][issue288]") {
+TEST_CASE("popup_display_system: TimingGoodTag → GOOD, Medium font",
+          "[popup_display][issue208][issue288][issue1202]") {
     entt::registry reg;
-    auto e = make_popup_entity(reg, TimingTier::Good, 0, 1.0f, 1.0f);
+    auto e = make_good_popup(reg, 0, 1.0f, 1.0f);
 
     popup_display_system(reg, 0.0f);
 
@@ -95,10 +142,10 @@ TEST_CASE("popup_display_system: TimingTier::Good → GOOD, Medium font",
     CHECK(pd.font_size == FontSize::Medium);
 }
 
-TEST_CASE("popup_display_system: TimingTier::Ok → OK, Medium font",
-          "[popup_display][issue208][issue288]") {
+TEST_CASE("popup_display_system: TimingOkTag → OK, Medium font",
+          "[popup_display][issue208][issue288][issue1202]") {
     entt::registry reg;
-    auto e = make_popup_entity(reg, TimingTier::Ok, 0, 1.0f, 1.0f);
+    auto e = make_ok_popup(reg, 0, 1.0f, 1.0f);
 
     popup_display_system(reg, 0.0f);
 
@@ -108,10 +155,10 @@ TEST_CASE("popup_display_system: TimingTier::Ok → OK, Medium font",
     CHECK(pd.font_size == FontSize::Medium);
 }
 
-TEST_CASE("popup_display_system: TimingTier::Bad → BAD, Medium font",
-          "[popup_display][issue208][issue288]") {
+TEST_CASE("popup_display_system: TimingBadTag → BAD, Medium font",
+          "[popup_display][issue208][issue288][issue1202]") {
     entt::registry reg;
-    auto e = make_popup_entity(reg, TimingTier::Bad, 0, 1.0f, 1.0f);
+    auto e = make_bad_popup(reg, 0, 1.0f, 1.0f);
 
     popup_display_system(reg, 0.0f);
 
@@ -123,10 +170,10 @@ TEST_CASE("popup_display_system: TimingTier::Bad → BAD, Medium font",
 
 // ── Numeric score path ────────────────────────────────────────────────────
 
-TEST_CASE("popup_display_system: nullopt timing_tier → numeric score string",
-          "[popup_display][issue208][issue288]") {
+TEST_CASE("popup_display_system: untimed (no tier tag) → numeric score string",
+          "[popup_display][issue208][issue288][issue1202]") {
     entt::registry reg;
-    auto e = make_popup_entity(reg, std::nullopt, 150, 1.0f, 1.0f);
+    auto e = make_untimed_popup(reg, 150, 1.0f, 1.0f);
 
     popup_display_system(reg, 0.0f);
 
@@ -144,7 +191,7 @@ TEST_CASE("popup_display_system: alpha at half lifetime is 127",
     entt::registry reg;
     // remaining = 0.5, max_time = 1.0 → alpha_ratio = 0.5
     // pd.a = static_cast<uint8_t>(0.5f * 255) = 127
-    auto e = make_popup_entity(reg, TimingTier::Perfect, 0, 0.5f, 1.0f);
+    auto e = make_perfect_popup(reg, 0, 0.5f, 1.0f);
 
     popup_display_system(reg, 0.0f);
 
@@ -158,14 +205,14 @@ TEST_CASE("popup_display_system: alpha at half lifetime is 127",
 //
 // popup_display_system used to re-snprintf the text and emplace_or_replace
 // PopupDisplay every tick. After #251 it must only mutate the per-frame
-// alpha; text, font size, and base RGB are written once at spawn via
-// init_popup_display(). These tests would fail if the system reverted to
-// re-formatting on every call.
+// alpha; text, font size, and base RGB are written once at spawn via the
+// per-tier init_popup_display_* helpers (post-#1202). These tests would fail
+// if the system reverted to re-formatting on every call.
 
 TEST_CASE("popup_display_system: does not re-format static text per tick (#251)",
           "[popup_display][issue251]") {
     entt::registry reg;
-    auto e = make_popup_entity(reg, TimingTier::Perfect, 0, 1.0f, 1.0f);
+    auto e = make_perfect_popup(reg, 0, 1.0f, 1.0f);
 
     auto& pd_mut = reg.get<PopupDisplay>(e);
     std::snprintf(pd_mut.text, sizeof(pd_mut.text), "%s", "SENTINEL");
@@ -183,7 +230,7 @@ TEST_CASE("popup_display_system: does not re-format static text per tick (#251)"
 TEST_CASE("popup_display_system: does not churn PopupDisplay storage (#251)",
           "[popup_display][issue251]") {
     entt::registry reg;
-    auto e = make_popup_entity(reg, TimingTier::Good, 0, 1.0f, 1.0f);
+    auto e = make_good_popup(reg, 0, 1.0f, 1.0f);
 
     auto& storage = reg.storage<PopupDisplay>();
     const auto sz0 = storage.size();
@@ -199,7 +246,7 @@ TEST_CASE("popup_display_system: does not churn PopupDisplay storage (#251)",
 TEST_CASE("popup_display_system: works without ScorePopup component (#251)",
            "[popup_display][issue251]") {
     entt::registry reg;
-    auto e = make_popup_entity(reg, TimingTier::Ok, 0, 0.5f, 1.0f);
+    auto e = make_ok_popup(reg, 0, 0.5f, 1.0f);
     reg.remove<ScorePopup>(e);
 
     popup_display_system(reg, 0.0f);
@@ -213,33 +260,28 @@ TEST_CASE("popup_display_system: works without ScorePopup component (#251)",
 TEST_CASE("popup_display_system: expired popups are destroyed",
           "[popup_display]") {
     entt::registry reg;
-    auto e = make_popup_entity(reg, std::nullopt, 50, 0.01f, 1.0f);
+    auto e = make_untimed_popup(reg, 50, 0.01f, 1.0f);
 
     popup_display_system(reg, 0.016f);
 
     CHECK_FALSE(reg.valid(e));
 }
 
-TEST_CASE("spawn_score_popup: creates the full popup display archetype",
-          "[popup_display][archetype]") {
+TEST_CASE("spawn_score_popup_good: creates the full popup display archetype",
+          "[popup_display][archetype][issue1202]") {
     entt::registry reg;
-    auto e = spawn_score_popup(reg, {100.0f, 200.0f, 50, TimingTier::Good});
+    auto e = spawn_score_popup_good(reg, 100.0f, 200.0f, 50);
 
     REQUIRE(reg.all_of<ScorePopup, PopupDisplay, Color, Vector2,
                        WorldTransform, TagHUDPass>(e));
-    CHECK(reg.get<ScorePopup>(e).has_timing_tier);
-    CHECK(reg.get<ScorePopup>(e).timing_tier == TimingTier::Good);
+    CHECK(reg.all_of<TimingGoodTag>(e));
     CHECK(std::strcmp(reg.get<PopupDisplay>(e).text, "GOOD") == 0);
 }
 
-TEST_CASE("init_popup_display: formats grade text + font size from ScorePopup (#251)",
-          "[popup_display][issue251]") {
-    ScorePopup sp{};
-    sp.has_timing_tier = true;
-    sp.timing_tier = TimingTier::Perfect;
-
+TEST_CASE("init_popup_display_perfect: formats PERFECT text + Medium font (#251)",
+          "[popup_display][issue251][issue1202]") {
     PopupDisplay pd{};
-    init_popup_display(pd, sp, Color{10, 20, 30, 200});
+    init_popup_display_perfect(pd, Color{10, 20, 30, 200});
 
     CHECK(std::strcmp(pd.text, "PERFECT") == 0);
     CHECK(pd.font_size == FontSize::Medium);
@@ -252,14 +294,13 @@ TEST_CASE("init_popup_display: formats grade text + font size from ScorePopup (#
     CHECK(pd.measured_font_texture_id == 0u);
 }
 
-TEST_CASE("init_popup_display: nullopt tier formats numeric value (#251)",
-          "[popup_display][issue251]") {
+TEST_CASE("init_popup_display_untimed: formats numeric value (#251)",
+          "[popup_display][issue251][issue1202]") {
     ScorePopup sp{};
-    sp.has_timing_tier = false;
-    sp.value       = 4242;
+    sp.value = 4242;
 
     PopupDisplay pd{};
-    init_popup_display(pd, sp, Color{255, 255, 255, 255});
+    init_popup_display_untimed(pd, sp, Color{255, 255, 255, 255});
 
     CHECK(std::strcmp(pd.text, "4242") == 0);
     CHECK(pd.font_size == FontSize::Small);
@@ -268,15 +309,16 @@ TEST_CASE("init_popup_display: nullopt tier formats numeric value (#251)",
     CHECK(pd.measured_font_texture_id == 0u);
 }
 
-// ── spawn_score_popup: entity factory contract (#349) ─────────────────────────
+// ── per-tier spawn_score_popup_*: entity factory contract (#349, #1202) ──────
 //
-// These tests prove that spawn_score_popup creates an entity carrying the full
-// expected component bundle with correct values.
+// These tests prove that the per-tier spawn functions create an entity carrying
+// the full expected component bundle with correct values plus the matching
+// per-tier tag.
 
-TEST_CASE("spawn_score_popup: entity has WorldTransform at pos - 40",
+TEST_CASE("spawn_score_popup_untimed: entity has WorldTransform at pos - 40",
           "[popup_entity][issue349]") {
     entt::registry reg;
-    auto e = spawn_score_popup(reg, {100.0f, 500.0f, 200, std::nullopt});
+    auto e = spawn_score_popup_untimed(reg, 100.0f, 500.0f, 200);
 
     REQUIRE(reg.all_of<WorldTransform>(e));
     const auto& wt = reg.get<WorldTransform>(e);
@@ -284,10 +326,10 @@ TEST_CASE("spawn_score_popup: entity has WorldTransform at pos - 40",
     CHECK(wt.position.y == 460.0f);  // 500 - 40
 }
 
-TEST_CASE("spawn_score_popup: entity has Vector2 {0, -80}",
+TEST_CASE("spawn_score_popup_untimed: entity has Vector2 {0, -80}",
           "[popup_entity][issue349]") {
     entt::registry reg;
-    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 100, std::nullopt});
+    auto e = spawn_score_popup_untimed(reg, 0.0f, 0.0f, 100);
 
     REQUIRE(reg.all_of<Vector2>(e));
     const auto& mv = reg.get<Vector2>(e);
@@ -295,24 +337,23 @@ TEST_CASE("spawn_score_popup: entity has Vector2 {0, -80}",
     CHECK(mv.y == -80.0f);
 }
 
-TEST_CASE("spawn_score_popup: ScorePopup has correct points and duration",
-          "[popup_entity][issue349]") {
+TEST_CASE("spawn_score_popup_good: ScorePopup has correct points and duration, tag emplaced",
+          "[popup_entity][issue349][issue1202]") {
     entt::registry reg;
-    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 350, TimingTier::Good});
+    auto e = spawn_score_popup_good(reg, 0.0f, 0.0f, 350);
 
     REQUIRE(reg.all_of<ScorePopup>(e));
     const auto& sp = reg.get<ScorePopup>(e);
     CHECK(sp.value == 350);
-    CHECK(sp.has_timing_tier);
-    CHECK(sp.timing_tier == TimingTier::Good);
+    CHECK(reg.all_of<TimingGoodTag>(e));
     CHECK(sp.remaining == constants::POPUP_DURATION);
     CHECK(sp.max_time  == constants::POPUP_DURATION);
 }
 
-TEST_CASE("spawn_score_popup: color is bright cyan for Perfect tier",
+TEST_CASE("spawn_score_popup_perfect: color is bright cyan",
           "[popup_entity][issue386]") {
     entt::registry reg;
-    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 300, TimingTier::Perfect});
+    auto e = spawn_score_popup_perfect(reg, 0.0f, 0.0f, 300);
 
     REQUIRE(reg.all_of<Color>(e));
     const auto& c = reg.get<Color>(e);
@@ -322,11 +363,11 @@ TEST_CASE("spawn_score_popup: color is bright cyan for Perfect tier",
     CHECK(c.a == 255);
 }
 
-TEST_CASE("spawn_score_popup: Good tier is lime, Ok tier is amber, distinct from Perfect",
+TEST_CASE("spawn_score_popup_good: lime; spawn_score_popup_ok: amber; distinct from Perfect",
           "[popup_entity][issue386]") {
     entt::registry reg;
-    auto good = spawn_score_popup(reg, {0.0f, 0.0f, 200, TimingTier::Good});
-    auto ok   = spawn_score_popup(reg, {0.0f, 0.0f, 100, TimingTier::Ok});
+    auto good = spawn_score_popup_good(reg, 0.0f, 0.0f, 200);
+    auto ok   = spawn_score_popup_ok(reg,   0.0f, 0.0f, 100);
 
     REQUIRE(reg.all_of<Color>(good));
     REQUIRE(reg.all_of<Color>(ok));
@@ -341,14 +382,13 @@ TEST_CASE("spawn_score_popup: Good tier is lime, Ok tier is amber, distinct from
     CHECK(ok_color.g == 200);
     CHECK(ok_color.b ==  60);
 
-    // Cross-tier distinctness (Perfect/Good/Ok must not collide).
     CHECK_FALSE((good_color.r == ok_color.r && good_color.g == ok_color.g && good_color.b == ok_color.b));
 }
 
-TEST_CASE("spawn_score_popup: color is red-orange for Bad tier",
+TEST_CASE("spawn_score_popup_bad: color is red-orange",
           "[popup_entity][issue386]") {
     entt::registry reg;
-    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 50, TimingTier::Bad});
+    auto e = spawn_score_popup_bad(reg, 0.0f, 0.0f, 50);
 
     REQUIRE(reg.all_of<Color>(e));
     const auto& c = reg.get<Color>(e);
@@ -357,13 +397,13 @@ TEST_CASE("spawn_score_popup: color is red-orange for Bad tier",
     CHECK(c.b ==  70);
 }
 
-TEST_CASE("spawn_score_popup: every timing tier maps to a distinct color",
+TEST_CASE("spawn_score_popup_*: every timing tier maps to a distinct color",
           "[popup_entity][issue386]") {
     entt::registry reg;
-    auto p = spawn_score_popup(reg, {0.0f, 0.0f, 0, TimingTier::Perfect});
-    auto g = spawn_score_popup(reg, {0.0f, 0.0f, 0, TimingTier::Good});
-    auto o = spawn_score_popup(reg, {0.0f, 0.0f, 0, TimingTier::Ok});
-    auto b = spawn_score_popup(reg, {0.0f, 0.0f, 0, TimingTier::Bad});
+    auto p = spawn_score_popup_perfect(reg, 0.0f, 0.0f, 0);
+    auto g = spawn_score_popup_good   (reg, 0.0f, 0.0f, 0);
+    auto o = spawn_score_popup_ok     (reg, 0.0f, 0.0f, 0);
+    auto b = spawn_score_popup_bad    (reg, 0.0f, 0.0f, 0);
 
     auto rgb = [&](entt::entity e) {
         const auto& c = reg.get<Color>(e);
@@ -378,10 +418,10 @@ TEST_CASE("spawn_score_popup: every timing tier maps to a distinct color",
     CHECK(co != cb);
 }
 
-TEST_CASE("spawn_score_popup: default color when no timing tier",
+TEST_CASE("spawn_score_popup_untimed: default color when no timing tier",
           "[popup_entity][issue349]") {
     entt::registry reg;
-    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 200, std::nullopt});
+    auto e = spawn_score_popup_untimed(reg, 0.0f, 0.0f, 200);
 
     REQUIRE(reg.all_of<Color>(e));
     const auto& c = reg.get<Color>(e);
@@ -390,17 +430,17 @@ TEST_CASE("spawn_score_popup: default color when no timing tier",
     CHECK(c.b == 50);
 }
 
-TEST_CASE("spawn_score_popup: entity carries TagHUDPass",
+TEST_CASE("spawn_score_popup_untimed: entity carries TagHUDPass",
           "[popup_entity][issue349]") {
     entt::registry reg;
-    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 100, std::nullopt});
+    auto e = spawn_score_popup_untimed(reg, 0.0f, 0.0f, 100);
     CHECK(reg.all_of<TagHUDPass>(e));
 }
 
-TEST_CASE("spawn_score_popup: PopupDisplay initialized at spawn",
+TEST_CASE("spawn_score_popup_perfect: PopupDisplay initialized at spawn",
           "[popup_entity][issue349]") {
     entt::registry reg;
-    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 0, TimingTier::Perfect});
+    auto e = spawn_score_popup_perfect(reg, 0.0f, 0.0f, 0);
 
     REQUIRE(reg.all_of<PopupDisplay>(e));
     const auto& pd = reg.get<PopupDisplay>(e);
@@ -418,7 +458,7 @@ TEST_CASE("popup_display_system: reduce_motion zeroes drift velocity (#534)",
     create_settings_entity(reg);
     settings_state(reg).reduce_motion = true;
 
-    auto e = spawn_score_popup(reg, {100.0f, 500.0f, 200, TimingTier::Perfect});
+    auto e = spawn_score_popup_perfect(reg, 100.0f, 500.0f, 200);
     REQUIRE(reg.all_of<Vector2>(e));
     REQUIRE(reg.get<Vector2>(e).y == -80.0f);
 
@@ -428,7 +468,6 @@ TEST_CASE("popup_display_system: reduce_motion zeroes drift velocity (#534)",
     CHECK(vel.x == 0.0f);
     CHECK(vel.y == 0.0f);
 
-    // Informational channel (text/colour/value) is unchanged.
     const auto& pd = reg.get<PopupDisplay>(e);
     CHECK(std::strcmp(pd.text, "PERFECT") == 0);
     CHECK(pd.r ==  80);
@@ -442,13 +481,13 @@ TEST_CASE("popup_display_system: reduce_motion=false leaves drift untouched (#53
           "[popup_display][reduce_motion][issue534]") {
     entt::registry reg;
     runtime_system_scratch_init(reg);
-    create_settings_entity(reg);  // reduce_motion defaults to false
+    create_settings_entity(reg);
 
-    auto e = spawn_score_popup(reg, {0.0f, 0.0f, 100, TimingTier::Good});
+    auto e = spawn_score_popup_good(reg, 0.0f, 0.0f, 100);
     popup_display_system(reg, 0.016f);
 
     const auto& vel = reg.get<Vector2>(e);
-    CHECK(vel.y == -80.0f);  // popup_display_system never touches it
+    CHECK(vel.y == -80.0f);
 }
 
 // #1089 — PopupDisplayScratch::capacity_exceeded_count must stay at zero when
@@ -465,7 +504,7 @@ TEST_CASE("popup_display_system: dense expiry burst stays within reserved capaci
 
     for (int i = 0; i < dense_count; ++i) {
         // Tiny remaining lifetime so the next tick expires every popup.
-        make_popup_entity(reg, std::nullopt, 100, 0.001f, 1.0f);
+        make_untimed_popup(reg, 100, 0.001f, 1.0f);
     }
 
     popup_display_system(reg, 0.016f);

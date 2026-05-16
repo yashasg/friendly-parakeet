@@ -1,6 +1,6 @@
 #pragma once
 
-// rhythm.h — Per-entity rhythm components and timing enums.
+// rhythm.h — Per-entity rhythm components.
 // Loaded-once data (BeatMap) lives in beat_map.h.
 // Runtime singletons: SongState / SongResults live in song_state.h;
 // EnergyState lives in energy_bar.h. This header re-exports all three for
@@ -11,19 +11,13 @@
 #include "energy_bar.h"
 #include "player.h"
 #include "obstacle.h"
-#include <cstdint>
 
 // ── Timing Grade (emplaced on obstacle at collision) ─
-enum class TimingTier : uint8_t {
-    Bad,
-    Ok,
-    Good,
-    Perfect,
-};
-
+// Per-row "precision" scalar carried by every graded obstacle. The tier
+// discriminator is a per-tier tag in app/tags/tags.h (TimingPerfectTag /
+// TimingGoodTag / TimingOkTag / TimingBadTag) — issue #1202/#1204.
 struct TimingGrade {
-    TimingTier tier      = TimingTier::Bad;
-    float      precision = 0.0f;  // 0.0 = edge, 1.0 = dead center
+    float precision = 0.0f;  // 0.0 = edge, 1.0 = dead center
 };
 
 // ── Beat Info (per-obstacle, carries chart data) ─────

@@ -8,6 +8,7 @@
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../components/rhythm.h"
+#include "../tags/tags.h"
 #include "../util/rhythm_math.h"
 #include "../constants.h"
 #include <raylib.h>
@@ -37,24 +38,59 @@ ScorePopupRequestQueue& popup_queue_for(entt::registry& reg) {
     return reg.ctx().get<ScorePopupRequestQueue>();
 }
 
-Color score_particle_color(const HitRecord& record) {
-    if (!record.has_timing) {
-        return Color{220, 220, 255, 220};
-    }
+// Per-tier traits — Fabian per-value table: each specialization carries the
+// row of constants the scoring transform reads for that tier (energy delta,
+// results counter member-pointer, particle color, popup-queue member-pointer).
+// One specialization per former TimingTier value; the prior 4-way switches
+// are replaced by template selection over the tier tag.
+template <typename TierTag>
+struct tier_score_traits;
 
-    switch (record.timing.tier) {
-        case TimingTier::Perfect:
-            return Color{255, 230, 90, 240};
-        case TimingTier::Good:
-            return Color{120, 255, 160, 230};
-        case TimingTier::Ok:
-            return Color{100, 180, 255, 220};
-        case TimingTier::Bad:
-            return Color{255, 100, 100, 220};
-    }
+template <>
+struct tier_score_traits<TimingPerfectTag> {
+    static constexpr float multiplier          = 1.50f;
+    static constexpr float energy_delta_signed = constants::ENERGY_RECOVER_PERFECT;
+    static constexpr bool  energy_flash        = false;
+    static constexpr Color particle_color{255, 230, 90, 240};
+    static constexpr int   SongResults::* results_counter = &SongResults::perfect_count;
+    static constexpr std::vector<TimedPopupRequest> ScorePopupRequestQueue::* queue =
+        &ScorePopupRequestQueue::perfect;
+};
 
-    return Color{220, 220, 255, 220};
-}
+template <>
+struct tier_score_traits<TimingGoodTag> {
+    static constexpr float multiplier          = 1.00f;
+    static constexpr float energy_delta_signed = constants::ENERGY_RECOVER_GOOD;
+    static constexpr bool  energy_flash        = false;
+    static constexpr Color particle_color{120, 255, 160, 230};
+    static constexpr int   SongResults::* results_counter = &SongResults::good_count;
+    static constexpr std::vector<TimedPopupRequest> ScorePopupRequestQueue::* queue =
+        &ScorePopupRequestQueue::good;
+};
+
+template <>
+struct tier_score_traits<TimingOkTag> {
+    static constexpr float multiplier          = 0.50f;
+    static constexpr float energy_delta_signed = constants::ENERGY_RECOVER_OK;
+    static constexpr bool  energy_flash        = false;
+    static constexpr Color particle_color{100, 180, 255, 220};
+    static constexpr int   SongResults::* results_counter = &SongResults::ok_count;
+    static constexpr std::vector<TimedPopupRequest> ScorePopupRequestQueue::* queue =
+        &ScorePopupRequestQueue::ok;
+};
+
+template <>
+struct tier_score_traits<TimingBadTag> {
+    static constexpr float multiplier          = 0.25f;
+    static constexpr float energy_delta_signed = -constants::ENERGY_DRAIN_BAD;
+    static constexpr bool  energy_flash        = true;
+    static constexpr Color particle_color{255, 100, 100, 220};
+    static constexpr int   SongResults::* results_counter = &SongResults::bad_count;
+    static constexpr std::vector<TimedPopupRequest> ScorePopupRequestQueue::* queue =
+        &ScorePopupRequestQueue::bad;
+};
+
+constexpr Color kUntimedParticleColor{220, 220, 255, 220};
 
 void spawn_score_particles(entt::registry& reg, const Vector2& position, Color color) {
     constexpr float kLifetime = 0.35f;
@@ -88,6 +124,124 @@ float chain_multiplier_for_count(int32_t chain_count) {
     return 1.0f + constants::CHAIN_MULT_STEP * static_cast<float>(bonus_steps);
 }
 
+// Process one tier of graded hits. Per-tier constants come from
+// tier_score_traits<TierTag>; the chain/score/popup-queue logic is shared
+// across tiers because that data is per-row (not per-tier).
+template <typename TierTag>
+void process_tier_hit_pass(entt::registry& reg,
+                           ScoreState& score,
+                           SongResults* results,
+                           ScoringSystemScratch& scratch,
+                           ScorePopupRequestQueue& popup_queue) {
+    auto& hit_buf = scratch.hit_buf;
+    hit_buf.clear();
+
+    auto view = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldTransform, TimingGrade, TierTag>(
+        entt::exclude<MissTag, NonScorableTag>);
+    for (auto [e, obs, wt, tg] : view.each()) {
+        HitRecord r;
+        r.e          = e;
+        r.popup_xy   = wt.position;
+        r.obs        = obs;
+        r.has_timing = true;
+        r.precision  = tg.precision;
+        if (hit_buf.size() >= hit_buf.capacity()) {
+            ++scratch.hit_capacity_exceeded_count;
+        }
+        hit_buf.push_back(r);
+    }
+
+    if (hit_buf.empty()) return;
+
+    using Traits = tier_score_traits<TierTag>;
+
+    for (auto& r : hit_buf) {
+        enqueue_energy_effect(reg, Traits::energy_delta_signed, Traits::energy_flash);
+        if (results) {
+            ((*results).*Traits::results_counter) += 1;
+        }
+
+        const bool contributes_to_chain = r.obs.base_points > 0;
+        if (contributes_to_chain) {
+            score.chain_count++;
+        }
+        const float chain_mult  = chain_multiplier_for_count(score.chain_count);
+        int points = static_cast<int>(
+            std::floor(static_cast<float>(r.obs.base_points) * Traits::multiplier * chain_mult));
+
+        if (contributes_to_chain && results && score.chain_count > results->max_chain) {
+            results->max_chain = score.chain_count;
+        }
+
+        score.score += points;
+
+        auto& queue = popup_queue.*Traits::queue;
+        if (queue.size() >= queue.capacity()) {
+            ++popup_queue.capacity_exceeded_count;
+        }
+        queue.push_back({r.popup_xy.x, r.popup_xy.y, points});
+        spawn_score_particles(reg, r.popup_xy, Traits::particle_color);
+
+        reg.get_or_emplace<ResolvedObstacleTag>(r.e);
+        reg.remove<Obstacle>(r.e);
+        reg.remove<ScoredTag>(r.e);
+        remove_timing_grade_and_tags(reg, r.e);
+    }
+}
+
+void process_ungraded_hit_pass(entt::registry& reg,
+                               ScoreState& score,
+                               SongResults* results,
+                               ScoringSystemScratch& scratch,
+                               ScorePopupRequestQueue& popup_queue) {
+    auto& hit_buf = scratch.hit_buf;
+    hit_buf.clear();
+
+    auto view = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldTransform>(
+        entt::exclude<MissTag, NonScorableTag, TimingGrade>);
+    for (auto [e, obs, wt] : view.each()) {
+        HitRecord r;
+        r.e          = e;
+        r.popup_xy   = wt.position;
+        r.obs        = obs;
+        r.has_timing = false;
+        if (hit_buf.size() >= hit_buf.capacity()) {
+            ++scratch.hit_capacity_exceeded_count;
+        }
+        hit_buf.push_back(r);
+    }
+
+    if (hit_buf.empty()) return;
+
+    for (auto& r : hit_buf) {
+        const bool contributes_to_chain = r.obs.base_points > 0;
+        if (contributes_to_chain) {
+            score.chain_count++;
+        }
+        const float chain_mult = chain_multiplier_for_count(score.chain_count);
+        // Ungraded hits never had a tier — pre-migration the switch fell
+        // through with timing_mult = 1.0f. Preserve that exactly.
+        int points = static_cast<int>(
+            std::floor(static_cast<float>(r.obs.base_points) * chain_mult));
+
+        if (contributes_to_chain && results && score.chain_count > results->max_chain) {
+            results->max_chain = score.chain_count;
+        }
+
+        score.score += points;
+
+        if (popup_queue.untimed.size() >= popup_queue.untimed.capacity()) {
+            ++popup_queue.capacity_exceeded_count;
+        }
+        popup_queue.untimed.push_back({r.popup_xy.x, r.popup_xy.y, points});
+        spawn_score_particles(reg, r.popup_xy, kUntimedParticleColor);
+
+        reg.get_or_emplace<ResolvedObstacleTag>(r.e);
+        reg.remove<Obstacle>(r.e);
+        reg.remove<ScoredTag>(r.e);
+    }
+}
+
 }  // namespace
 
 void scoring_system(entt::registry& reg, float dt) {
@@ -107,7 +261,8 @@ void scoring_system(entt::registry& reg, float dt) {
     auto* results = reg.ctx().find<SongResults>();   // #309: hoisted above loop
 
     // Hoist single scratch lookup — miss_buf and hit_buf share the same struct.
-    auto& scratch = scoring_scratch_for(reg);
+    auto& scratch     = scoring_scratch_for(reg);
+    auto& popup_queue = popup_queue_for(reg);
 
     // Miss pass: single owner of ENERGY_DRAIN_MISS and miss_count.
     // Collect first, then remove view components after iteration (#315).
@@ -144,111 +299,18 @@ void scoring_system(entt::registry& reg, float dt) {
             reg.remove<Obstacle>(r.e);
             reg.remove<ScoredTag>(r.e);
             if (reg.all_of<MissTag>(r.e)) reg.remove<MissTag>(r.e);
-            if (r.has_timing) reg.remove<TimingGrade>(r.e);
+            if (r.has_timing) remove_timing_grade_and_tags(reg, r.e);
         }
     }
 
-    // Hit pass: collect popup/scoring data, then process and remove (#315).
-    {
-        auto& hit_buf = scratch.hit_buf;
-        hit_buf.clear();
-
-        auto hit_view_graded = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldTransform, TimingGrade>(
-            entt::exclude<MissTag, NonScorableTag>);
-        for (auto [e, obs, wt, tg] : hit_view_graded.each()) {
-            HitRecord r;
-            r.e        = e;
-            r.popup_xy = wt.position;
-            r.obs      = obs;
-            r.has_timing = true;
-            r.timing = tg;
-            if (hit_buf.size() >= hit_buf.capacity()) {
-                ++scratch.hit_capacity_exceeded_count;
-            }
-            hit_buf.push_back(r);
-        }
-
-        auto hit_view_ungraded = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldTransform>(
-            entt::exclude<MissTag, NonScorableTag, TimingGrade>);
-        for (auto [e, obs, wt] : hit_view_ungraded.each()) {
-            HitRecord r;
-            r.e        = e;
-            r.popup_xy = wt.position;
-            r.obs      = obs;
-            r.has_timing = false;
-            if (hit_buf.size() >= hit_buf.capacity()) {
-                ++scratch.hit_capacity_exceeded_count;
-            }
-            hit_buf.push_back(r);
-        }
-
-
-        if (!hit_buf.empty()) {
-        auto& popup_queue = popup_queue_for(reg);
-        for (auto& r : hit_buf) {
-            float timing_mult  = r.has_timing ? timing_multiplier(r.timing.tier) : 1.0f;
-
-            // Energy adjustment based on timing
-            if (r.has_timing) {
-                switch (r.timing.tier) {
-                    case TimingTier::Perfect:
-                        enqueue_energy_effect(reg, constants::ENERGY_RECOVER_PERFECT);
-                        break;
-                    case TimingTier::Good:
-                        enqueue_energy_effect(reg, constants::ENERGY_RECOVER_GOOD);
-                        break;
-                    case TimingTier::Ok:
-                        enqueue_energy_effect(reg, constants::ENERGY_RECOVER_OK);
-                        break;
-                    case TimingTier::Bad:
-                        enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_BAD, true);
-                        break;
-                }
-                if (results) {
-                    switch (r.timing.tier) {
-                        case TimingTier::Perfect: results->perfect_count++; break;
-                        case TimingTier::Good:    results->good_count++;    break;
-                        case TimingTier::Ok:      results->ok_count++;      break;
-                        case TimingTier::Bad:     results->bad_count++;     break;
-                    }
-                }
-            }
-
-            const bool contributes_to_chain = r.obs.base_points > 0;
-            if (contributes_to_chain) {
-                score.chain_count++;
-            }
-            const float chain_mult = chain_multiplier_for_count(score.chain_count);
-            int points = static_cast<int>(
-                std::floor(static_cast<float>(r.obs.base_points) * timing_mult * chain_mult));
-
-            if (contributes_to_chain && results && score.chain_count > results->max_chain) {
-                results->max_chain = score.chain_count;
-            }
-
-            score.score += points;
-
-            // Queue timing/score popup; popup_feedback_system owns spawn/SFX.
-            if (popup_queue.requests.size() >= popup_queue.requests.capacity()) {
-                ++popup_queue.capacity_exceeded_count;
-            }
-            popup_queue.requests.push_back({
-                r.popup_xy.x,
-                r.popup_xy.y,
-                points,
-                r.has_timing,
-                r.has_timing ? r.timing.tier : TimingTier::Ok,
-            });
-            spawn_score_particles(reg, r.popup_xy, score_particle_color(r));
-
-            // Structural removals after all reads — safe.
-            reg.get_or_emplace<ResolvedObstacleTag>(r.e);
-            reg.remove<Obstacle>(r.e);
-            reg.remove<ScoredTag>(r.e);
-            if (r.has_timing) reg.remove<TimingGrade>(r.e);
-        }
-        } // !hit_buf.empty()
-    }
+    // Hit pass: one transform per former TimingTier value plus one ungraded
+    // transform (#1202/#1204). Per-tier constants live in tier_score_traits;
+    // no `switch` on a discriminator anywhere in the hit pipeline.
+    process_tier_hit_pass<TimingPerfectTag>(reg, score, results, scratch, popup_queue);
+    process_tier_hit_pass<TimingGoodTag>   (reg, score, results, scratch, popup_queue);
+    process_tier_hit_pass<TimingOkTag>     (reg, score, results, scratch, popup_queue);
+    process_tier_hit_pass<TimingBadTag>    (reg, score, results, scratch, popup_queue);
+    process_ungraded_hit_pass              (reg, score, results, scratch, popup_queue);
 
     // ── NonScorable cleanup ───────────────────────────────────────────────────
     // Entities excluded from the hit pass via NonScorableTag still need their
@@ -275,7 +337,7 @@ void scoring_system(entt::registry& reg, float dt) {
             reg.remove<Obstacle>(r.e);
             reg.remove<ScoredTag>(r.e);
             if (reg.all_of<MissTag>(r.e)) reg.remove<MissTag>(r.e);
-            if (r.has_timing) reg.remove<TimingGrade>(r.e);
+            if (r.has_timing) remove_timing_grade_and_tags(reg, r.e);
         }
     }
 

@@ -219,7 +219,10 @@ TEST_CASE("audio_offset: zero setting matches absent SettingsState",
 namespace {
 
 struct OffsetGameplayResult {
-    TimingTier tier = TimingTier::Bad;
+    bool perfect{false};
+    bool good{false};
+    bool ok{false};
+    bool bad{false};
     int score = 0;
     float energy = 0.0f;
     int perfect_count = 0;
@@ -270,7 +273,11 @@ OffsetGameplayResult run_calibrated_on_arrival_hit(int16_t audio_offset_ms) {
     REQUIRE(reg.all_of<ScoredTag>(obstacle));
     REQUIRE(reg.all_of<TimingGrade>(obstacle));
 
-    const auto tier = reg.get<TimingGrade>(obstacle).tier;
+    OffsetGameplayResult out;
+    out.perfect = reg.all_of<TimingPerfectTag>(obstacle);
+    out.good    = reg.all_of<TimingGoodTag>(obstacle);
+    out.ok      = reg.all_of<TimingOkTag>(obstacle);
+    out.bad     = reg.all_of<TimingBadTag>(obstacle);
 
     scoring_system(reg, 0.016f);
     energy_system(reg, 0.016f);
@@ -279,8 +286,6 @@ OffsetGameplayResult run_calibrated_on_arrival_hit(int16_t audio_offset_ms) {
     const auto& energy = reg.ctx().get<EnergyState>();
     const auto& results = reg.ctx().get<SongResults>();
 
-    OffsetGameplayResult out;
-    out.tier = tier;
     out.score = score.score;
     out.energy = energy.energy;
     out.perfect_count = results.perfect_count;
@@ -298,9 +303,9 @@ TEST_CASE("collision grading stays invariant for calibrated on-arrival presses",
     const auto delayed  = run_calibrated_on_arrival_hit(+200);
     const auto advanced = run_calibrated_on_arrival_hit(-200);
 
-    CHECK(baseline.tier == TimingTier::Perfect);
-    CHECK(delayed.tier == baseline.tier);
-    CHECK(advanced.tier == baseline.tier);
+    CHECK(baseline.perfect);
+    CHECK(delayed.perfect);
+    CHECK(advanced.perfect);
 
     CHECK_THAT(baseline.arrival_time - baseline.visual_arrival_time,
                Catch::Matchers::WithinAbs(0.0f, kTimingToleranceSec));
