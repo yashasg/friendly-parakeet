@@ -183,6 +183,7 @@ bool game_loop_init(entt::registry& reg,
         .phase_timer = 0.0f, .transition_pending = false,
         .next_phase = GamePhase::Title
     });
+    sync_game_phase_tags(reg, GamePhase::Title);
     reset_ctx_singleton<ScoreState>(reg);
     reset_ctx_singleton<ScoreDisplay>(reg);
     reset_ctx_singleton<CurrentSongHighScore>(reg);

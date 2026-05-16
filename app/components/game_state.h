@@ -21,6 +21,31 @@ struct GameState {
     GamePhase next_phase       = GamePhase::Title;
 };
 
+// ── Game phase (per-tag ctx tables; exactly one present at any time) ──
+// Per Fabian's existential processing (issue #1202/#1204), each former
+// GamePhase enum value gets its own zero-column table on `registry.ctx()`.
+// Presence of exactly one of these tags mirrors `GameState::phase` 1:1.
+// Both representations are maintained in lockstep by `enter_phase()` and
+// the initial GameState ctx emplace; the enum-typed field is retained
+// during the staged migration so existing consumers continue to compile.
+//
+// Subsequent PRs migrate each consumer (switch sites, `if (gs.phase == X)`
+// branches) onto these tags via `reg.ctx().find<GamePhase*Tag>()`. When
+// every consumer has been migrated the field — and the enum itself — can
+// be deleted, leaving these tags as the sole authority.
+//
+// Maintenance invariant: exactly one `GamePhase*Tag` ctx slot is present
+// after any `enter_phase()` call. The current entry helper erases all
+// eight before emplacing the matching tag; tests pin the invariant.
+struct GamePhaseTitleTag        {};
+struct GamePhaseLevelSelectTag  {};
+struct GamePhasePlayingTag      {};
+struct GamePhasePausedTag       {};
+struct GamePhaseGameOverTag     {};
+struct GamePhaseSongCompleteTag {};
+struct GamePhaseSettingsTag     {};
+struct GamePhaseTutorialTag     {};
+
 // ── End-screen menu choice (per-choice ctx tables) ───────────
 // Per Fabian's existential processing (issue #1202/#1204), each former
 // EndScreenChoice value is its own zero-column table on `registry.ctx()`.

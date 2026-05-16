@@ -112,7 +112,7 @@ void game_state_system(entt::registry& reg, float dt) {
                 // See #482 for the rationale that converged screen controllers
                 // and input routing on the deferred (transition_pending) path.
                 if (gs.phase == GamePhase::Paused) {
-                    enter_phase(gs, GamePhase::Playing);
+                    enter_phase(reg, gs, GamePhase::Playing);
                 } else {
                     setup_play_session(reg);
                 }
@@ -124,23 +124,23 @@ void game_state_system(entt::registry& reg, float dt) {
                 game_state_enter_terminal_phase(reg, GamePhase::SongComplete);
                 break;
             case GamePhase::Paused:
-                enter_phase(gs, GamePhase::Paused);
+                enter_phase(reg, gs, GamePhase::Paused);
                 break;
             case GamePhase::Title:
-                enter_phase(gs, GamePhase::Title);
+                enter_phase(reg, gs, GamePhase::Title);
                 break;
             case GamePhase::LevelSelect:
-                enter_phase(gs, GamePhase::LevelSelect);
+                enter_phase(reg, gs, GamePhase::LevelSelect);
                 {
                     auto& lss = reg.ctx().get<LevelSelectState>();
                     lss.confirmed = false;
                 }
                 break;
             case GamePhase::Settings:
-                enter_phase(gs, GamePhase::Settings);
+                enter_phase(reg, gs, GamePhase::Settings);
                 break;
             case GamePhase::Tutorial:
-                enter_phase(gs, GamePhase::Tutorial);
+                enter_phase(reg, gs, GamePhase::Tutorial);
                 break;
         }
 #if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)

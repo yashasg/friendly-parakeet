@@ -176,7 +176,7 @@ void setup_play_session(entt::registry& reg) {
         erase_ctx_if_exists<EndChoiceMainMenu>(reg);
         lss.confirmed = false;
         auto& gs = reg.ctx().get<GameState>();
-        enter_phase(gs, GamePhase::LevelSelect);
+        enter_phase(reg, gs, GamePhase::LevelSelect);
         return;
     }
     runtime_system_scratch_init(reg);
@@ -265,5 +265,5 @@ void setup_play_session(entt::registry& reg) {
     spawn_session_player(reg);
     // Transition game state
     auto& gs = reg.ctx().get<GameState>();
-    enter_phase(gs, GamePhase::Playing);
+    enter_phase(reg, gs, GamePhase::Playing);
 }

@@ -25,6 +25,7 @@
 #include "components/transform.h"
 #include "constants.h"
 #include "systems/all_systems.h"
+
 #include "util/shape_tag.h"
 
 namespace {
