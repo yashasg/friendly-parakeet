@@ -29,6 +29,7 @@
 #include "systems/high_score_system.h"
 #include "systems/haptics_backend.h"
 #include "systems/screen_lifecycle_system.h"
+#include "systems/game_over_scoreboard_bind_system.h"
 #include "systems/song_complete_scoreboard_bind_system.h"
 #include "systems/tutorial_dodge_hint_bind_system.h"
 #include "systems/ui_update_system.h"
@@ -298,9 +299,10 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
 
     // Per-screen UI label binding: write platform / runtime-dependent text
     // into the dynamic-text slots spawned by `screen_lifecycle_system`.
-    // Must run after spawn and before render (#1291, #1292).
+    // Must run after spawn and before render (#1291, #1292, #1293).
     tutorial_dodge_hint_bind_system(reg);
     song_complete_scoreboard_bind_system(reg);
+    game_over_scoreboard_bind_system(reg);
 
     // Camera runs after gameplay systems so transforms reflect current frame
     game_camera_system(reg, raw_dt);

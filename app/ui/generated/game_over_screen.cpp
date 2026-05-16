@@ -63,11 +63,41 @@ void spawn_game_over_screen(entt::registry& reg) {
         (void)label;  // dynamic-text slot; bound by render system
     }
     {
+        // NewBestSlot (label)
+        auto e = reg.create();
+        reg.emplace<GameOverScreenTag>(e);
+        reg.emplace<UiLabelTag>(e);
+        reg.emplace<UiPosition>(e, 110.0f, 665.0f);
+        reg.emplace<UiBounds>(e, 500.0f, 28.0f);
+        auto& label = reg.emplace<UiLabel>(e);
+        (void)label;  // dynamic-text slot; bound by render system
+    }
+    {
         // ReasonSlot (label)
         auto e = reg.create();
         reg.emplace<GameOverScreenTag>(e);
         reg.emplace<UiLabelTag>(e);
         reg.emplace<UiPosition>(e, 110.0f, 685.0f);
+        reg.emplace<UiBounds>(e, 500.0f, 40.0f);
+        auto& label = reg.emplace<UiLabel>(e);
+        (void)label;  // dynamic-text slot; bound by render system
+    }
+    {
+        // PrevBestSlot (label)
+        auto e = reg.create();
+        reg.emplace<GameOverScreenTag>(e);
+        reg.emplace<UiLabelTag>(e);
+        reg.emplace<UiPosition>(e, 110.0f, 712.0f);
+        reg.emplace<UiBounds>(e, 500.0f, 24.0f);
+        auto& label = reg.emplace<UiLabel>(e);
+        (void)label;  // dynamic-text slot; bound by render system
+    }
+    {
+        // ReasonSlotNewBest (label)
+        auto e = reg.create();
+        reg.emplace<GameOverScreenTag>(e);
+        reg.emplace<UiLabelTag>(e);
+        reg.emplace<UiPosition>(e, 110.0f, 742.0f);
         reg.emplace<UiBounds>(e, 500.0f, 40.0f);
         auto& label = reg.emplace<UiLabel>(e);
         (void)label;  // dynamic-text slot; bound by render system

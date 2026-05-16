@@ -59,6 +59,12 @@ constexpr ScreenLifecycleRow kLifecycleRows[] = {
         &spawn_song_complete_screen,
         &despawn_song_complete_screen,
     },
+    {
+        &phase_active_probe<GamePhaseGameOverTag>,
+        &entities_alive_probe<GameOverScreenTag>,
+        &spawn_game_over_screen,
+        &despawn_game_over_screen,
+    },
 };
 
 }  // namespace
