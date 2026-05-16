@@ -63,12 +63,52 @@ void spawn_song_complete_screen(entt::registry& reg) {
         (void)label;  // dynamic-text slot; bound by render system
     }
     {
-        // StatTableSlot (dummy rec)
+        // NewBestSlot (label)
         auto e = reg.create();
         reg.emplace<SongCompleteScreenTag>(e);
-        reg.emplace<UiDummyRecTag>(e);
+        reg.emplace<UiLabelTag>(e);
+        reg.emplace<UiPosition>(e, 120.0f, 620.0f);
+        reg.emplace<UiBounds>(e, 480.0f, 28.0f);
+        auto& label = reg.emplace<UiLabel>(e);
+        (void)label;  // dynamic-text slot; bound by render system
+    }
+    {
+        // StatPerfectGoodSlot (label)
+        auto e = reg.create();
+        reg.emplace<SongCompleteScreenTag>(e);
+        reg.emplace<UiLabelTag>(e);
         reg.emplace<UiPosition>(e, 120.0f, 650.0f);
-        reg.emplace<UiBounds>(e, 480.0f, 150.0f);
+        reg.emplace<UiBounds>(e, 480.0f, 30.0f);
+        auto& label = reg.emplace<UiLabel>(e);
+        (void)label;  // dynamic-text slot; bound by render system
+    }
+    {
+        // StatOkBadMissSlot (label)
+        auto e = reg.create();
+        reg.emplace<SongCompleteScreenTag>(e);
+        reg.emplace<UiLabelTag>(e);
+        reg.emplace<UiPosition>(e, 120.0f, 684.0f);
+        reg.emplace<UiBounds>(e, 480.0f, 30.0f);
+        auto& label = reg.emplace<UiLabel>(e);
+        (void)label;  // dynamic-text slot; bound by render system
+    }
+    {
+        // StatMaxChainSlot (label)
+        auto e = reg.create();
+        reg.emplace<SongCompleteScreenTag>(e);
+        reg.emplace<UiLabelTag>(e);
+        reg.emplace<UiPosition>(e, 120.0f, 718.0f);
+        reg.emplace<UiBounds>(e, 480.0f, 30.0f);
+        auto& label = reg.emplace<UiLabel>(e);
+        (void)label;  // dynamic-text slot; bound by render system
+    }
+    {
+        // StatEnergySlot (label)
+        auto e = reg.create();
+        reg.emplace<SongCompleteScreenTag>(e);
+        reg.emplace<UiLabelTag>(e);
+        reg.emplace<UiPosition>(e, 120.0f, 752.0f);
+        reg.emplace<UiBounds>(e, 480.0f, 30.0f);
         auto& label = reg.emplace<UiLabel>(e);
         (void)label;  // dynamic-text slot; bound by render system
     }

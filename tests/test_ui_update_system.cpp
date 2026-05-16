@@ -30,6 +30,7 @@
 #include "systems/input.h"
 #include "systems/screen_lifecycle_system.h"
 #include "systems/settings_system.h"
+#include "systems/song_complete_scoreboard_bind_system.h"
 #include "systems/tutorial_dodge_hint_bind_system.h"
 #include "systems/ui_update_system.h"
 #include "tags/tags.h"
@@ -287,4 +288,191 @@ TEST_CASE("tutorial_dodge_hint_bind_system: no-op when Tutorial entities absent"
     // No tutorial spawn — system must be safe to call.
     tutorial_dodge_hint_bind_system(reg);
     CHECK(reg.view<TutorialScreenTag>().size() == 0);
+}
+
+// ── Song Complete migration (issue #1292) ─────────────────────────────
+
+namespace {
+
+void prime_song_complete_entry(entt::registry& reg) {
+    sync_game_phase_tags<GamePhaseSongCompleteTag>(reg);
+    spawn_song_complete_screen(reg);
+    // Step the phase timer past the SongComplete input delay so clicks register.
+    reg.ctx().get<GameState>().phase_timer = constants::SONG_COMPLETE_INPUT_DELAY + 0.05f;
+    clear_next_phase_tags(reg);
+    if (reg.ctx().find<EndChoiceRestart>())     reg.ctx().erase<EndChoiceRestart>();
+    if (reg.ctx().find<EndChoiceLevelSelect>()) reg.ctx().erase<EndChoiceLevelSelect>();
+    if (reg.ctx().find<EndChoiceMainMenu>())    reg.ctx().erase<EndChoiceMainMenu>();
+}
+
+}  // namespace
+
+TEST_CASE("screen_lifecycle_system: spawns Song Complete entities on phase entry, "
+          "despawns on exit",
+          "[ui][screen_lifecycle_system][issue1292]") {
+    entt::registry reg = make_registry();
+    clear_next_phase_tags(reg);
+
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<SongCompleteScreenTag>().size() == 0);
+
+    sync_game_phase_tags<GamePhaseSongCompleteTag>(reg);
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<SongCompleteScreenTag>().size() > 0);
+
+    const auto first = reg.view<SongCompleteScreenTag>().size();
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<SongCompleteScreenTag>().size() == first);
+
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<SongCompleteScreenTag>().size() == 0);
+}
+
+TEST_CASE("ui_update_system: Song Complete restart hit emplaces EndChoiceRestart",
+          "[ui][ui_update_system][issue1292]") {
+    entt::registry reg = make_registry();
+    prime_song_complete_entry(reg);
+
+    auto& input = reg.ctx().get<InputState>();
+    // RestartButton bounds from song_complete.rgl: (220, 870, 280, 50).
+    click_at(input, 360.0f, 895.0f);
+
+    ui_update_system(reg);
+
+    CHECK(reg.ctx().find<EndChoiceRestart>() != nullptr);
+    CHECK(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceMainMenu>() == nullptr);
+    CHECK_FALSE(any_next_phase_pending(reg));
+}
+
+TEST_CASE("ui_update_system: Song Complete level-select hit emplaces EndChoiceLevelSelect",
+          "[ui][ui_update_system][issue1292]") {
+    entt::registry reg = make_registry();
+    prime_song_complete_entry(reg);
+
+    auto& input = reg.ctx().get<InputState>();
+    // LevelSelectButton bounds from song_complete.rgl: (220, 935, 280, 50).
+    click_at(input, 360.0f, 960.0f);
+
+    ui_update_system(reg);
+
+    CHECK(reg.ctx().find<EndChoiceLevelSelect>() != nullptr);
+    CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceMainMenu>() == nullptr);
+}
+
+TEST_CASE("ui_update_system: Song Complete menu hit emplaces EndChoiceMainMenu (not direct transition)",
+          "[ui][ui_update_system][issue1292]") {
+    entt::registry reg = make_registry();
+    prime_song_complete_entry(reg);
+
+    auto& input = reg.ctx().get<InputState>();
+    // MenuButton bounds from song_complete.rgl: (220, 1000, 280, 50).
+    click_at(input, 360.0f, 1025.0f);
+
+    ui_update_system(reg);
+
+    CHECK(reg.ctx().find<EndChoiceMainMenu>() != nullptr);
+    CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
+    // Critically: end-screen menu must NOT bypass the input-delay state
+    // machine by directly requesting NextPhaseTitleTag.
+    CHECK_FALSE(reg.ctx().contains<NextPhaseTitleTag>());
+}
+
+TEST_CASE("ui_update_system: Song Complete click before SONG_COMPLETE_INPUT_DELAY is ignored",
+          "[ui][ui_update_system][issue1292]") {
+    entt::registry reg = make_registry();
+    sync_game_phase_tags<GamePhaseSongCompleteTag>(reg);
+    spawn_song_complete_screen(reg);
+    clear_next_phase_tags(reg);
+    if (reg.ctx().find<EndChoiceRestart>()) reg.ctx().erase<EndChoiceRestart>();
+
+    // Timer in the [UI_ENTRY_DEBOUNCE, SONG_COMPLETE_INPUT_DELAY) range —
+    // would clear the generic 0.2s debounce but NOT the 0.5s end-screen
+    // delay, pinning that the per-phase debounce table is being consulted.
+    reg.ctx().get<GameState>().phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.05f;
+    REQUIRE(reg.ctx().get<GameState>().phase_timer <
+            constants::SONG_COMPLETE_INPUT_DELAY);
+
+    auto& input = reg.ctx().get<InputState>();
+    click_at(input, 360.0f, 895.0f);  // restart hit
+
+    ui_update_system(reg);
+
+    CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
+}
+
+TEST_CASE("song_complete_scoreboard_bind_system: writes score / high score / stats / energy "
+          "into dynamic-text slots",
+          "[ui][song_complete_scoreboard_bind_system][issue1292]") {
+    entt::registry reg = make_registry();
+    prime_song_complete_entry(reg);
+
+    auto& score = reg.ctx().get<ScoreState>();
+    score.score = 12345;
+    auto& current = reg.ctx().get<CurrentSongHighScore>();
+    current.value = 9000;
+    auto& results = reg.ctx().get<SongResults>();
+    results.perfect_count = 12;
+    results.good_count    = 3;
+    results.ok_count      = 2;
+    results.bad_count     = 1;
+    results.miss_count    = 0;
+    results.max_chain     = 11;
+    auto& energy = reg.ctx().get<EnergyState>();
+    energy.energy = 0.75f;
+
+    song_complete_scoreboard_bind_system(reg);
+
+    auto resolve = [&](float x, float y) -> std::string {
+        auto view = reg.view<SongCompleteScreenTag, UiLabelTag, UiPosition, UiLabel>();
+        for (auto [e, pos, label] : view.each()) {
+            (void)e;
+            if (pos.x == x && pos.y == y) return std::string(label.text.data());
+        }
+        return {};
+    };
+
+    CHECK(resolve(160.0f, 463.0f) == "12345");
+    CHECK(resolve(160.0f, 573.0f) == "9000");
+    CHECK(resolve(120.0f, 650.0f) == "PERFECT 12     GOOD 3");
+    CHECK(resolve(120.0f, 684.0f) == "OK 2     BAD 1     MISS 0");
+    CHECK(resolve(120.0f, 718.0f) == "MAX CHAIN 11");
+    CHECK(resolve(120.0f, 752.0f) == "ENERGY 75%");
+    // NEW BEST line is empty when no TerminalResultState is present.
+    CHECK(resolve(120.0f, 620.0f).empty());
+}
+
+TEST_CASE("song_complete_scoreboard_bind_system: writes NEW BEST line when terminal "
+          "result reports new_best",
+          "[ui][song_complete_scoreboard_bind_system][issue1292]") {
+    entt::registry reg = make_registry();
+    prime_song_complete_entry(reg);
+
+    reg.ctx().insert_or_assign(TerminalResultState{true, 4242});
+
+    song_complete_scoreboard_bind_system(reg);
+
+    auto view = reg.view<SongCompleteScreenTag, UiLabelTag, UiPosition, UiLabel>();
+    bool found = false;
+    for (auto [e, pos, label] : view.each()) {
+        (void)e;
+        if (pos.x != 120.0f || pos.y != 620.0f) continue;
+        CHECK(std::string(label.text.data()) == "NEW BEST! PREV 4242");
+        found = true;
+    }
+    CHECK(found);
+}
+
+TEST_CASE("song_complete_scoreboard_bind_system: no-op when Song Complete entities absent",
+          "[ui][song_complete_scoreboard_bind_system][issue1292]") {
+    entt::registry reg = make_registry();
+    // No song-complete spawn — system must be safe to call (and must not
+    // touch ScoreState even though it is emplaced by make_registry; the
+    // view-empty short-circuit covers that).
+    song_complete_scoreboard_bind_system(reg);
+    CHECK(reg.view<SongCompleteScreenTag>().size() == 0);
 }
