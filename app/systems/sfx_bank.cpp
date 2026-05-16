@@ -12,18 +12,15 @@
 
 namespace {
 
-enum class ProceduralWave : std::uint8_t {
-    Sine,
-    Square,
-    Noise,
-    DownSweep
-};
+struct SfxSpec;
+
+using WaveSampler = float (*)(const SfxSpec&, int, std::uint32_t&);
 
 struct SfxSpec {
     float frequency;
     float duration_sec;
     float volume;
-    ProceduralWave wave;
+    WaveSampler sample;
     std::uint32_t seed;
 };
 
@@ -31,13 +28,29 @@ constexpr float kPi = 3.14159265358979323846f;
 constexpr int SAMPLE_RATE = 44100;
 constexpr int SFX_COUNT = static_cast<int>(magic_enum::enum_count<SFX>());
 
+float next_noise(std::uint32_t& state) {
+    state = state * 1664525u + 1013904223u;
+    const auto sample = static_cast<int>((state >> 16u) & 0xffffu) - 32768;
+    return static_cast<float>(sample) / 32768.0f;
+}
+
+float sample_sine(const SfxSpec& spec, int frame, std::uint32_t& /*noise_state*/) {
+    const float t = static_cast<float>(frame) / static_cast<float>(SAMPLE_RATE);
+    const float phase = 2.0f * kPi * spec.frequency * t;
+    return std::sin(phase);
+}
+
+float sample_noise(const SfxSpec& /*spec*/, int /*frame*/, std::uint32_t& noise_state) {
+    return next_noise(noise_state);
+}
+
 constexpr std::array<SfxSpec, SFX_COUNT> SFX_SPECS{{
-    {660.0f, 0.080f, 0.35f, ProceduralWave::Sine, 1u},       // ShapeShift
-    {180.0f, 0.220f, 0.45f, ProceduralWave::Noise, 3u},      // Crash
-    {880.0f, 0.050f, 0.25f, ProceduralWave::Sine, 4u},       // UITap
-    {784.0f, 0.120f, 0.35f, ProceduralWave::Sine, 5u},       // ChainBonus
-    {988.0f, 0.060f, 0.25f, ProceduralWave::Sine, 9u},       // ScorePopup
-    {587.0f, 0.180f, 0.35f, ProceduralWave::Sine, 10u},      // GameStart
+    {660.0f, 0.080f, 0.35f, sample_sine,  1u},       // ShapeShift
+    {180.0f, 0.220f, 0.45f, sample_noise, 3u},       // Crash
+    {880.0f, 0.050f, 0.25f, sample_sine,  4u},       // UITap
+    {784.0f, 0.120f, 0.35f, sample_sine,  5u},       // ChainBonus
+    {988.0f, 0.060f, 0.25f, sample_sine,  9u},       // ScorePopup
+    {587.0f, 0.180f, 0.35f, sample_sine,  10u},      // GameStart
 }};
 
 static_assert(SFX_SPECS.size() == magic_enum::enum_count<SFX>(),
@@ -59,40 +72,13 @@ float envelope_at(int frame, int frame_count) {
     return envelope < 0.0f ? 0.0f : envelope;
 }
 
-float next_noise(std::uint32_t& state) {
-    state = state * 1664525u + 1013904223u;
-    const auto sample = static_cast<int>((state >> 16u) & 0xffffu) - 32768;
-    return static_cast<float>(sample) / 32768.0f;
-}
-
-float sample_wave(const SfxSpec& spec, int frame, std::uint32_t& noise_state) {
-    const float t = static_cast<float>(frame) / static_cast<float>(SAMPLE_RATE);
-    float frequency = spec.frequency;
-    if (spec.wave == ProceduralWave::DownSweep) {
-        const float progress = t / spec.duration_sec;
-        frequency *= 1.0f - 0.65f * progress;
-    }
-
-    const float phase = 2.0f * kPi * frequency * t;
-    switch (spec.wave) {
-        case ProceduralWave::Sine:
-        case ProceduralWave::DownSweep:
-            return std::sin(phase);
-        case ProceduralWave::Square:
-            return std::sin(phase) >= 0.0f ? 1.0f : -1.0f;
-        case ProceduralWave::Noise:
-            return next_noise(noise_state);
-    }
-    return 0.0f;
-}
-
 Sound make_procedural_sound(const SfxSpec& spec) {
     const int frame_count = static_cast<int>(spec.duration_sec * static_cast<float>(SAMPLE_RATE));
     std::vector<std::int16_t> samples(static_cast<std::size_t>(frame_count));
     std::uint32_t noise_state = spec.seed;
 
     for (int frame = 0; frame < frame_count; ++frame) {
-        const float shaped = sample_wave(spec, frame, noise_state) * envelope_at(frame, frame_count);
+        const float shaped = spec.sample(spec, frame, noise_state) * envelope_at(frame, frame_count);
         const float scaled = shaped * spec.volume * 32767.0f;
         samples[static_cast<std::size_t>(frame)] = static_cast<std::int16_t>(scaled);
     }
