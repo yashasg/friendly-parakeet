@@ -58,19 +58,15 @@ void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
     }
 }
 
-void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt) {
-    if (evt.kind != ButtonPressKind::Shape) return;  // ignore menu-button events
+namespace {
+
+void player_input_handle_shape_press_impl(entt::registry& reg, Shape pressed_shape) {
     if (!gameplay_input_enabled(reg)) return;
     auto* song = reg.ctx().find<SongState>();
     const bool rhythm_mode = (song != nullptr && (song->playing || song->finished));
 
-    auto pressed_shape = evt.shape;
     const int pressed_shape_index = shape_index(pressed_shape);
-    if (pressed_shape_index < 0) {
-        TraceLog(LOG_WARNING, "player_input_system ignored invalid shape %d",
-                 static_cast<int>(pressed_shape));
-        return;
-    }
+    if (pressed_shape_index < 0) return;  // unreachable: callers pass Circle/Square/Triangle
 
     auto begin_shape_window = [&](entt::entity entity, PlayerShape& ps, ShapeWindow& sw) {
         set_target_shape_tag(reg, entity, pressed_shape);
@@ -119,4 +115,18 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
         (void)lane;
         (void)swindow;
     }
+}
+
+}  // namespace
+
+void player_input_handle_press_circle(entt::registry& reg, const ShapePressCircleEvent&) {
+    player_input_handle_shape_press_impl(reg, Shape::Circle);
+}
+
+void player_input_handle_press_square(entt::registry& reg, const ShapePressSquareEvent&) {
+    player_input_handle_shape_press_impl(reg, Shape::Square);
+}
+
+void player_input_handle_press_triangle(entt::registry& reg, const ShapePressTriangleEvent&) {
+    player_input_handle_shape_press_impl(reg, Shape::Triangle);
 }

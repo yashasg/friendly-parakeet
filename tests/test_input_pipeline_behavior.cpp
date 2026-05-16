@@ -2,8 +2,8 @@
 //
 // End-to-end input pipeline behavioral tests.
 //
-// The pipeline: semantic GoEvent/ButtonPressEvent producers →
-// game_state_system drain (authoritative) → player_input listeners.
+// The pipeline: semantic GoEvent + per-shape ShapePress*Event + MenuPressEvent
+// producers → game_state_system drain (authoritative) → player_input listeners.
 //
 // All assertions are on player component state (Lane::target, ShapeWindow::phase,
 // PlayerShape::current) — never on raw event queues.
@@ -16,7 +16,7 @@
 //   - One-frame latency: swipe arrives but lane.target unchanged until next tick
 //     (would occur if game_state_system's disp.update<GoEvent>() call were
 //     removed or moved after player_input_handle_go runs)
-//   - Dropped semantic shape press: ButtonPressEvent arrives but sw.phase stays Idle
+//   - Dropped semantic shape press: ShapePress*Event arrives but sw.phase stays Idle
 //   - Wrong-phase activation: button presses fire in an inactive phase
 //   - Event replay: second pipeline tick resets lane.lerp_t (symptom: #213 bug)
 
@@ -36,7 +36,7 @@ struct SemanticInputOrderCapture {
     int order[2] = {0, 0};
     int cursor = 0;
 
-    void on_press(const ButtonPressEvent&) {
+    void on_press_triangle(const ShapePressTriangleEvent&) {
         if (cursor < 2) order[cursor++] = 1;
     }
 
@@ -150,8 +150,7 @@ TEST_CASE("pipeline: semantic shape press triggers shape change in same pipeline
     auto player = make_rhythm_player(reg);
     REQUIRE(window_phase_is_idle(reg, player));
 
-    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
-        {ButtonPressKind::Shape, Shape::Square, MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<ShapePressSquareEvent>({});
     run_pipeline(reg);
 
     CHECK(window_phase_is_morph_in(reg, player));
@@ -166,8 +165,7 @@ TEST_CASE("pipeline: semantic shape press does not change lane target",
     REQUIRE(lane.current == 1);
     lane.target = lane.current;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
-        {ButtonPressKind::Shape, Shape::Circle, MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<ShapePressCircleEvent>({});
     run_pipeline(reg);
 
     CHECK(lane.target == 1);
@@ -320,8 +318,7 @@ TEST_CASE("pipeline: pending phase transition blocks queued shape input",
 
     gs.transition_pending = true;
     gs.next_phase = GamePhase::Paused;
-    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
-        {ButtonPressKind::Shape, Shape::Circle, MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<ShapePressCircleEvent>({});
 
     run_pipeline(reg);
 
@@ -441,8 +438,7 @@ TEST_CASE("pipeline: mixed swipe and tap both take effect within a single pipeli
     REQUIRE(window_phase_is_idle(reg, player));
 
     push_go(reg, Direction::Right);
-    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
-        {ButtonPressKind::Shape, Shape::Triangle, MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<ShapePressTriangleEvent>({});
 
     run_pipeline(reg);
 
@@ -457,12 +453,11 @@ TEST_CASE("pipeline: same-frame shape tap drains before movement",
     make_rhythm_player(reg);
     auto& disp = reg.ctx().get<entt::dispatcher>();
     SemanticInputOrderCapture capture;
-    disp.sink<ButtonPressEvent>().connect<&SemanticInputOrderCapture::on_press>(capture);
+    disp.sink<ShapePressTriangleEvent>().connect<&SemanticInputOrderCapture::on_press_triangle>(capture);
     disp.sink<GoEvent>().connect<&SemanticInputOrderCapture::on_go>(capture);
 
     push_go(reg, Direction::Right);
-    disp.enqueue<ButtonPressEvent>(
-        {ButtonPressKind::Shape, Shape::Triangle, MenuActionKind::Confirm, 0});
+    disp.enqueue<ShapePressTriangleEvent>({});
 
     run_pipeline(reg);
 
@@ -532,8 +527,7 @@ TEST_CASE("pipeline: tap consumed after first sub-tick — second sub-tick does 
     song.song_time = 5.0f;
 
     // Sub-tick 1: tap opens MorphIn.
-    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
-        {ButtonPressKind::Shape, Shape::Circle, MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<ShapePressCircleEvent>({});
     run_pipeline(reg);
     CHECK(window_phase_is_morph_in(reg, player));
     float start1 = sw.window_start;

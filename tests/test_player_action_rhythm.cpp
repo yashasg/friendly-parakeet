@@ -110,7 +110,7 @@ TEST_CASE("player_action: rhythm mode no action when no tap in queue", "[player_
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
 
-    // No ButtonPressEvent in queue
+    // No press event in queue
     run_semantic_input_tick(reg, 0.016f);
 
     CHECK(window_phase_is_idle(reg, player));
@@ -241,7 +241,7 @@ TEST_CASE("player_input: GoEvents consumed after first tick, lane lerp_t not res
     CHECK(lane.target == 0);
 }
 
-TEST_CASE("player_input: ButtonPressEvents consumed after first tick (#213)", "[player_rhythm]") {
+TEST_CASE("player_input: ShapePress*Events consumed after first tick (#213)", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& sw = reg.get<ShapeWindow>(player);
@@ -261,7 +261,7 @@ TEST_CASE("player_input: ButtonPressEvents consumed after first tick (#213)", "[
     // Advance song time so a second begin_shape_window call would produce a different window_start.
     song.song_time = 6.0f;
 
-    // Second tick: ButtonPressEvent must NOT be replayed — window_start must not change.
+    // Second tick: press event must NOT be replayed — window_start must not change.
     run_semantic_input_tick(reg, 1.0f / 60.0f);
     CHECK(sw.window_start == start_after_tick1);  // unchanged
 }

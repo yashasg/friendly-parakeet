@@ -217,7 +217,7 @@ TEST_CASE("player_input_rhythm: circle press in lane 0 does not force mismatch b
 
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
-    reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
+    update_press_events(reg);
     auto& song = reg.ctx().get<SongState>();
     song.song_time += song.morph_duration + 0.01f;
     shape_window_system(reg, song.morph_duration + 0.01f);

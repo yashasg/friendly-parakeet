@@ -390,16 +390,13 @@ void gameplay_hud_apply_button_presses(entt::registry& reg,
 
     auto& disp = reg.ctx().get<entt::dispatcher>();
     if (circle_pressed) {
-        disp.enqueue<ButtonPressEvent>(
-            {ButtonPressKind::Shape, Shape::Circle, MenuActionKind::Confirm, 0});
+        disp.enqueue<ShapePressCircleEvent>({});
     }
     if (square_pressed) {
-        disp.enqueue<ButtonPressEvent>(
-            {ButtonPressKind::Shape, Shape::Square, MenuActionKind::Confirm, 0});
+        disp.enqueue<ShapePressSquareEvent>({});
     }
     if (triangle_pressed) {
-        disp.enqueue<ButtonPressEvent>(
-            {ButtonPressKind::Shape, Shape::Triangle, MenuActionKind::Confirm, 0});
+        disp.enqueue<ShapePressTriangleEvent>({});
     }
 
     if (pause_pressed) {

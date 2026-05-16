@@ -134,7 +134,7 @@ TEST_CASE("collision: on-beat rhythm press clears matching gate during MorphIn",
 
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
-    reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
+    update_press_events(reg);
 
     REQUIRE(reg.all_of<ShapeHexagonTag>(player));
     REQUIRE(window_phase_is_morph_in(reg, player));
@@ -166,7 +166,7 @@ TEST_CASE("collision: on-beat shape press requires player hitbox to reach target
 
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
-    reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
+    update_press_events(reg);
     song.song_time += song.morph_duration + 0.001f;
     shape_window_system(reg, song.morph_duration + 0.001f);
 

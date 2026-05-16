@@ -37,43 +37,50 @@ TEST_CASE("dispatcher: GoEvent enqueue/update flows to listeners", "[events]") {
     CHECK(cap.buf[1].dir == Direction::Up);
 }
 
-// ── ButtonPressEvent semantic payload tests (#273) ────────────────────────
+// ── Per-shape press event tests (#1202/#1204) ─────────────────────────────
 
-TEST_CASE("dispatcher: ButtonPressEvent semantic payload enqueue/update", "[events]") {
+TEST_CASE("dispatcher: ShapePress*Event enqueue/update", "[events]") {
     entt::registry reg;
     reg.ctx().emplace<entt::dispatcher>();
 
     auto& disp = reg.ctx().get<entt::dispatcher>();
     PressCapture cap;
-    disp.sink<ButtonPressEvent>().connect<&PressCapture::capture>(cap);
+    disp.sink<ShapePressCircleEvent>().connect<&PressCapture::on_circle>(cap);
+    disp.sink<ShapePressSquareEvent>().connect<&PressCapture::on_square>(cap);
+    disp.sink<ShapePressTriangleEvent>().connect<&PressCapture::on_triangle>(cap);
+    disp.sink<MenuPressEvent>().connect<&PressCapture::on_menu>(cap);
 
-    disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, Shape::Square,
-                                   MenuActionKind::Confirm, 0});
-    disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
-                                   MenuActionKind::Restart, 0});
-    disp.update<ButtonPressEvent>();
-    disp.sink<ButtonPressEvent>().disconnect<&PressCapture::capture>(cap);
+    disp.enqueue<ShapePressSquareEvent>({});
+    disp.enqueue<MenuPressEvent>({MenuActionKind::Restart, 0});
+    disp.update<ShapePressCircleEvent>();
+    disp.update<ShapePressSquareEvent>();
+    disp.update<ShapePressTriangleEvent>();
+    disp.update<MenuPressEvent>();
+    disp.sink<ShapePressCircleEvent>().disconnect<&PressCapture::on_circle>(cap);
+    disp.sink<ShapePressSquareEvent>().disconnect<&PressCapture::on_square>(cap);
+    disp.sink<ShapePressTriangleEvent>().disconnect<&PressCapture::on_triangle>(cap);
+    disp.sink<MenuPressEvent>().disconnect<&PressCapture::on_menu>(cap);
 
-    REQUIRE(cap.count == 2);
-    CHECK(cap.buf[0].kind  == ButtonPressKind::Shape);
-    CHECK(cap.buf[0].shape == Shape::Square);
-    CHECK(cap.buf[1].kind        == ButtonPressKind::Menu);
-    CHECK(cap.buf[1].menu_action == MenuActionKind::Restart);
+    REQUIRE(cap.shape_count() == 1);
+    CHECK(cap.square == 1);
+    CHECK(cap.circle == 0);
+    CHECK(cap.triangle == 0);
+    REQUIRE(cap.menu_count == 1);
+    CHECK(cap.menu_buf[0].action == MenuActionKind::Restart);
 }
 
-TEST_CASE("dispatcher: ButtonPressEvent stale-entity safety — no entity field", "[events]") {
-    // #273: ButtonPressEvent no longer stores an entity handle.  Verify the
-    // struct has no entity field and carries semantic data instead.
+TEST_CASE("dispatcher: press events are pure value types — no entity field", "[events]") {
+    // Per #1202/#1204 (and the legacy #273 contract), no press event stores
+    // an entity handle. Constructing an event remains valid regardless of
+    // any entity lifecycle.
     entt::registry reg;
     auto btn_entity = reg.create();
     reg.destroy(btn_entity);  // entity is now invalid / recycled
 
-    // Construct a ButtonPressEvent with semantic payload — previously this
-    // would have stored the (now stale) entity handle.
-    ButtonPressEvent evt{ButtonPressKind::Shape, Shape::Triangle,
-                         MenuActionKind::Confirm, 0};
-    // The event remains fully valid regardless of entity lifecycle.
-    CHECK(evt.kind  == ButtonPressKind::Shape);
-    CHECK(evt.shape == Shape::Triangle);
+    ShapePressTriangleEvent shape_evt{};
+    MenuPressEvent menu_evt{MenuActionKind::Confirm, 3};
+    (void)shape_evt;
+    CHECK(menu_evt.action == MenuActionKind::Confirm);
+    CHECK(menu_evt.index  == 3);
     (void)btn_entity;
 }

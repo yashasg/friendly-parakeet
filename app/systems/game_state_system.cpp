@@ -71,7 +71,9 @@ void game_state_system(entt::registry& reg, float dt) {
 
     // ── Primary event drain ───────────────────────────────────────────────────
     // game_state_system runs first in tick_fixed_systems (game_loop.cpp) and
-    // owns the authoritative drain for GoEvent and ButtonPressEvent.
+    // owns the authoritative drain for GoEvent and all press event queues
+    // (per-shape ShapePress* + MenuPressEvent — see input_events.h for the
+    // per-event-type split, issue #1202/#1204).
     // Calling update<T>() here fires every registered listener in registration
     // order: game_state → level_select → player_input
     // (see wire_input_dispatcher in systems/input_dispatcher.cpp).
@@ -81,13 +83,16 @@ void game_state_system(entt::registry& reg, float dt) {
     // drain before movement so same-frame mobile tap+swipe combo obstacles
     // resolve deterministically.
     //
-    // ⚠ Do NOT call disp.clear<GoEvent/ButtonPressEvent>() before this point
-    //   within a frame.  Those pre-tick systems enqueue same-frame events that
-    //   must reach player_input_handle_go / player_input_handle_press through
-    //   this update() call.  clear() would silently drop them before delivery.
+    // ⚠ Do NOT call disp.clear<>() on any of these queues before this point
+    //   within a frame.  Pre-tick systems enqueue same-frame events that
+    //   must reach player_input listeners through this update() call.
+    //   clear() would silently drop them before delivery.
     //
     auto& disp = reg.ctx().get<entt::dispatcher>();
-    disp.update<ButtonPressEvent>();
+    disp.update<ShapePressCircleEvent>();
+    disp.update<ShapePressSquareEvent>();
+    disp.update<ShapePressTriangleEvent>();
+    disp.update<MenuPressEvent>();
     disp.update<GoEvent>();
 
     if (gs.transition_pending) {

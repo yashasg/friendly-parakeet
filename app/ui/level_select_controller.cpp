@@ -19,26 +19,25 @@ void level_select_handle_go(entt::registry& reg, const GoEvent& evt) {
     }
 }
 
-void level_select_handle_press(entt::registry& reg, const ButtonPressEvent& evt) {
+void level_select_handle_press_menu(entt::registry& reg, const MenuPressEvent& evt) {
     auto& gs = reg.ctx().get<GameState>();
     if (gs.phase != GamePhase::LevelSelect) return;
     if (gs.phase_timer < 0.05f) return;
-    if (evt.kind != ButtonPressKind::Menu) return;
 
     auto& lss = reg.ctx().get<LevelSelectState>();
 
-    switch (evt.menu_action) {
+    switch (evt.action) {
         case MenuActionKind::Confirm:
             lss.confirmed = true;
             break;
         case MenuActionKind::SelectLevel:
-            if (content_config::is_valid_level_index(evt.menu_index)) {
-                lss.selected_level = evt.menu_index;
+            if (content_config::is_valid_level_index(evt.index)) {
+                lss.selected_level = evt.index;
             }
             break;
         case MenuActionKind::SelectDiff:
-            if (content_config::is_valid_difficulty_index(evt.menu_index)) {
-                lss.selected_difficulty = evt.menu_index;
+            if (content_config::is_valid_difficulty_index(evt.index)) {
+                lss.selected_difficulty = evt.index;
             }
             break;
         default: break;

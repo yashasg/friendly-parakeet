@@ -163,22 +163,21 @@ TEST_CASE("dispatcher: mixed go and press operations", "[input]") {
     GoCapture go_cap;
     PressCapture press_cap;
     disp.sink<GoEvent>().connect<&GoCapture::capture>(go_cap);
-    disp.sink<ButtonPressEvent>().connect<&PressCapture::capture>(press_cap);
+    disp.sink<ShapePressCircleEvent>().connect<&PressCapture::on_circle>(press_cap);
 
     disp.enqueue<GoEvent>({Direction::Up});
-    disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, Shape::Circle});
+    disp.enqueue<ShapePressCircleEvent>({});
     disp.enqueue<GoEvent>({Direction::Down});
     disp.update<GoEvent>();
-    disp.update<ButtonPressEvent>();
+    disp.update<ShapePressCircleEvent>();
 
     disp.sink<GoEvent>().disconnect<&GoCapture::capture>(go_cap);
-    disp.sink<ButtonPressEvent>().disconnect<&PressCapture::capture>(press_cap);
+    disp.sink<ShapePressCircleEvent>().disconnect<&PressCapture::on_circle>(press_cap);
 
     REQUIRE(go_cap.count == 2);
-    REQUIRE(press_cap.count == 1);
+    REQUIRE(press_cap.shape_count() == 1);
     CHECK(go_cap.buf[0].dir == Direction::Up);
-    CHECK(press_cap.buf[0].kind  == ButtonPressKind::Shape);
-    CHECK(press_cap.buf[0].shape == Shape::Circle);
+    CHECK(press_cap.circle == 1);
     CHECK(go_cap.buf[1].dir == Direction::Down);
 }
 

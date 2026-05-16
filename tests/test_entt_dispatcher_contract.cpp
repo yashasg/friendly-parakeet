@@ -1,7 +1,7 @@
 // tests/test_entt_dispatcher_contract.cpp
 //
 // Verifies entt::dispatcher semantics relied on by the semantic input pipeline
-// (GoEvent/ButtonPressEvent only).
+// (GoEvent + per-shape ShapePress*Event + MenuPressEvent only).
 
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entt.hpp>
@@ -21,7 +21,7 @@ struct GoCounter {
 
 struct PressCounter {
     int count{0};
-    void on_press(const ButtonPressEvent&) { ++count; }
+    void on_press(const ShapePressCircleEvent&) { ++count; }
 };
 
 struct OrderedListener {
@@ -151,24 +151,24 @@ TEST_CASE("dispatcher: same-type enqueue inside listener is delivered next updat
     CHECK(counter.last == Direction::Left);
 }
 
-TEST_CASE("dispatcher: trigger ButtonPressEvent reaches listener immediately",
+TEST_CASE("dispatcher: trigger ShapePressEvent reaches listener immediately",
           "[entt_dispatcher]") {
     entt::dispatcher dispatcher;
     PressCounter counter;
-    dispatcher.sink<ButtonPressEvent>().connect<&PressCounter::on_press>(counter);
+    dispatcher.sink<ShapePressCircleEvent>().connect<&PressCounter::on_press>(counter);
 
-    dispatcher.trigger(ButtonPressEvent{ButtonPressKind::Shape, Shape::Circle});
+    dispatcher.trigger(ShapePressCircleEvent{});
 
     CHECK(counter.count == 1);
 }
 
-TEST_CASE("dispatcher: enqueue ButtonPressEvent without update delivers nothing",
+TEST_CASE("dispatcher: enqueue ShapePressEvent without update delivers nothing",
           "[entt_dispatcher]") {
     entt::dispatcher dispatcher;
     PressCounter counter;
-    dispatcher.sink<ButtonPressEvent>().connect<&PressCounter::on_press>(counter);
+    dispatcher.sink<ShapePressCircleEvent>().connect<&PressCounter::on_press>(counter);
 
-    dispatcher.enqueue(ButtonPressEvent{ButtonPressKind::Shape, Shape::Circle});
+    dispatcher.enqueue(ShapePressCircleEvent{});
 
     CHECK(counter.count == 0);
 }
@@ -179,7 +179,10 @@ TEST_CASE("wire_input_dispatcher prewarms semantic event queues without pending 
     auto& dispatcher = reg.ctx().get<entt::dispatcher>();
 
     CHECK(dispatcher.size<GoEvent>() == 0);
-    CHECK(dispatcher.size<ButtonPressEvent>() == 0);
+    CHECK(dispatcher.size<ShapePressCircleEvent>()   == 0);
+    CHECK(dispatcher.size<ShapePressSquareEvent>()   == 0);
+    CHECK(dispatcher.size<ShapePressTriangleEvent>() == 0);
+    CHECK(dispatcher.size<MenuPressEvent>()          == 0);
 }
 
 TEST_CASE("runtime scratch queues are explicit registry context state",

@@ -134,8 +134,8 @@ TEST_CASE("game_state: game over keyboard confirm routes to restart", "[gamestat
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.5f;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
-        {ButtonPressKind::Menu, Shape::Circle, MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
+        {MenuActionKind::Confirm, 0});
 
     game_state_system(reg, 0.016f);
 
@@ -149,8 +149,8 @@ TEST_CASE("game_state: song complete keyboard confirm routes to restart", "[game
     gs.phase = GamePhase::SongComplete;
     gs.phase_timer = constants::SONG_COMPLETE_INPUT_DELAY + 0.1f;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
-        {ButtonPressKind::Menu, Shape::Circle, MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
+        {MenuActionKind::Confirm, 0});
 
     game_state_system(reg, 0.016f);
 
@@ -165,8 +165,8 @@ TEST_CASE("game_state: song complete keyboard confirm waits for button debounce"
     gs.phase = GamePhase::SongComplete;
     gs.phase_timer = 0.45f;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
-        {ButtonPressKind::Menu, Shape::Circle, MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
+        {MenuActionKind::Confirm, 0});
 
     game_state_system(reg, 0.0f);
 
@@ -196,8 +196,8 @@ TEST_CASE("game_state: paused menu input waits for entry debounce", "[gamestate]
     gs.phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.1f;
     gs.phase_timer = 0.1f;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
-        {ButtonPressKind::Menu, Shape::Circle, MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
+        {MenuActionKind::Confirm, 0});
 
     game_state_system(reg, 0.0f);
 
@@ -210,8 +210,8 @@ TEST_CASE("game_state: paused menu input resumes after entry debounce", "[gamest
     gs.phase = GamePhase::Paused;
     gs.phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.1f;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
-        {ButtonPressKind::Menu, Shape::Circle, MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
+        {MenuActionKind::Confirm, 0});
 
     game_state_system(reg, 0.0f);
 
@@ -375,7 +375,7 @@ TEST_CASE("game_state: title stays title without touch", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::Title;
-    // No ButtonPressEvent in queue — no actions
+    // No press event in queue — no actions
 
     game_state_system(reg, 0.5f);
 
