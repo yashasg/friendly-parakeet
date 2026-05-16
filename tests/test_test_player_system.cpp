@@ -6,7 +6,7 @@
 #include "systems/session_logger_system.h"
 #include <cstdio>
 #include <string>
-static entt::registry make_test_player_registry(TestPlayerSkill skill = TestPlayerSkill::Pro) {
+static entt::registry make_test_player_registry(SkillConfig skill = SKILL_PRO) {
     entt::registry reg = make_rhythm_registry();
     auto& tp = reg.ctx().emplace<TestPlayerState>();
     tp.skill = skill;
@@ -57,16 +57,16 @@ TEST_CASE("test_player: init level fallback uses canonical default", "[test_play
     auto reg = make_test_player_registry();
     reg.ctx().emplace<SessionLog>();
 
-    test_player_init(reg, TestPlayerSkill::Pro, "medium", content_config::DEFAULT_LEVEL_INDEX);
+    test_player_init(reg, SKILL_PRO, "medium", content_config::DEFAULT_LEVEL_INDEX);
     CHECK(reg.ctx().get<LevelSelectState>().selected_level == content_config::DEFAULT_LEVEL_INDEX);
 
-    test_player_init(reg, TestPlayerSkill::Pro, "medium", 1);
+    test_player_init(reg, SKILL_PRO, "medium", 1);
     CHECK(reg.ctx().get<LevelSelectState>().selected_level == 1);
 
-    test_player_init(reg, TestPlayerSkill::Pro, "medium", -1);
+    test_player_init(reg, SKILL_PRO, "medium", -1);
     CHECK(reg.ctx().get<LevelSelectState>().selected_level == content_config::DEFAULT_LEVEL_INDEX);
 
-    test_player_init(reg, TestPlayerSkill::Pro, "medium", content_config::LEVEL_COUNT);
+    test_player_init(reg, SKILL_PRO, "medium", content_config::LEVEL_COUNT);
     CHECK(reg.ctx().get<LevelSelectState>().selected_level == content_config::DEFAULT_LEVEL_INDEX);
 
     session_log_close(reg.ctx().get<SessionLog>());
@@ -138,7 +138,7 @@ TEST_CASE("test_player: shape+lane action is not blocked by own shape press", "[
 }
 
 TEST_CASE("test_player: pro executes lane before shape for shape+lane actions", "[test_player]") {
-    auto reg = make_test_player_registry(TestPlayerSkill::Pro);
+    auto reg = make_test_player_registry(SKILL_PRO);
     make_rhythm_player(reg);
     make_shape_gate_at_lane(reg, Shape::Circle, 0, constants::PLAYER_Y - 600.0f);
 
@@ -173,7 +173,7 @@ TEST_CASE("test_player: pro executes lane before shape for shape+lane actions", 
 
 TEST_CASE("test_player: ignores visual obstacle leftovers without Obstacle payload",
           "[test_player][regression][issue865]") {
-    auto reg = make_test_player_registry(TestPlayerSkill::Pro);
+    auto reg = make_test_player_registry(SKILL_PRO);
     make_rhythm_player(reg);
 
     auto visual_leftover = reg.create();

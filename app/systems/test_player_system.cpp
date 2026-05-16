@@ -90,7 +90,7 @@ static bool test_player_action_done(const TestPlayerAction& action) {
 }
 
 static const SkillConfig& test_player_config(const TestPlayerState& state) {
-    return SKILL_TABLE[static_cast<int>(state.skill)];
+    return state.skill;
 }
 
 static void test_player_push_action(TestPlayerState& state, const TestPlayerAction& action) {

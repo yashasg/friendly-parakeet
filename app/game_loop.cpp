@@ -131,7 +131,7 @@ void log_persistence_result(const char* operation, const persistence::Result& re
 
 bool game_loop_init(entt::registry& reg,
                     bool test_player_mode,
-                    TestPlayerSkill test_skill,
+                    SkillConfig test_skill,
                     const char* difficulty,
                     int selected_level) {
     // Platform: window + audio

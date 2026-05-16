@@ -2,15 +2,13 @@
 #include <cstdint>
 #include <entt/entt.hpp>
 #include "util/level_content_config.h"
-
-// Forward-declare to avoid including test_player.h in the header.
-enum class TestPlayerSkill : uint8_t;
+#include "systems/test_player.h"
 
 // Initialize platform (window, audio), all game singletons, cameras, meshes, UI.
 // Returns false when platform initialization fails and the run loop must not start.
 bool game_loop_init(entt::registry& reg,
                     bool test_player_mode = false,
-                    TestPlayerSkill test_skill = {},
+                    SkillConfig test_skill = SKILL_PRO,
                     const char* difficulty = "medium",
                     int selected_level = content_config::DEFAULT_LEVEL_INDEX);
 

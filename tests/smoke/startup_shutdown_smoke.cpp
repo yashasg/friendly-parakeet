@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
 
     entt::registry reg;
     for (int cycle = 0; cycle < cycles; ++cycle) {
-        game_loop_init(reg, false, TestPlayerSkill::Pro, "medium");
+        game_loop_init(reg, false, SKILL_PRO, "medium");
         if (!IsWindowReady()) {
             std::fprintf(stderr, "SKIPPED: OpenGL window context is unavailable\n");
             return 77;
