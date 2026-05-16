@@ -210,7 +210,7 @@ TEST_CASE("pipeline: gameplay HUD pointer release is collected before the fixed 
     auto& sw = reg.get<ShapeWindow>(player);
     REQUIRE(window_phase_is_idle(reg, player));
 
-    const auto square_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Square);
+    const auto square_bounds = gameplay_hud_square_input_bounds();
     input.click = true;
     input.end_x = square_bounds.x + square_bounds.width * 0.5f;
     input.end_y = square_bounds.y + square_bounds.height * 0.5f;
@@ -232,7 +232,7 @@ TEST_CASE("pipeline: mobile button-zone touch release is collected independently
     REQUIRE(window_phase_is_idle(reg, player));
     REQUIRE(lane.current == 1);
 
-    const auto square_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Square);
+    const auto square_bounds = gameplay_hud_square_input_bounds();
     input.touch_up = true;
     input.end_x = constants::SCREEN_W_F * 0.5f;
     input.end_y = constants::SCREEN_H_F * 0.25f;
@@ -259,7 +259,7 @@ TEST_CASE("pipeline: swipe-zone touch release over shape HUD does not press shap
     REQUIRE(lane.current == 1);
     lane.target = lane.current;
 
-    const auto square_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Square);
+    const auto square_bounds = gameplay_hud_square_input_bounds();
     input.touch_up = true;
     input.button_touch_up = false;
     input.end_x = square_bounds.x + square_bounds.width * 0.5f;
@@ -365,7 +365,7 @@ TEST_CASE("pipeline: pending phase transition blocks queued go input",
 
 TEST_CASE("pipeline: gameplay HUD shape tap uses slot rectangle bounds",
           "[input_pipeline][hud]") {
-    const auto circle_input_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Circle);
+    const auto circle_input_bounds = gameplay_hud_circle_input_bounds();
     const Vector2 tap_center = {200.0f, 1190.0f};
     const Vector2 tap_plus_49 = {200.0f, 1239.0f};
     const Vector2 tap_plus_51 = {200.0f, 1241.0f};
@@ -377,9 +377,9 @@ TEST_CASE("pipeline: gameplay HUD shape tap uses slot rectangle bounds",
 
 TEST_CASE("pipeline: gameplay HUD shape geometry matches gameplay.rgl slots",
           "[input_pipeline][hud]") {
-    const auto circle_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Circle);
-    const auto square_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Square);
-    const auto triangle_bounds = gameplay_hud_shape_input_bounds(GameplayHudShapeSlot::Triangle);
+    const auto circle_bounds = gameplay_hud_circle_input_bounds();
+    const auto square_bounds = gameplay_hud_square_input_bounds();
+    const auto triangle_bounds = gameplay_hud_triangle_input_bounds();
 
     CHECK(circle_bounds.x == 130.0f);
     CHECK(square_bounds.x == 290.0f);

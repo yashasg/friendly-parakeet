@@ -101,18 +101,6 @@ ApproachRingEnvelope approach_ring_envelope(float ratio,
     return out;
 }
 
-Rectangle shape_slot_bounds(const GameplayHudLayoutState& state, GameplayHudShapeSlot slot) {
-    switch (slot) {
-        case GameplayHudShapeSlot::Circle:
-            return GameplayHudLayout_CircleButtonBounds(&state);
-        case GameplayHudShapeSlot::Square:
-            return GameplayHudLayout_SquareButtonBounds(&state);
-        case GameplayHudShapeSlot::Triangle:
-            return GameplayHudLayout_TriangleButtonBounds(&state);
-    }
-    return GameplayHudLayout_CircleButtonBounds(&state);
-}
-
 void render_shape_buttons(const entt::registry& reg,
                           const GameplayHudVisualStyle& style,
                           const GameplayHudLayoutState& ui_state) {
@@ -122,9 +110,9 @@ void render_shape_buttons(const entt::registry& reg,
         float cy;
     };
     std::array<ButtonVisual, 3> buttons{};
-    const auto circle_bounds = shape_slot_bounds(ui_state, GameplayHudShapeSlot::Circle);
-    const auto square_bounds = shape_slot_bounds(ui_state, GameplayHudShapeSlot::Square);
-    const auto triangle_bounds = shape_slot_bounds(ui_state, GameplayHudShapeSlot::Triangle);
+    const auto circle_bounds = GameplayHudLayout_CircleButtonBounds(&ui_state);
+    const auto square_bounds = GameplayHudLayout_SquareButtonBounds(&ui_state);
+    const auto triangle_bounds = GameplayHudLayout_TriangleButtonBounds(&ui_state);
     buttons[0] = ButtonVisual{Shape::Circle,
                               circle_bounds.x + circle_bounds.width * 0.5f,
                               circle_bounds.y + circle_bounds.height * 0.5f};
@@ -319,9 +307,19 @@ void init_gameplay_hud_screen_ui() {
     // Controller state is registry-owned and initialized lazily in render.
 }
 
-Rectangle gameplay_hud_shape_input_bounds(GameplayHudShapeSlot slot) {
+Rectangle gameplay_hud_circle_input_bounds() {
     static const GameplayHudLayoutState geometry_state = GameplayHudLayout_Init();
-    return shape_slot_bounds(geometry_state, slot);
+    return GameplayHudLayout_CircleButtonBounds(&geometry_state);
+}
+
+Rectangle gameplay_hud_square_input_bounds() {
+    static const GameplayHudLayoutState geometry_state = GameplayHudLayout_Init();
+    return GameplayHudLayout_SquareButtonBounds(&geometry_state);
+}
+
+Rectangle gameplay_hud_triangle_input_bounds() {
+    static const GameplayHudLayoutState geometry_state = GameplayHudLayout_Init();
+    return GameplayHudLayout_TriangleButtonBounds(&geometry_state);
 }
 
 void gameplay_hud_process_button_input(entt::registry& reg) {
@@ -442,7 +440,7 @@ void render_gameplay_hud_screen_ui(entt::registry& reg) {
     GuiLabel(Rectangle{ 10, 740, 90, 30 }, "ENERGY");
     GuiSetAlpha(1.0f);
 
-    const Rectangle circle_bounds = shape_slot_bounds(state, GameplayHudShapeSlot::Circle);
+    const Rectangle circle_bounds = GameplayHudLayout_CircleButtonBounds(&state);
     const float lane_divider_y = circle_bounds.y - kLaneDividerOffsetFromShapeRow;
     DrawLineV({0.0f, lane_divider_y},
               {constants::SCREEN_W_F, lane_divider_y},
