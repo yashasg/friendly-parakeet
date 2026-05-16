@@ -161,23 +161,26 @@ TEST_CASE("dispatcher: mixed go and press operations", "[input]") {
     auto& disp = reg.ctx().get<entt::dispatcher>();
     GoCapture go_cap;
     PressCapture press_cap;
-    disp.sink<GoEvent>().connect<&GoCapture::capture>(go_cap);
+    disp.sink<GoUpEvent>()  .connect<&GoCapture::on_up>(go_cap);
+    disp.sink<GoDownEvent>().connect<&GoCapture::on_down>(go_cap);
     disp.sink<ShapePressCircleEvent>().connect<&PressCapture::on_circle>(press_cap);
 
-    disp.enqueue<GoEvent>({Direction::Up});
+    disp.enqueue<GoUpEvent>({});
     disp.enqueue<ShapePressCircleEvent>({});
-    disp.enqueue<GoEvent>({Direction::Down});
-    disp.update<GoEvent>();
+    disp.enqueue<GoDownEvent>({});
+    disp.update<GoUpEvent>();
+    disp.update<GoDownEvent>();
     disp.update<ShapePressCircleEvent>();
 
-    disp.sink<GoEvent>().disconnect<&GoCapture::capture>(go_cap);
+    disp.sink<GoUpEvent>()  .disconnect<&GoCapture::on_up>(go_cap);
+    disp.sink<GoDownEvent>().disconnect<&GoCapture::on_down>(go_cap);
     disp.sink<ShapePressCircleEvent>().disconnect<&PressCapture::on_circle>(press_cap);
 
-    REQUIRE(go_cap.count == 2);
+    REQUIRE(go_cap.count() == 2);
     REQUIRE(press_cap.shape_count() == 1);
-    CHECK(go_cap.buf[0].dir == Direction::Up);
+    CHECK(go_cap.up   == 1);
+    CHECK(go_cap.down == 1);
     CHECK(press_cap.circle == 1);
-    CHECK(go_cap.buf[1].dir == Direction::Down);
 }
 
 // ── make_rhythm_registry / make_rhythm_player helpers ────────

@@ -5,7 +5,7 @@
 # with per-case component tables (real structs) or empty tags. Enums
 # survive in this codebase only as:
 #
-#   - input event labels / keybindings  (Direction, KeyboardShapeSlot)
+#   - input event labels / keybindings  (KeyboardShapeSlot)
 #   - playback IDs                      (HapticEvent, ImpactStyle, SFX)
 #   - finite return codes               (Status)
 #   - UI layout labels                  (FontSize)
@@ -28,7 +28,6 @@
 # fails CI on any name not present in this file.
 
 # --- Keep set: label / lookup / return code (Fabian "enums that make sense")
-Direction          # input event label
 KeyboardShapeSlot  # keybinding lookup key
 HapticEvent        # playback ID
 ImpactStyle        # playback ID
@@ -47,10 +46,10 @@ Shape              # lookup key — perfect-hash index into per-shape function-p
 # or component tables. Removing a row here = the migration landed.
 # Adding a row here would be drift; eradicate instead.
 #
-# Status (post-#1271): the pending set is now EMPTY — every former
+# Status (post-#1271, post-#1279): the pending set is now EMPTY — every former
 # control-flow enum (Shape, GamePhase, GamePhaseBit, ObstacleKind,
 # WindowPhase, MeshType, Layer, TimingTier, VMode, EndScreenChoice,
-# TestPlayerSkill, ActionDoneBit, DeathCause) has been eradicated or
-# (Shape only) promoted to the Keep set above. New enums in `app/` are
+# TestPlayerSkill, ActionDoneBit, DeathCause, Direction) has been eradicated
+# or (Shape only) promoted to the Keep set above. New enums in `app/` are
 # rejected by `tools/check_enum_allowlist.py`; any future entry must
 # either justify the Keep set or open an eradication issue.

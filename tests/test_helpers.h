@@ -72,9 +72,17 @@ inline void set_test_phase(entt::registry& reg) {
 }
 
 struct GoCapture {
-    GoEvent  buf[8] = {};
-    int      count  = 0;
-    void capture(const GoEvent& e) { if (count < 8) buf[count++] = e; }
+    int up    = 0;
+    int down  = 0;
+    int left  = 0;
+    int right = 0;
+
+    int count() const { return up + down + left + right; }
+
+    void on_up   (const GoUpEvent&)    { ++up;    }
+    void on_down (const GoDownEvent&)  { ++down;  }
+    void on_left (const GoLeftEvent&)  { ++left;  }
+    void on_right(const GoRightEvent&) { ++right; }
 };
 
 struct PressCapture {
@@ -127,9 +135,18 @@ struct HapticCapture {
 inline GoCapture drain_go_events(entt::registry& reg) {
     GoCapture cap;
     auto& disp = reg.ctx().get<entt::dispatcher>();
-    disp.sink<GoEvent>().connect<&GoCapture::capture>(cap);
-    disp.update<GoEvent>();
-    disp.sink<GoEvent>().disconnect<&GoCapture::capture>(cap);
+    disp.sink<GoUpEvent>()   .connect<&GoCapture::on_up>   (cap);
+    disp.sink<GoDownEvent>() .connect<&GoCapture::on_down> (cap);
+    disp.sink<GoLeftEvent>() .connect<&GoCapture::on_left> (cap);
+    disp.sink<GoRightEvent>().connect<&GoCapture::on_right>(cap);
+    disp.update<GoUpEvent>();
+    disp.update<GoDownEvent>();
+    disp.update<GoLeftEvent>();
+    disp.update<GoRightEvent>();
+    disp.sink<GoUpEvent>()   .disconnect<&GoCapture::on_up>   (cap);
+    disp.sink<GoDownEvent>() .disconnect<&GoCapture::on_down> (cap);
+    disp.sink<GoLeftEvent>() .disconnect<&GoCapture::on_left> (cap);
+    disp.sink<GoRightEvent>().disconnect<&GoCapture::on_right>(cap);
     return cap;
 }
 
@@ -219,10 +236,21 @@ inline HapticCapture drain_haptic_events(entt::registry& reg) {
     return cap;
 }
 
-// ── Semantic input injection helpers ─────────────────────────────────────────
-inline void push_go(entt::registry& reg, Direction dir) {
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({dir});
+// Drains all directional Go*Event queues (per-direction split from #1279).
+// Use in tests that previously called `disp.update<GoEvent>()` directly.
+inline void update_go_events(entt::registry& reg) {
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    disp.update<GoUpEvent>();
+    disp.update<GoDownEvent>();
+    disp.update<GoLeftEvent>();
+    disp.update<GoRightEvent>();
 }
+
+// ── Semantic input injection helpers ─────────────────────────────────────────
+inline void push_go_up   (entt::registry& reg) { reg.ctx().get<entt::dispatcher>().enqueue<GoUpEvent>({});    }
+inline void push_go_down (entt::registry& reg) { reg.ctx().get<entt::dispatcher>().enqueue<GoDownEvent>({});  }
+inline void push_go_left (entt::registry& reg) { reg.ctx().get<entt::dispatcher>().enqueue<GoLeftEvent>({});  }
+inline void push_go_right(entt::registry& reg) { reg.ctx().get<entt::dispatcher>().enqueue<GoRightEvent>({}); }
 
 struct TestShapeButtonData {
     Shape shape = Shape::Circle;

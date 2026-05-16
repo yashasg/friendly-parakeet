@@ -128,8 +128,8 @@ struct TouchSlot {
 
 // ── Per-frame input state, singleton component ──
 // Tracks touch/mouse hardware state. Downstream systems should read
-// semantic events (GoEvent / ButtonPressEvent) off the EnTT dispatcher,
-// not this struct — except for quit_requested.
+// semantic events (Go*Event / ShapePress*Event / Menu*Event) off the
+// EnTT dispatcher, not this struct — except for quit_requested.
 struct InputState {
     static constexpr int MaxTrackedTouches = 2;
 
@@ -153,15 +153,13 @@ struct InputState {
 
 // ── Event types: semantic player intentions ──
 //
-// Per Fabian's existential processing (#1202/#1204/#1277), each former
-// `ButtonPressKind` × shape and each former `MenuActionKind` value is now
-// its own event type. Listeners subscribe to the specific event they
-// handle — the type IS the choice. Events carry concrete values (or
-// nothing) — never a live entity handle, which would be a lifetime hazard
-// if the button entity were destroyed between event production and
-// consumption.
-
-enum class Direction : uint8_t { Left, Right, Up, Down };  // defined in input.h
+// Per Fabian's existential processing (#1202/#1204/#1277/#1278/#1279),
+// each former `ButtonPressKind` × shape, each former `MenuActionKind`
+// value, and each former `Direction` value is now its own event type.
+// Listeners subscribe to the specific event they handle — the type IS
+// the choice. Events carry concrete values (or nothing) — never a live
+// entity handle, which would be a lifetime hazard if the button entity
+// were destroyed between event production and consumption.
 
 // Shape presses are zero-column tag-events.
 struct ShapePressCircleEvent   {};
@@ -176,9 +174,11 @@ struct MenuGoMainMenuEvent    {};
 struct MenuSelectLevelEvent { uint8_t index = 0; };
 struct MenuSelectDiffEvent  { uint8_t index = 0; };
 
-struct GoEvent {
-    Direction dir = Direction::Up;
-};
+// Per-direction navigation events (post-#1279).
+struct GoUpEvent    {};
+struct GoDownEvent  {};
+struct GoLeftEvent  {};
+struct GoRightEvent {};
 ```
 
 Events ride on the registry-scoped `entt::dispatcher` (stored in
@@ -191,28 +191,30 @@ which fans events out to all connected sinks.
 ```cpp
 // Reads raylib input (touch + keyboard), populates InputState singleton,
 // and enqueues semantic events on the registry's entt::dispatcher
-// (GoEvent for swipes/arrow keys, ButtonPressEvent for shape/menu keys).
-// Called once per frame in the input phase.
+// (Go*Event for swipes/arrow keys, ShapePress*Event / Menu*Event for
+// shape/menu keys). Called once per frame in the input phase.
 void input_system(entt::registry& reg, float raw_dt);
 
-// Connects sinks for GoEvent and ButtonPressEvent on the registry's
+// Connects sinks for the per-direction Go*Event types and the
+// per-action ShapePress*Event / Menu*Event types on the registry's
 // dispatcher. Wires game_state, level_select, and player_input handlers.
 // Called once at startup (and on dispatcher swap).
 void wire_input_dispatcher(entt::registry& reg);
 
 // raygui screen controllers (e.g. gameplay_hud_screen_controller) enqueue
-// ButtonPressEvent on UI hits — they are the dominant ButtonPressEvent
-// producer alongside input_system's keyboard fallbacks.
+// ShapePress*Event / Menu*Event on UI hits — they are the dominant
+// press-event producer alongside input_system's keyboard fallbacks.
 void gameplay_hud_process_button_input(entt::registry& reg);
 
-// Automated test player: enqueues GoEvent / ButtonPressEvent on the
+// Automated test player: enqueues Go*Event / ShapePress*Event on the
 // dispatcher from scripted patterns. Replaces human input when running
 // in test-player mode.
 void test_player_system(entt::registry& reg, float dt);
 
 // Drain: inside game_state_system's fixed-step tick, call
-//   disp.update<ButtonPressEvent>();
-//   disp.update<GoEvent>();
+//   disp.update<ShapePressCircleEvent>();    // (+ Square, Triangle)
+//   disp.update<MenuConfirmEvent>();         // (+ other menu events)
+//   disp.update<GoUpEvent>();                // (+ Down, Left, Right)
 // to fan queued events out to all connected handlers.
 void game_state_system(entt::registry& reg, float dt);
 ```
@@ -225,13 +227,15 @@ void game_state_system(entt::registry& reg, float dt);
          ▼
   ┌──────────────────────┐
   │ input_system          │  → populates InputState
-  │                      │  → disp.enqueue<GoEvent>         (swipe / arrows)
-  │                      │  → disp.enqueue<ButtonPressEvent> (shape keys)
+  │                      │  → disp.enqueue<Go{Up,Down,Left,Right}Event> (swipe / arrows)
+  │                      │  → disp.enqueue<ShapePress*Event>            (shape keys)
+  │                      │  → disp.enqueue<Menu*Event>                   (menu keys)
   └──────────┬───────────┘
              │
              ▼
   ┌──────────────────────┐
-  │ HUD / test player     │  → disp.enqueue<ButtonPressEvent>
+  │ HUD / test player     │  → disp.enqueue<ShapePress*Event>
+  │                      │  → disp.enqueue<Menu*Event>
   │                      │    (raygui screen controllers,
   │                      │     test_player_system scripted runs)
   └──────────┬───────────┘
@@ -239,8 +243,9 @@ void game_state_system(entt::registry& reg, float dt);
              ▼
   ┌──────────────────────┐
   │ entt::dispatcher      │  → game_state_system drains via
-  │  sinks (fixed step)  │    disp.update<ButtonPressEvent>()
-  │                      │    disp.update<GoEvent>()
+  │  sinks (fixed step)  │    disp.update<ShapePress*Event>()
+  │                      │    disp.update<Menu*Event>()
+  │                      │    disp.update<Go{Up,Down,Left,Right}Event>()
   │                      │  → fans out to game_state, level_select,
   │                      │    and player_input handlers
   └──────────────────────┘
@@ -643,12 +648,13 @@ shape_window_system -> miss_detection_system -> scoring_system
 ```
   input.h                rhythm/scoring.h        beatmap scheduling
   ──────────────         ─────────────────       ───────────────────
-  InputState       ────→  player_input_system
-  ButtonPressEvent ────→  player_input_system  (via entt::dispatcher sink)
-  GoEvent          ────→  player_input_system  (via entt::dispatcher sink)
-                          TimingGrade      ←────  collision_system
-                          ScoreState       ←────  scoring_system
-                          BeatInfo         ←────  beat_scheduler_system
+  InputState         ────→  player_input_system
+  ShapePress*Event   ────→  player_input_system  (via entt::dispatcher sink)
+  Go{Up,Down,Left,Right}Event
+                     ────→  player_input_system  (via entt::dispatcher sink)
+                            TimingGrade      ←────  collision_system
+                            ScoreState       ←────  scoring_system
+                            BeatInfo         ←────  beat_scheduler_system
 ```
 
 ## Component Registry Summary
@@ -658,8 +664,9 @@ shape_window_system -> miss_detection_system -> scoring_system
   │  COMPONENT              │ SCOPE    │ DEFINED IN              │
   ├─────────────────────────┼──────────┼─────────────────────────┤
   │  InputState             │ singleton│ Spec 1 — Input          │
-  │  ButtonPressEvent       │ event    │ Spec 1 — Input          │
-  │  GoEvent                │ event    │ Spec 1 — Input          │
+  │  ShapePress*Event       │ event    │ Spec 1 — Input          │
+  │  Menu*Event             │ event    │ Spec 1 — Input          │
+  │  Go{Up,Down,Left,Right}Event │ event│ Spec 1 — Input          │
   │  ScoreState             │ singleton│ Spec 2 — Rhythm Scoring │
   │  ScorePopup             │ per-ent  │ Spec 2 — Rhythm Scoring │
   │  TimingGrade            │ per-ent  │ Spec 2 — Rhythm Scoring │

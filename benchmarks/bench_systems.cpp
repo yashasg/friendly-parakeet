@@ -172,7 +172,7 @@ TEST_CASE("Bench: player_input + movement", "[!benchmark][bench]") {
 
         meter.measure([&] {
             player_input_handle_press_triangle(reg, ShapePressTriangleEvent{});
-            player_input_handle_go(reg, GoEvent{Direction::Right});
+            player_input_handle_go_right(reg, GoRightEvent{});
             player_movement_system(reg, DT);
         });
     };

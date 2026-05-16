@@ -46,7 +46,7 @@ TEST_CASE("player_action: swipe left changes lane", "[player]") {
     auto reg = make_registry();
     make_player(reg);
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoLeftEvent>({});
 
     run_semantic_input_tick(reg, 0.016f);
 
@@ -61,7 +61,7 @@ TEST_CASE("player_action: swipe right changes lane", "[player]") {
     auto reg = make_registry();
     make_player(reg);
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Right});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoRightEvent>({});
 
     run_semantic_input_tick(reg, 0.016f);
 
@@ -76,13 +76,13 @@ TEST_CASE("player_action: repeated lane input during transition does not restart
     auto reg = make_registry();
     auto p = make_player(reg);
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Right});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoRightEvent>({});
     run_semantic_input_tick(reg, 0.016f);
 
     auto& lane = reg.get<Lane>(p);
     lane.lerp_t = 0.4f;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Right});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoRightEvent>({});
     run_semantic_input_tick(reg, 0.016f);
 
     CHECK(lane.current == 1);
@@ -100,7 +100,7 @@ TEST_CASE("player_action: opposite lane input during transition waits for comple
     lane.target = 2;
     lane.lerp_t = 0.4f;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoLeftEvent>({});
     run_semantic_input_tick(reg, 0.016f);
 
     CHECK(lane.current == 1);
@@ -113,7 +113,7 @@ TEST_CASE("player_action: swipe left at lane 0 is clamped", "[player]") {
     auto p = make_player(reg);
     reg.get<Lane>(p).current = 0;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Left});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoLeftEvent>({});
 
     run_semantic_input_tick(reg, 0.016f);
 
@@ -125,7 +125,7 @@ TEST_CASE("player_action: swipe right at lane 2 is clamped", "[player]") {
     auto p = make_player(reg);
     reg.get<Lane>(p).current = 2;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Right});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoRightEvent>({});
 
     run_semantic_input_tick(reg, 0.016f);
 
@@ -136,7 +136,7 @@ TEST_CASE("player_action: swipe up starts jump", "[player]") {
     auto reg = make_registry();
     auto player = make_player(reg);
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoUpEvent>({});
 
     run_semantic_input_tick(reg, 0.016f);
 
@@ -148,7 +148,7 @@ TEST_CASE("player_action: swipe down starts slide", "[player]") {
     auto reg = make_registry();
     auto player = make_player(reg);
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Down});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoDownEvent>({});
 
     run_semantic_input_tick(reg, 0.016f);
 
@@ -161,7 +161,7 @@ TEST_CASE("player_action: cannot jump while already jumping", "[player]") {
     auto p = make_player(reg);
     reg.emplace<Jumping>(p, Jumping{0.2f, 0.0f});
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoUpEvent>({});
 
     run_semantic_input_tick(reg, 0.016f);
 
@@ -307,7 +307,7 @@ TEST_CASE("player_action: not in Playing phase skips processing", "[player]") {
     set_test_phase<GamePhaseTitleTag>(reg);
     make_player(reg);
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoUpEvent>({});
 
     run_semantic_input_tick(reg, 0.016f);
 
@@ -333,7 +333,7 @@ TEST_CASE("player_action: cannot slide while already sliding", "[player]") {
     auto p = make_player(reg);
     reg.emplace<Sliding>(p, Sliding{0.3f});
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Down});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoDownEvent>({});
 
     run_semantic_input_tick(reg, 0.016f);
 
@@ -346,7 +346,7 @@ TEST_CASE("player_action: cannot slide while jumping", "[player]") {
     auto p = make_player(reg);
     reg.emplace<Jumping>(p, Jumping{0.2f, 0.0f});
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Down});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoDownEvent>({});
 
     run_semantic_input_tick(reg, 0.016f);
 
@@ -360,7 +360,7 @@ TEST_CASE("player_action: cannot jump while sliding", "[player]") {
     auto p = make_player(reg);
     reg.emplace<Sliding>(p, Sliding{0.3f});
 
-    reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
+    reg.ctx().get<entt::dispatcher>().enqueue<GoUpEvent>({});
 
     run_semantic_input_tick(reg, 0.016f);
 

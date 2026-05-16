@@ -1,7 +1,10 @@
 // tests/test_entt_dispatcher_contract.cpp
 //
-// Verifies entt::dispatcher semantics relied on by the semantic input pipeline
-// (GoEvent + per-shape ShapePress*Event + per-action menu events only).
+// Verifies entt::dispatcher semantics relied on by the semantic input
+// pipeline (per-direction Go*Event + per-shape ShapePress*Event + per-action
+// menu events only). Uses GoRightEvent as the test subject for the
+// dispatcher-contract cases; semantics are identical across the four
+// per-direction event types (#1279 split).
 
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entt.hpp>
@@ -15,8 +18,7 @@
 
 struct GoCounter {
     int count{0};
-    Direction last{Direction::Up};
-    void on_go(const GoEvent& e) { ++count; last = e.dir; }
+    void on_go(const GoRightEvent&) { ++count; }
 };
 
 struct PressCounter {
@@ -28,42 +30,40 @@ struct OrderedListener {
     int* order;
     int marker;
     int* cursor;
-    void on_go(const GoEvent&) { order[(*cursor)++] = marker; }
+    void on_go(const GoRightEvent&) { order[(*cursor)++] = marker; }
 };
 
 struct ReenqueueGoListener {
     entt::dispatcher* disp{nullptr};
     int seen{0};
-    void on_go(const GoEvent&) {
+    void on_go(const GoRightEvent&) {
         ++seen;
         if (seen == 1) {
-            disp->enqueue(GoEvent{Direction::Left});
+            disp->enqueue(GoRightEvent{});
         }
     }
 };
 
-TEST_CASE("dispatcher: trigger delivers GoEvent to all listeners immediately",
+TEST_CASE("dispatcher: trigger delivers Go*Event to all listeners immediately",
           "[entt_dispatcher]") {
     entt::dispatcher dispatcher;
     GoCounter a, b;
-    dispatcher.sink<GoEvent>().connect<&GoCounter::on_go>(a);
-    dispatcher.sink<GoEvent>().connect<&GoCounter::on_go>(b);
+    dispatcher.sink<GoRightEvent>().connect<&GoCounter::on_go>(a);
+    dispatcher.sink<GoRightEvent>().connect<&GoCounter::on_go>(b);
 
-    dispatcher.trigger(GoEvent{Direction::Left});
+    dispatcher.trigger(GoRightEvent{});
 
     CHECK(a.count == 1);
-    CHECK(a.last  == Direction::Left);
     CHECK(b.count == 1);
-    CHECK(b.last  == Direction::Left);
 }
 
 TEST_CASE("dispatcher: enqueue without update delivers nothing",
           "[entt_dispatcher]") {
     entt::dispatcher dispatcher;
     GoCounter counter;
-    dispatcher.sink<GoEvent>().connect<&GoCounter::on_go>(counter);
+    dispatcher.sink<GoRightEvent>().connect<&GoCounter::on_go>(counter);
 
-    dispatcher.enqueue(GoEvent{Direction::Right});
+    dispatcher.enqueue(GoRightEvent{});
 
     CHECK(counter.count == 0);
 }
@@ -72,24 +72,23 @@ TEST_CASE("dispatcher: enqueue then update delivers the event",
           "[entt_dispatcher]") {
     entt::dispatcher dispatcher;
     GoCounter counter;
-    dispatcher.sink<GoEvent>().connect<&GoCounter::on_go>(counter);
+    dispatcher.sink<GoRightEvent>().connect<&GoCounter::on_go>(counter);
 
-    dispatcher.enqueue(GoEvent{Direction::Down});
+    dispatcher.enqueue(GoRightEvent{});
     dispatcher.update();
 
     CHECK(counter.count == 1);
-    CHECK(counter.last  == Direction::Down);
 }
 
 TEST_CASE("dispatcher: multiple enqueued events all delivered in single update",
           "[entt_dispatcher]") {
     entt::dispatcher dispatcher;
     GoCounter counter;
-    dispatcher.sink<GoEvent>().connect<&GoCounter::on_go>(counter);
+    dispatcher.sink<GoRightEvent>().connect<&GoCounter::on_go>(counter);
 
-    dispatcher.enqueue(GoEvent{Direction::Left});
-    dispatcher.enqueue(GoEvent{Direction::Right});
-    dispatcher.enqueue(GoEvent{Direction::Up});
+    dispatcher.enqueue(GoRightEvent{});
+    dispatcher.enqueue(GoRightEvent{});
+    dispatcher.enqueue(GoRightEvent{});
     dispatcher.update();
 
     CHECK(counter.count == 3);
@@ -99,9 +98,9 @@ TEST_CASE("dispatcher: update drains queue — second update does not replay eve
           "[entt_dispatcher]") {
     entt::dispatcher dispatcher;
     GoCounter counter;
-    dispatcher.sink<GoEvent>().connect<&GoCounter::on_go>(counter);
+    dispatcher.sink<GoRightEvent>().connect<&GoCounter::on_go>(counter);
 
-    dispatcher.enqueue(GoEvent{Direction::Left});
+    dispatcher.enqueue(GoRightEvent{});
 
     dispatcher.update();
     CHECK(counter.count == 1);
@@ -110,7 +109,7 @@ TEST_CASE("dispatcher: update drains queue — second update does not replay eve
     CHECK(counter.count == 1);
 }
 
-TEST_CASE("dispatcher: GoEvent listeners fire in sink connection order (last connected first)",
+TEST_CASE("dispatcher: Go*Event listeners fire in sink connection order (last connected first)",
           "[entt_dispatcher]") {
     entt::dispatcher dispatcher;
     int order[4] = {-1, -1, -1, -1};
@@ -118,11 +117,11 @@ TEST_CASE("dispatcher: GoEvent listeners fire in sink connection order (last con
     OrderedListener first{order, 1, &cursor};
     OrderedListener second{order, 2, &cursor};
 
-    dispatcher.sink<GoEvent>().connect<&OrderedListener::on_go>(first);
-    dispatcher.sink<GoEvent>().connect<&OrderedListener::on_go>(second);
+    dispatcher.sink<GoRightEvent>().connect<&OrderedListener::on_go>(first);
+    dispatcher.sink<GoRightEvent>().connect<&OrderedListener::on_go>(second);
 
-    dispatcher.enqueue(GoEvent{Direction::Right});
-    dispatcher.update<GoEvent>();
+    dispatcher.enqueue(GoRightEvent{});
+    dispatcher.update<GoRightEvent>();
 
     REQUIRE(cursor == 2);
     CHECK(order[0] == 2);
@@ -135,20 +134,18 @@ TEST_CASE("dispatcher: same-type enqueue inside listener is delivered next updat
     ReenqueueGoListener listener{&dispatcher};
     GoCounter counter;
 
-    dispatcher.sink<GoEvent>().connect<&ReenqueueGoListener::on_go>(listener);
-    dispatcher.sink<GoEvent>().connect<&GoCounter::on_go>(counter);
+    dispatcher.sink<GoRightEvent>().connect<&ReenqueueGoListener::on_go>(listener);
+    dispatcher.sink<GoRightEvent>().connect<&GoCounter::on_go>(counter);
 
-    dispatcher.enqueue(GoEvent{Direction::Right});
-    dispatcher.update<GoEvent>();
+    dispatcher.enqueue(GoRightEvent{});
+    dispatcher.update<GoRightEvent>();
 
     CHECK(listener.seen == 1);
     CHECK(counter.count == 1);
-    CHECK(counter.last == Direction::Right);
 
-    dispatcher.update<GoEvent>();
+    dispatcher.update<GoRightEvent>();
     CHECK(listener.seen == 2);
     CHECK(counter.count == 2);
-    CHECK(counter.last == Direction::Left);
 }
 
 TEST_CASE("dispatcher: trigger ShapePressEvent reaches listener immediately",
@@ -178,7 +175,10 @@ TEST_CASE("wire_input_dispatcher prewarms semantic event queues without pending 
     auto reg = make_registry();
     auto& dispatcher = reg.ctx().get<entt::dispatcher>();
 
-    CHECK(dispatcher.size<GoEvent>() == 0);
+    CHECK(dispatcher.size<GoUpEvent>()    == 0);
+    CHECK(dispatcher.size<GoDownEvent>()  == 0);
+    CHECK(dispatcher.size<GoLeftEvent>()  == 0);
+    CHECK(dispatcher.size<GoRightEvent>() == 0);
     CHECK(dispatcher.size<ShapePressCircleEvent>()   == 0);
     CHECK(dispatcher.size<ShapePressSquareEvent>()   == 0);
     CHECK(dispatcher.size<ShapePressTriangleEvent>() == 0);
@@ -202,7 +202,7 @@ TEST_CASE("runtime scratch queues are explicit registry context state",
     CHECK(reg.ctx().contains<ParticleSystemScratch>());
 }
 
-TEST_CASE("R7: GoEvent delivered in GameOver phase — player_input_handle_go no-ops due to phase guard",
+TEST_CASE("R7: Go*Event delivered in GameOver phase — player_input handler no-ops due to phase guard",
           "[dispatcher][R7][regression]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
@@ -211,14 +211,14 @@ TEST_CASE("R7: GoEvent delivered in GameOver phase — player_input_handle_go no
 
     set_test_phase<GamePhaseGameOverTag>(reg);
 
-    disp.enqueue(GoEvent{Direction::Right});
-    disp.update<GoEvent>();
+    disp.enqueue(GoRightEvent{});
+    disp.update<GoRightEvent>();
 
     CHECK(lane.target  == -1);
     CHECK(lane.current == 1);
 }
 
-TEST_CASE("R7: drain-first order — GoEvent processed in pre-transition phase, queue empty post-transition",
+TEST_CASE("R7: drain-first order — Go*Event processed in pre-transition phase, queue empty post-transition",
           "[dispatcher][R7]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
@@ -227,18 +227,18 @@ TEST_CASE("R7: drain-first order — GoEvent processed in pre-transition phase, 
 
     REQUIRE(reg.ctx().contains<GamePhasePlayingTag>());
 
-    disp.enqueue(GoEvent{Direction::Right});
+    disp.enqueue(GoRightEvent{});
 
-    disp.update<GoEvent>();
+    disp.update<GoRightEvent>();
     CHECK(lane.target == 2);
 
     set_test_phase<GamePhaseGameOverTag>(reg);
 
-    disp.update<GoEvent>();
+    disp.update<GoRightEvent>();
     CHECK(lane.target == 2);
 }
 
-TEST_CASE("R7: two-tick stale-event regression — GoEvent from tick N absent in tick N+1",
+TEST_CASE("R7: two-tick stale-event regression — Go*Event from tick N absent in tick N+1",
           "[dispatcher][R7][regression]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
@@ -246,15 +246,15 @@ TEST_CASE("R7: two-tick stale-event regression — GoEvent from tick N absent in
     auto& disp = reg.ctx().get<entt::dispatcher>();
 
     REQUIRE(reg.ctx().contains<GamePhasePlayingTag>());
-    disp.enqueue(GoEvent{Direction::Right});
-    disp.update<GoEvent>();
+    disp.enqueue(GoRightEvent{});
+    disp.update<GoRightEvent>();
     CHECK(lane.target == 2);
 
     lane.lerp_t = 0.5f;
 
     set_test_phase<GamePhaseGameOverTag>(reg);
 
-    disp.update<GoEvent>();
+    disp.update<GoRightEvent>();
 
     CHECK(lane.target  == 2);
     CHECK(lane.lerp_t  == 0.5f);

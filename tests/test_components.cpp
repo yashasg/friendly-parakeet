@@ -143,22 +143,22 @@ TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     SUCCEED("all required ctx singletons exist in registry context");
 }
 
-TEST_CASE("ecs: make_registry dispatcher is wired — GoEvent listeners registered", "[ecs][dispatcher]") {
+TEST_CASE("ecs: make_registry dispatcher is wired — Go*Event listeners registered", "[ecs][dispatcher]") {
     // Verifies that wire_input_dispatcher() was called during make_registry(),
-    // so any system can immediately enqueue+update GoEvents without separate setup.
+    // so any system can immediately enqueue+update Go*Events without separate setup.
     auto reg = make_registry();
 
-    // Promote to Playing so player_input_handle_go has observable effect.
+    // Promote to Playing so player_input_handle_go_right has observable effect.
     set_test_phase<GamePhasePlayingTag>(reg);
     auto player = make_player(reg);
     auto& lane  = reg.get<Lane>(player);
 
     auto& disp = reg.ctx().get<entt::dispatcher>();
-    disp.enqueue(GoEvent{Direction::Right});
-    disp.update<GoEvent>();
+    disp.enqueue(GoRightEvent{});
+    disp.update<GoRightEvent>();
 
     // If dispatcher listeners were NOT wired, lane.target would remain -1.
-    CHECK(lane.target == 2);   // listener wired: player_input_handle_go fired
+    CHECK(lane.target == 2);   // listener wired: player_input_handle_go_right fired
 }
 
 TEST_CASE("ecs: make_registry dispatcher is wired — ShapePress*Event listeners registered", "[ecs][dispatcher]") {
@@ -181,18 +181,18 @@ TEST_CASE("ecs: make_registry dispatcher is wired — ShapePress*Event listeners
 TEST_CASE("ecs: make_registry dispatcher ctx — second update is a no-op (no replay)", "[ecs][dispatcher]") {
     // Contract: after an authoritative drain, a subsequent update<T>() with no
     // new enqueues must not re-deliver the previously drained event.
-    // Applies to both GoEvent and the per-shape ShapePress*Event pools.
+    // Applies to both Go*Event and the per-shape ShapePress*Event pools.
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& lane  = reg.get<Lane>(player);
 
     auto& disp = reg.ctx().get<entt::dispatcher>();
-    disp.enqueue(GoEvent{Direction::Right});
-    disp.update<GoEvent>();
+    disp.enqueue(GoRightEvent{});
+    disp.update<GoRightEvent>();
     CHECK(lane.target == 2);
 
     // Second drain — must be a no-op.
-    disp.update<GoEvent>();
+    disp.update<GoRightEvent>();
     CHECK(lane.target == 2);   // not replayed
 }
 
@@ -211,17 +211,17 @@ TEST_CASE("ecs: wire_input_dispatcher is idempotent", "[ecs][dispatcher]") {
 
 struct ExternalGoListener {
     int count = 0;
-    void on_go(const GoEvent&) { ++count; }
+    void on_go(const GoLeftEvent&) { ++count; }
 };
 
 TEST_CASE("ecs: unwire_input_dispatcher preserves external listeners", "[ecs][dispatcher]") {
     auto reg = make_registry();
     auto& disp = reg.ctx().get<entt::dispatcher>();
     ExternalGoListener listener;
-    disp.sink<GoEvent>().connect<&ExternalGoListener::on_go>(listener);
+    disp.sink<GoLeftEvent>().connect<&ExternalGoListener::on_go>(listener);
 
     unwire_input_dispatcher(reg);
-    disp.trigger(GoEvent{Direction::Left});
+    disp.trigger(GoLeftEvent{});
 
     CHECK(listener.count == 1);
 }
@@ -360,8 +360,8 @@ TEST_CASE("ecs: registry teardown without unwire_* is safe (no UAF)",
         REQUIRE(window_phase_is_idle(reg, player));
 
         auto& disp = reg.ctx().get<entt::dispatcher>();
-        disp.enqueue<GoEvent>(GoEvent{Direction::Right});
-        disp.update<GoEvent>();
+        disp.enqueue<GoRightEvent>(GoRightEvent{});
+        disp.update<GoRightEvent>();
         CHECK(reg.get<Lane>(player).target == 2);
         // Inner-block exit destroys the registry. With `scoped_connection`,
         // libstdc++ would SIGSEGV here because the dispatcher's `sigh` is

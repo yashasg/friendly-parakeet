@@ -52,5 +52,7 @@ struct InputState {
     TouchSlot touch_slots[MaxTrackedTouches] = {};
 };
 
-// Note: `Direction` lives in app/systems/input_events.h alongside `GoEvent`,
-// the only event that carries it (issue #1194).
+// Note: directional intent is identity-encoded in per-direction event types
+// (`GoUpEvent`, `GoDownEvent`, `GoLeftEvent`, `GoRightEvent`) declared in
+// app/systems/input_events.h — see issue #1279 (the former `Direction` enum
+// and `GoEvent { Direction dir }` were eradicated).

@@ -516,14 +516,14 @@ void test_player_system(entt::registry& reg, float dt) {
             state->swipe_cooldown_timer <= 0.0f
             && !zone_blocked && !blocked_by_shape && !move_would_fail_closer) {
             if (action.target_lane < p_lane.current) {
-                disp.enqueue<GoEvent>({Direction::Left});
+                disp.enqueue<GoLeftEvent>({});
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Left) for obstacle=%u beat=%d",
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             } else if (action.target_lane > p_lane.current) {
-                disp.enqueue<GoEvent>({Direction::Right});
+                disp.enqueue<GoRightEvent>({});
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Right) for obstacle=%u beat=%d",
@@ -560,14 +560,14 @@ void test_player_system(entt::registry& reg, float dt) {
         if (test_player_needs_vertical(action) && !reg.any_of<Jumping, Sliding>(player_entity)
             && !vert_zone_blocked && !vert_blocked_by_shape) {
             if (action.wants_jump) {
-                disp.enqueue<GoEvent>({Direction::Up});
+                disp.enqueue<GoUpEvent>({});
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Up) for obstacle=%u beat=%d",
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             } else if (action.wants_slide) {
-                disp.enqueue<GoEvent>({Direction::Down});
+                disp.enqueue<GoDownEvent>({});
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Down) for obstacle=%u beat=%d",
