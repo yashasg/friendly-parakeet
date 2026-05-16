@@ -55,19 +55,16 @@ struct LevelSelectState {
     bool confirmed          = false;
 };
 
-// ── Game Over Cause (singleton) ─────────────────────
-// Tracks the most recent reason the player's run ended.  Set by the
-// system that triggered the end-of-run condition (currently only
-// energy depletion) and read by the Game Over screen to surface a
+// ── Game-over cause (per-cause ctx tables) ──────────────────
+// Per Fabian's existential processing, each former DeathCause value is its
+// own zero-column table on `registry.ctx()`. Presence of a *Death tag is the
+// data; absence of all *Death tags means "no terminal cause recorded" (what
+// the former DeathCause::None sentinel represented).
+//
+// The system that triggers the end-of-run condition emplaces the matching
+// tag; the Game Over screen controller reads tag presence to surface a
 // one-line, platform-neutral, colorblind-safe reason.
-enum class DeathCause : uint8_t {
-    None = 0,
-    EnergyDepleted = 1,
-};
-
-struct GameOverState {
-    DeathCause cause = DeathCause::None;
-};
+struct EnergyDepletedDeath {};
 
 // ── Terminal Result Snapshot (singleton) ─────────────────────
 // Captured by game_state_terminal_phase_system at the moment of song

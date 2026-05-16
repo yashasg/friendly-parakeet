@@ -58,27 +58,16 @@ void draw_game_over_scoreboard(entt::registry& reg, const GameOverLayoutState& s
         draw_game_over_value(state.Anchor01, 110, 712, 500, 24, value, 18);
     }
 
-    if (const auto* gos = reg.ctx().find<GameOverState>()) {
-        const char* reason = death_cause_text(gos->cause);
-        if (reason && reason[0] != '\0') {
-            const float reason_y = (reg.ctx().find<TerminalResultState>() &&
-                                    reg.ctx().get<TerminalResultState>().new_best)
-                ? 742.0f
-                : 685.0f;
-            draw_game_over_value(state.Anchor01, 110, reason_y, 500, 40, reason, 22);
-        }
+    if (reg.ctx().find<EnergyDepletedDeath>()) {
+        const float reason_y = (reg.ctx().find<TerminalResultState>() &&
+                                reg.ctx().get<TerminalResultState>().new_best)
+            ? 742.0f
+            : 685.0f;
+        draw_game_over_value(state.Anchor01, 110, reason_y, 500, 40, "ENERGY DEPLETED", 22);
     }
 }
 
 } // anonymous namespace
-
-const char* death_cause_text(DeathCause cause) {
-    switch (cause) {
-        case DeathCause::EnergyDepleted: return "ENERGY DEPLETED";
-        case DeathCause::None:
-        default:                          return "";
-    }
-}
 
 void set_game_over_screen_test_hooks(GameOverLayoutRenderHook layout_render_hook,
                                      GameOverValueDrawHook value_draw_hook) {

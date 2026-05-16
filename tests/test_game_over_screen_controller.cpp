@@ -46,19 +46,25 @@ struct ScopedGameOverHooks {
 
 } // namespace
 
-TEST_CASE("game_over: death_cause_text maps terminal causes to platform-neutral strings",
+TEST_CASE("game_over: ENERGY DEPLETED reason renders when EnergyDepletedDeath tag is present",
           "[game_over][ui]") {
-    // None → empty (suppresses ReasonSlot rendering).
-    CHECK(std::strlen(death_cause_text(DeathCause::None)) == 0);
+    auto reg = make_registry();
+    ScopedGameOverHooks hooks;
 
-    // Real causes must produce a non-empty, ASCII-only one-liner.
-    for (auto cause : { DeathCause::EnergyDepleted }) {
-        const char* txt = death_cause_text(cause);
-        REQUIRE(txt != nullptr);
-        CHECK(std::strlen(txt) > 0);
-        // Stay short enough to fit ReasonSlot (500px @ 22pt) — sanity bound.
-        CHECK(std::strlen(txt) < 32u);
-    }
+    // Absent tag: no reason text appears.
+    REQUIRE(reg.ctx().find<EnergyDepletedDeath>() == nullptr);
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase = GamePhase::GameOver;
+    gs.phase_timer = 0.0f;
+
+    render_game_over_screen_ui(reg);
+    CHECK_FALSE(has_bound_text("ENERGY DEPLETED"));
+
+    // Present tag: ENERGY DEPLETED reason is bound.
+    g_captured_values.clear();
+    reg.ctx().emplace<EnergyDepletedDeath>();
+    render_game_over_screen_ui(reg);
+    CHECK(has_bound_text("ENERGY DEPLETED"));
 }
 
 TEST_CASE("game_over: score / high score / cause are visible via registry singletons "
@@ -72,8 +78,7 @@ TEST_CASE("game_over: score / high score / cause are visible via registry single
     score.score = 12345;
     current.value = 99999;
 
-    auto& gos = reg.ctx().insert_or_assign(GameOverState{});
-    gos.cause = DeathCause::EnergyDepleted;
+    reg.ctx().insert_or_assign(EnergyDepletedDeath{});
 
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
@@ -85,9 +90,7 @@ TEST_CASE("game_over: score / high score / cause are visible via registry single
     CHECK(s.score      == 12345);
     CHECK(reg.ctx().get<CurrentSongHighScore>().value == 99999);
 
-    const auto& g = reg.ctx().get<GameOverState>();
-    CHECK(g.cause == DeathCause::EnergyDepleted);
-    CHECK(std::strlen(death_cause_text(g.cause)) > 0);
+    CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);
 }
 
 TEST_CASE("game_over: render binds score/high-score/reason into scoreboard draw path",
@@ -100,8 +103,7 @@ TEST_CASE("game_over: render binds score/high-score/reason into scoreboard draw 
     score.score = 31415;
     current.value = 92653;
 
-    auto& gos = reg.ctx().get<GameOverState>();
-    gos.cause = DeathCause::EnergyDepleted;
+    reg.ctx().insert_or_assign(EnergyDepletedDeath{});
 
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
@@ -124,8 +126,7 @@ TEST_CASE("game_over: render binds new-best badge and previous score", "[game_ov
     current.value = 5000;
     reg.ctx().insert_or_assign(TerminalResultState{true, 3000});
 
-    auto& gos = reg.ctx().get<GameOverState>();
-    gos.cause = DeathCause::EnergyDepleted;
+    reg.ctx().insert_or_assign(EnergyDepletedDeath{});
 
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
@@ -137,7 +138,7 @@ TEST_CASE("game_over: render binds new-best badge and previous score", "[game_ov
     CHECK(has_bound_text("PREV 3000"));
 }
 
-TEST_CASE("game_over: render omits empty reason binding for DeathCause::None", "[game_over][ui]") {
+TEST_CASE("game_over: render omits empty reason binding when no death-cause tag present", "[game_over][ui]") {
     auto reg = make_registry();
     ScopedGameOverHooks hooks;
 
@@ -146,8 +147,7 @@ TEST_CASE("game_over: render omits empty reason binding for DeathCause::None", "
     score.score = 7;
     current.value = 11;
 
-    auto& gos = reg.ctx().get<GameOverState>();
-    gos.cause = DeathCause::None;
+    REQUIRE(reg.ctx().find<EnergyDepletedDeath>() == nullptr);
 
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;

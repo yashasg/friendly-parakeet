@@ -134,7 +134,6 @@ TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
     // Scoring persistence / end-screen
     static_cast<void>(reg.ctx().get<HighScoreState>());
     static_cast<void>(reg.ctx().get<HighScorePersistence>());
-    static_cast<void>(reg.ctx().get<GameOverState>());
     SUCCEED("all required ctx singletons exist in registry context");
 }
 

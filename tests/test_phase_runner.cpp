@@ -180,7 +180,7 @@ TEST_CASE("tick_fixed_systems: energy depletion requests GameOver before next Pl
     REQUIRE(energy.energy == 0.0f);
     REQUIRE(gs.transition_pending);
     REQUIRE(gs.next_phase == GamePhase::GameOver);
-    CHECK(reg.ctx().get<GameOverState>().cause == DeathCause::EnergyDepleted);
+    CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);
     CHECK(pending.events.empty());
 
     auto late_miss = reg.create();
@@ -228,5 +228,5 @@ TEST_CASE("tick_fixed_systems: fatal final drain wins after song finishes",
     REQUIRE(energy.energy == 0.0f);
     REQUIRE(gs.transition_pending);
     CHECK(gs.next_phase == GamePhase::GameOver);
-    CHECK(reg.ctx().get<GameOverState>().cause == DeathCause::EnergyDepleted);
+    CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);
 }

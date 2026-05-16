@@ -5,7 +5,8 @@
 #include <cstddef>
 
 // EnergyState lives in components/energy_bar.h (gameplay-resource singleton).
-// GameOverState / DeathCause live in components/game_state.h (terminal-phase data).
+// EnergyDepletedDeath (and future *Death ctx tags) live in components/game_state.h
+// (terminal-phase data).
 // Only song-lifecycle singletons (timing/playback state and song-scope result
 // tallies) remain in this header.
 

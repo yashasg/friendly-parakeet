@@ -4,7 +4,8 @@
 // These tests now focus on runtime-live coverage only:
 //   * Schema/content checks that remain relevant to current UI flows.
 //   * Wiring checks that scoring leaves non-terminal misses alone and
-//     game_state_system sets terminal GameOverState.cause.
+//     game_state_system emplaces EnergyDepletedDeath into reg.ctx() on
+//     terminal energy depletion.
 
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entity/registry.hpp>
@@ -115,7 +116,6 @@ TEST_CASE("redfoot/#168: collision miss is non-terminal cause context",
     reg.ctx().emplace<CurrentSongHighScore>();
     reg.ctx().emplace<SongResults>();
     reg.ctx().emplace<SongState>();
-    reg.ctx().emplace<GameOverState>();
     runtime_system_scratch_init(reg);
 
     spawn_aligned_player(reg, constants::PLAYER_Y);
@@ -125,8 +125,7 @@ TEST_CASE("redfoot/#168: collision miss is non-terminal cause context",
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
 
-    auto& gos = reg.ctx().get<GameOverState>();
-    CHECK(gos.cause == DeathCause::None);
+    CHECK(reg.ctx().find<EnergyDepletedDeath>() == nullptr);
 }
 
 TEST_CASE("redfoot/#168: energy depletion falls back to ENERGY DEPLETED",
@@ -137,13 +136,11 @@ TEST_CASE("redfoot/#168: energy depletion falls back to ENERGY DEPLETED",
     auto& energy = reg.ctx().emplace<EnergyState>();
     auto& song = reg.ctx().emplace<SongState>();
     song.playing = true;
-    reg.ctx().emplace<GameOverState>();  // cause stays None
     energy.energy = 0.0f;
 
     game_state_system(reg, 0.016f);
 
-    auto& gos = reg.ctx().get<GameOverState>();
-    CHECK(gos.cause == DeathCause::EnergyDepleted);
+    CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);
 }
 
 TEST_CASE("redfoot/#168: energy depletion writes terminal cause",
@@ -154,11 +151,10 @@ TEST_CASE("redfoot/#168: energy depletion writes terminal cause",
     auto& energy = reg.ctx().emplace<EnergyState>();
     auto& song = reg.ctx().emplace<SongState>();
     song.playing = true;
-    auto& gos = reg.ctx().emplace<GameOverState>();
-    gos.cause = DeathCause::None;
+    REQUIRE(reg.ctx().find<EnergyDepletedDeath>() == nullptr);
     energy.energy = 0.0f;
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gos.cause == DeathCause::EnergyDepleted);
+    CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);
 }

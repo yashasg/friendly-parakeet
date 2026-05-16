@@ -433,8 +433,7 @@ TEST_CASE("scoring: missed NonScorableTag entity is resolved without effects",
 
 TEST_CASE("scoring: missed obstacle drains energy without setting terminal death cause", "[scoring]") {
     auto reg = make_registry();
-    auto& gos = reg.ctx().get<GameOverState>();
-    REQUIRE(gos.cause == DeathCause::None);
+    REQUIRE(reg.ctx().find<EnergyDepletedDeath>() == nullptr);
 
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
@@ -445,7 +444,7 @@ TEST_CASE("scoring: missed obstacle drains energy without setting terminal death
 
     scoring_system(reg, 0.0f);
 
-    CHECK(gos.cause == DeathCause::None);
+    CHECK(reg.ctx().find<EnergyDepletedDeath>() == nullptr);
 }
 
 TEST_CASE("scoring: passive accrual stops once song playback has finished", "[scoring][issue445]") {

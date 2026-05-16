@@ -188,7 +188,6 @@ bool game_loop_init(entt::registry& reg,
     reset_ctx_singleton<CurrentSongHighScore>(reg);
     reset_ctx_singleton<LevelSelectState>(reg);
     reset_ctx_singleton<EnergyState>(reg);
-    reset_ctx_singleton<GameOverState>(reg);
     reset_ctx_singleton<SongResults>(reg);
     reset_ctx_singleton<TestPlayerState>(reg);
     reset_ctx_singleton<TestPlayerSessionState>(reg);
