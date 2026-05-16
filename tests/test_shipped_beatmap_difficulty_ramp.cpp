@@ -47,10 +47,6 @@ static std::vector<std::string> find_shipped_beatmaps() {
 }
 
 
-static bool is_easy_allowed_kind(ObstacleKind k) {
-    return k == ObstacleKind::ShapeGate || k == ObstacleKind::OnsetMarker;
-}
-
 // ── Guard: content directory must be reachable ────────────────────────────
 
 TEST_CASE("difficulty ramp: content directory is reachable from test CWD",
@@ -75,15 +71,15 @@ TEST_CASE("difficulty ramp: easy contains only shape_gate obstacles or onset mar
         std::vector<BeatMapError> errors;
         if (!load_beat_map(path, map, errors, "easy")) continue;
 
-        for (const auto& beat : map.beats) {
-            const auto k = beat.kind;
-            if (!is_easy_allowed_kind(k)) {
-                FAIL_CHECK("easy shape_gate_only: " << path
-                           << " contains unsupported easy obstacle kind="
-                           << static_cast<int>(k)
-                           << " (easy required obstacles must be shape_gate-only per #125; "
-                              "onset_marker is non-blocking metadata per #642)");
-            }
+        // Per #1202/#1204: kind is identified by which per-kind vector the
+        // entry lives in. Easy permits only shape_gate and onset_marker; any
+        // entry in split_path_beats is a violation.
+        for (const auto& beat : map.split_path_beats) {
+            FAIL_CHECK("easy shape_gate_only: " << path
+                       << " contains unsupported easy obstacle (split_path) at beat "
+                       << beat.beat_index
+                       << " (easy required obstacles must be shape_gate-only per #125; "
+                          "onset_marker is non-blocking metadata per #642)");
         }
     }
 }
@@ -107,9 +103,7 @@ TEST_CASE("difficulty ramp: shape-gate count increases with difficulty",
                            << " difficulty=" << diffs[i]);
                 continue;
             }
-            for (const auto& beat : map.beats) {
-                if (beat.kind == ObstacleKind::ShapeGate) ++counts[i];
-            }
+            counts[i] = static_cast<int>(map.shape_gate_beats.size());
         }
 
         if (counts[0] == 0 || counts[1] == 0 || counts[2] == 0) {

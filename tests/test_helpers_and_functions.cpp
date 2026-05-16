@@ -144,11 +144,10 @@ TEST_CASE("ToString: Shape covers all shapes", "[ToString]") {
     CHECK(magic_enum::enum_name(Shape::Hexagon)  == "Hexagon");
 }
 
-TEST_CASE("ToString: ObstacleKind covers all kinds", "[ToString]") {
-    CHECK(magic_enum::enum_name(ObstacleKind::ShapeGate) == "ShapeGate");
-    CHECK(magic_enum::enum_name(ObstacleKind::SplitPath) == "SplitPath");
-    CHECK(magic_enum::enum_name(ObstacleKind::OnsetMarker) == "OnsetMarker");
-}
+// ObstacleKind enum was eradicated in issue #1202/#1204 (per Fabian's
+// existential processing); each former value is now a zero-column tag
+// (ShapeGateTag/SplitPathTag/OnsetMarkerTag) and the magic_enum
+// reflection check no longer applies.
 
 // TimingTier enum was eradicated in issue #1202/#1204 (per Fabian's existential
 // processing); each former value is now a zero-column tag in app/tags/tags.h

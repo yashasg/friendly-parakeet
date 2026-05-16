@@ -17,6 +17,11 @@ std::string_view enum_name_or_unknown(E value) {
     return name.empty() ? std::string_view{"???"} : name;
 }
 
+// Per-tag obstacle-kind label for log lines. Replaces the former
+// `enum_name(ObstacleKind)` lookup with a tag-presence dispatch
+// (issue #1202/#1204). Returns "???" when no kind tag is present.
+std::string_view obstacle_kind_label(const entt::registry& reg, entt::entity entity);
+
 struct SessionLog {
     // Maximum bytes buffered per frame before a flush. Pre-reserved at
     // construction so the hot write path never triggers heap reallocation.

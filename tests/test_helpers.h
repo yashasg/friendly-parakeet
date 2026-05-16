@@ -4,6 +4,7 @@
 #include "components/transform.h"
 #include "components/player.h"
 #include "components/obstacle.h"
+#include "tags/tags.h"
 #include "systems/input.h"
 #include "systems/input_events.h"
 #include "components/game_state.h"
@@ -259,6 +260,7 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
     const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
+    reg.emplace<ShapeGateTag>(obs);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
     reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_SHAPE_GATE});
@@ -275,6 +277,7 @@ inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lan
     const auto& song = reg.ctx().get<SongState>();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
+    reg.emplace<SplitPathTag>(obs);
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
     reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_SPLIT_PATH});

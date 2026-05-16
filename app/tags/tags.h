@@ -27,6 +27,19 @@ struct ShapeWindowMorphOutTag {};
 // ── Obstacles ────────────────────────────────────────────────
 struct ObstacleTag {};
 
+// ── Obstacle kind (per-tag table; exactly one per obstacle entity) ──
+// Replaces the former ObstacleKind enum (issue #1202/#1204). Each
+// former enum value is its own per-kind table:
+//   - ShapeGateTag / SplitPathTag  → zero-column tag; the per-instance
+//     data (`RequiredShape`, `RequiredLane`, `ShapeGateLane`) lives in
+//     its own component table per the schema-per-kind mechanic in #1204.
+//   - OnsetMarkerTag → zero-column tag (no per-instance data).
+// Spawn helpers in `entities/obstacle_entity.h` emplace exactly one
+// kind tag; renderer / logger / test-player systems dispatch via
+// tag-presence views (no `switch` on a discriminator).
+struct ShapeGateTag {};
+struct SplitPathTag {};
+
 // Runtime cue authored from beatmap onset metadata. It is visible but
 // intentionally non-scorable and non-blocking.
 struct OnsetMarkerTag {};

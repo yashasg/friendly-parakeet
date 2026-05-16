@@ -141,7 +141,7 @@ TEST_CASE("game_camera_system drops mesh children for destroyed logical obstacle
     entt::registry reg;
     reg.ctx().emplace<ShapeMeshConfig>();
     reg.ctx().emplace<FloorParams>();
-    auto parent = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
+    auto parent = spawn_shape_gate_obstacle(reg, {360.0f, -120.0f, Shape::Circle});
     REQUIRE(reg.all_of<ObstacleChildren>(parent));
     const auto children = reg.get<ObstacleChildren>(parent);
     REQUIRE(children.count > 0);

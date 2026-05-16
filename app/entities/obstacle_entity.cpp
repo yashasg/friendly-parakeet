@@ -10,75 +10,102 @@
 
 namespace {
 
-bool obstacle_kind_requires_shape(ObstacleKind kind) {
-    return kind == ObstacleKind::ShapeGate || kind == ObstacleKind::SplitPath;
-}
-
-entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams& params) {
-    if (!obstacle_kind_is_active_runtime_spawnable(params.kind)) {
-        throw std::logic_error("Deprecated obstacle kind is not spawnable at runtime");
-    }
-    if (obstacle_kind_requires_shape(params.kind) && !is_valid_shape(params.shape)) {
-        throw std::logic_error("Invalid obstacle shape");
-    }
-    if (params.kind == ObstacleKind::SplitPath && !lane_utils::is_valid(params.req_lane)) {
-        throw std::logic_error("Invalid obstacle lane");
-    }
-
-    auto e = reg.create();
-    reg.emplace<WorldTransform>(e, WorldTransform{{params.x, params.y}});
-    reg.emplace<TagWorldPass>(e);
-
-    switch (params.kind) {
-        case ObstacleKind::ShapeGate: {
-            reg.emplace<Obstacle>(e, int16_t{constants::PTS_SHAPE_GATE});
-            reg.emplace<RequiredShape>(e, params.shape);
-            reg.emplace<ShapeGateLane>(
-                e, static_cast<int8_t>(lane_utils::nearest_lane_for_x(params.x)));
-            reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
-            reg.emplace<Color>(e, constants::SHAPE_COLORS[shape_index(params.shape)]);
-            break;
-        }
-        case ObstacleKind::SplitPath: {
-            reg.emplace<Obstacle>(e, int16_t{constants::PTS_SPLIT_PATH});
-            reg.emplace<RequiredShape>(e, params.shape);
-            reg.emplace<RequiredLane>(e, params.req_lane);
-            reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
-            reg.emplace<Color>(e, Color{255, 215, 0, 255});
-            break;
-        }
-        case ObstacleKind::OnsetMarker: {
-            reg.emplace<Obstacle>(e, int16_t{0});
-            reg.emplace<OnsetMarkerTag>(e);
-            reg.emplace<NonScorableTag>(e);
-            reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
-            reg.emplace<Color>(e, Color{255, 255, 255, 80});
-            break;
-        }
-    }
-
-    return e;
-}
-
 void finish_obstacle(entt::registry& reg, entt::entity e) {
     spawn_obstacle_meshes(reg, e);
     reg.emplace<ObstacleTag>(e);
 }
 
+entt::entity create_shape_gate(entt::registry& reg, const ShapeGateSpawn& params) {
+    if (!is_valid_shape(params.shape)) {
+        throw std::logic_error("Invalid obstacle shape");
+    }
+    auto e = reg.create();
+    reg.emplace<WorldTransform>(e, WorldTransform{{params.x, params.y}});
+    reg.emplace<TagWorldPass>(e);
+    reg.emplace<ShapeGateTag>(e);
+    reg.emplace<Obstacle>(e, int16_t{constants::PTS_SHAPE_GATE});
+    reg.emplace<RequiredShape>(e, params.shape);
+    reg.emplace<ShapeGateLane>(
+        e, static_cast<int8_t>(lane_utils::nearest_lane_for_x(params.x)));
+    reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
+    reg.emplace<Color>(e, constants::SHAPE_COLORS[shape_index(params.shape)]);
+    return e;
+}
+
+entt::entity create_split_path(entt::registry& reg, const SplitPathSpawn& params) {
+    if (!is_valid_shape(params.shape)) {
+        throw std::logic_error("Invalid obstacle shape");
+    }
+    if (!lane_utils::is_valid(params.req_lane)) {
+        throw std::logic_error("Invalid obstacle lane");
+    }
+    auto e = reg.create();
+    reg.emplace<WorldTransform>(e, WorldTransform{{params.x, params.y}});
+    reg.emplace<TagWorldPass>(e);
+    reg.emplace<SplitPathTag>(e);
+    reg.emplace<Obstacle>(e, int16_t{constants::PTS_SPLIT_PATH});
+    reg.emplace<RequiredShape>(e, params.shape);
+    reg.emplace<RequiredLane>(e, params.req_lane);
+    reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
+    reg.emplace<Color>(e, Color{255, 215, 0, 255});
+    return e;
+}
+
+entt::entity create_onset_marker(entt::registry& reg, const OnsetMarkerSpawn& params) {
+    auto e = reg.create();
+    reg.emplace<WorldTransform>(e, WorldTransform{{params.x, params.y}});
+    reg.emplace<TagWorldPass>(e);
+    reg.emplace<OnsetMarkerTag>(e);
+    reg.emplace<Obstacle>(e, int16_t{0});
+    reg.emplace<NonScorableTag>(e);
+    reg.emplace<DrawSize>(e, constants::SCREEN_W_F, 80.0f);
+    reg.emplace<Color>(e, Color{255, 255, 255, 80});
+    return e;
+}
+
 } // namespace
 
-entt::entity spawn_obstacle(entt::registry& reg, const ObstacleSpawnParams& params) {
-    auto e = spawn_obstacle_base(reg, params);
+entt::entity spawn_shape_gate_obstacle(entt::registry& reg, const ShapeGateSpawn& params) {
+    auto e = create_shape_gate(reg, params);
     reg.emplace<Vector2>(e, Vector2{0.0f, params.speed});
     finish_obstacle(reg, e);
     return e;
 }
 
-entt::entity spawn_rhythm_obstacle(entt::registry& reg, const ObstacleSpawnParams& params,
-                                   const BeatInfo& beat_info) {
-    auto e = spawn_obstacle_base(reg, params);
+entt::entity spawn_split_path_obstacle(entt::registry& reg, const SplitPathSpawn& params) {
+    auto e = create_split_path(reg, params);
+    reg.emplace<Vector2>(e, Vector2{0.0f, params.speed});
+    finish_obstacle(reg, e);
+    return e;
+}
+
+entt::entity spawn_onset_marker_obstacle(entt::registry& reg, const OnsetMarkerSpawn& params) {
+    auto e = create_onset_marker(reg, params);
+    reg.emplace<Vector2>(e, Vector2{0.0f, params.speed});
+    finish_obstacle(reg, e);
+    return e;
+}
+
+entt::entity spawn_shape_gate_rhythm(entt::registry& reg, const ShapeGateSpawn& params,
+                                     const BeatInfo& beat_info) {
+    auto e = create_shape_gate(reg, params);
     reg.emplace<BeatInfo>(e, beat_info);
     finish_obstacle(reg, e);
+    return e;
+}
 
+entt::entity spawn_split_path_rhythm(entt::registry& reg, const SplitPathSpawn& params,
+                                     const BeatInfo& beat_info) {
+    auto e = create_split_path(reg, params);
+    reg.emplace<BeatInfo>(e, beat_info);
+    finish_obstacle(reg, e);
+    return e;
+}
+
+entt::entity spawn_onset_marker_rhythm(entt::registry& reg, const OnsetMarkerSpawn& params,
+                                       const BeatInfo& beat_info) {
+    auto e = create_onset_marker(reg, params);
+    reg.emplace<BeatInfo>(e, beat_info);
+    finish_obstacle(reg, e);
     return e;
 }

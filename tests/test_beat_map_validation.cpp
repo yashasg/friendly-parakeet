@@ -35,7 +35,7 @@ TEST_CASE("validate: valid BPM passes", "[validate]") {
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK(validate_beat_map(map, errors));
@@ -48,7 +48,7 @@ TEST_CASE("validate: BPM below 60 fails", "[validate]") {
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -61,7 +61,7 @@ TEST_CASE("validate: BPM above 300 fails", "[validate]") {
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -73,7 +73,7 @@ TEST_CASE("validate: BPM at 60 boundary passes", "[validate]") {
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK(validate_beat_map(map, errors));
@@ -85,7 +85,7 @@ TEST_CASE("validate: BPM at 300 boundary passes", "[validate]") {
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK(validate_beat_map(map, errors));
@@ -99,7 +99,7 @@ TEST_CASE("validate: anchored small negative offset passes", "[validate]") {
     map.offset = -0.1f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK(validate_beat_map(map, errors));
@@ -112,7 +112,7 @@ TEST_CASE("validate: offset below anchored negative floor fails", "[validate]") 
     map.offset = -0.11f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -124,7 +124,7 @@ TEST_CASE("validate: offset above 5.0 fails", "[validate]") {
     map.offset = 5.1f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -138,7 +138,7 @@ TEST_CASE("validate: lead_beats below 2 fails", "[validate]") {
     map.offset = 0.0f;
     map.lead_beats = 1;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -150,7 +150,7 @@ TEST_CASE("validate: lead_beats above 8 fails", "[validate]") {
     map.offset = 0.0f;
     map.lead_beats = 9;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -164,7 +164,7 @@ TEST_CASE("validate: negative beat index fails", "[validate][issue132]") {
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({-1, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({-1, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -190,8 +190,8 @@ TEST_CASE("validate: duplicate beat indices pass when timing order is non-decrea
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({4, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_beats.push_back({4, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK(validate_beat_map(map, errors));
@@ -204,8 +204,8 @@ TEST_CASE("validate: non-monotonic beat indices fail", "[validate]") {
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({5, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    map.beats.push_back({3, ObstacleKind::ShapeGate, Shape::Square, 1, 0});
+    map.shape_gate_beats.push_back({5, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_beats.push_back({3, Shape::Square, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -217,7 +217,7 @@ TEST_CASE("validate: beat index beyond duration fails", "[validate]") {
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 10.0f;  // max_beat = 10 / 0.5 = 20
-    map.beats.push_back({25, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({25, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -231,8 +231,8 @@ TEST_CASE("validate: different shapes >= 3 beats apart passes", "[validate]") {
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    map.beats.push_back({3, ObstacleKind::ShapeGate, Shape::Square, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_beats.push_back({3, Shape::Square, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK(validate_beat_map(map, errors));
@@ -244,8 +244,8 @@ TEST_CASE("validate: different shapes < 3 beats apart fails", "[validate]") {
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Square, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_beats.push_back({2, Shape::Square, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -257,8 +257,8 @@ TEST_CASE("validate: same shapes close together is OK", "[validate]") {
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    map.beats.push_back({1, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_beats.push_back({1, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK(validate_beat_map(map, errors));
@@ -272,7 +272,7 @@ TEST_CASE("validate: shape_gate invalid lane fails", "[validate]") {
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 5, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 5, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -284,7 +284,7 @@ TEST_CASE("validate: split_path invalid lane fails", "[validate][issue932]") {
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::SplitPath, Shape::Circle, 5, 0});
+    map.split_path_beats.push_back({0, Shape::Circle, 5, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -313,7 +313,7 @@ TEST_CASE("validate: split_path is supported in active beatmaps", "[validate][ki
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({4, ObstacleKind::SplitPath, Shape::Circle, 2, 0});
+    map.split_path_beats.push_back({4, Shape::Circle, 2, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK(validate_beat_map(map, errors));
@@ -349,7 +349,9 @@ TEST_CASE("init_song_state: resets playback state", "[init_song]") {
     state.current_beat = 10;
     state.playing = true;
     state.finished = true;
-    state.next_spawn_idx = 5;
+    state.next_shape_gate_idx = 5;
+    state.next_split_path_idx = 7;
+    state.next_onset_marker_idx = 3;
 
     init_song_state(state, map);
 
@@ -357,7 +359,9 @@ TEST_CASE("init_song_state: resets playback state", "[init_song]") {
     CHECK(state.current_beat == -1);
     CHECK_FALSE(state.playing);
     CHECK_FALSE(state.finished);
-    CHECK(state.next_spawn_idx == 0);
+    CHECK(state.next_shape_gate_idx == 0);
+    CHECK(state.next_split_path_idx == 0);
+    CHECK(state.next_onset_marker_idx == 0);
 }
 
 TEST_CASE("init_song_state: computes derived fields", "[init_song]") {
@@ -528,7 +532,9 @@ TEST_CASE("load_and_validate_beat_map rejects invalid BPM at load time", "[load]
     CHECK_FALSE(load_and_validate_beat_map(file.path.string(), map, errors));
     REQUIRE_FALSE(errors.empty());
     CHECK(errors[0].message.find("BPM") != std::string::npos);
-    CHECK(map.beats.empty());
+    CHECK(map.shape_gate_beats.empty());
+    CHECK(map.split_path_beats.empty());
+    CHECK(map.onset_marker_beats.empty());
 }
 
 TEST_CASE("load_and_validate_beat_map rejects negative beat_index at load time",
@@ -549,7 +555,9 @@ TEST_CASE("load_and_validate_beat_map rejects negative beat_index at load time",
     CHECK_FALSE(load_and_validate_beat_map(file.path.string(), map, errors));
     REQUIRE_FALSE(errors.empty());
     CHECK(errors[0].message.find("Beat index") != std::string::npos);
-    CHECK(map.beats.empty());
+    CHECK(map.shape_gate_beats.empty());
+    CHECK(map.split_path_beats.empty());
+    CHECK(map.onset_marker_beats.empty());
 }
 
 TEST_CASE("load_and_validate_beat_map accepts valid beatmaps at load time",
@@ -569,7 +577,7 @@ TEST_CASE("load_and_validate_beat_map accepts valid beatmaps at load time",
     std::vector<BeatMapError> errors;
     REQUIRE(load_and_validate_beat_map(file.path.string(), map, errors));
     CHECK(errors.empty());
-    REQUIRE(map.beats.size() == 1);
+    REQUIRE(map.shape_gate_beats.size() == 1);
     CHECK(map.song_id == "valid_load");
 }
 
@@ -583,7 +591,7 @@ TEST_CASE("validate_beat_map explicit constants: custom BPM range is respected",
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors, vc));
@@ -601,7 +609,7 @@ TEST_CASE("validate_beat_map explicit constants: BPM within custom range passes"
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK(validate_beat_map(map, errors, vc));
@@ -618,8 +626,8 @@ TEST_CASE("validate_beat_map explicit constants: custom shape gap is respected",
     map.lead_beats = 4;
     map.duration = 60.0f;
     // 3 beats apart — passes default rule but must fail the stricter custom rule
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    map.beats.push_back({3, ObstacleKind::ShapeGate, Shape::Square, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_beats.push_back({3, Shape::Square, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors, vc));
@@ -643,10 +651,10 @@ TEST_CASE("parse: beat_times and per-obstacle time_sec are loaded", "[parse][bea
     })";
 
     CHECK(parse_beat_map(json, map, errors));
-    REQUIRE(map.beats.size() == 1);
+    REQUIRE(map.shape_gate_beats.size() == 1);
     REQUIRE(map.beat_times.size() == 3);
-    CHECK_THAT(map.beats[0].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
-    CHECK(map.beats[0].has_time_sec);
+    CHECK_THAT(map.shape_gate_beats[0].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
+    CHECK(map.shape_gate_beats[0].has_time_sec);
 }
 
 TEST_CASE("parse: non-positive BPM is rejected before deriving beat timing",
@@ -668,7 +676,9 @@ TEST_CASE("parse: non-positive BPM is rejected before deriving beat timing",
     CHECK_FALSE(parse_beat_map(json, map, errors));
     REQUIRE_FALSE(errors.empty());
     CHECK(errors[0].message.find("BPM") != std::string::npos);
-    CHECK(map.beats.empty());
+    CHECK(map.shape_gate_beats.empty());
+    CHECK(map.split_path_beats.empty());
+    CHECK(map.onset_marker_beats.empty());
 }
 
 TEST_CASE("parse: non-positive lead_beats is rejected before runtime timing",
@@ -689,7 +699,9 @@ TEST_CASE("parse: non-positive lead_beats is rejected before runtime timing",
     CHECK_FALSE(parse_beat_map(json, map, errors));
     REQUIRE_FALSE(errors.empty());
     CHECK(errors[0].message.find("lead_beats") != std::string::npos);
-    CHECK(map.beats.empty());
+    CHECK(map.shape_gate_beats.empty());
+    CHECK(map.split_path_beats.empty());
+    CHECK(map.onset_marker_beats.empty());
 }
 
 TEST_CASE("parse: beat without time_sec falls back to beat_times", "[parse][beat_times]") {
@@ -708,9 +720,9 @@ TEST_CASE("parse: beat without time_sec falls back to beat_times", "[parse][beat
     })";
 
     CHECK(parse_beat_map(json, map, errors));
-    REQUIRE(map.beats.size() == 1);
-    CHECK_FALSE(map.beats[0].has_time_sec);
-    CHECK_THAT(map.beats[0].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
+    REQUIRE(map.shape_gate_beats.size() == 1);
+    CHECK_FALSE(map.shape_gate_beats[0].has_time_sec);
+    CHECK_THAT(map.shape_gate_beats[0].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
 }
 
 TEST_CASE("parse: beat_times must be finite", "[parse][beat_times][issue995]") {
@@ -775,7 +787,7 @@ TEST_CASE("parse: missing selected difficulty falls back to valid difficulty",
 
     CHECK(parse_beat_map(json, map, errors, "hard"));
     CHECK(map.difficulty == "medium");
-    REQUIRE(map.beats.size() == 1);
+    REQUIRE(map.shape_gate_beats.size() == 1);
     REQUIRE_FALSE(errors.empty());
     CHECK(errors[0].message.find("falling back to 'medium'") != std::string::npos);
 }
@@ -813,7 +825,9 @@ TEST_CASE("parse: malformed selected difficulty fails without fallback",
 
         INFO("difficulty json: " << tc.difficulty_json);
         CHECK_FALSE(parse_beat_map(json, map, errors, "hard"));
-        CHECK(map.beats.empty());
+        CHECK(map.shape_gate_beats.empty());
+        CHECK(map.split_path_beats.empty());
+        CHECK(map.onset_marker_beats.empty());
         REQUIRE_FALSE(errors.empty());
         CHECK(errors[0].message.find(tc.expected_message) != std::string::npos);
     }
@@ -873,10 +887,9 @@ TEST_CASE("parse: split_path loads required shape and lane", "[parse][issue932]"
     })";
 
     CHECK(parse_beat_map(json, map, errors));
-    REQUIRE(map.beats.size() == 1);
-    CHECK(map.beats[0].kind == ObstacleKind::SplitPath);
-    CHECK(map.beats[0].shape == Shape::Triangle);
-    CHECK(map.beats[0].lane == 2);
+    REQUIRE(map.split_path_beats.size() == 1);
+    CHECK(map.split_path_beats[0].shape == Shape::Triangle);
+    CHECK(map.split_path_beats[0].lane == 2);
 }
 
 TEST_CASE("parse: same beat_index entries are ordered by resolved time_sec", "[parse][beat_times][ordering]") {
@@ -897,10 +910,10 @@ TEST_CASE("parse: same beat_index entries are ordered by resolved time_sec", "[p
     })";
 
     REQUIRE(parse_beat_map(json, map, errors));
-    REQUIRE(map.beats.size() == 3);
-    CHECK_THAT(map.beats[0].time_sec, Catch::Matchers::WithinAbs(1.3f, 0.001f));
-    CHECK_THAT(map.beats[1].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
-    CHECK_THAT(map.beats[2].time_sec, Catch::Matchers::WithinAbs(1.6f, 0.001f));
+    REQUIRE(map.shape_gate_beats.size() == 3);
+    CHECK_THAT(map.shape_gate_beats[0].time_sec, Catch::Matchers::WithinAbs(1.3f, 0.001f));
+    CHECK_THAT(map.shape_gate_beats[1].time_sec, Catch::Matchers::WithinAbs(1.4f, 0.001f));
+    CHECK_THAT(map.shape_gate_beats[2].time_sec, Catch::Matchers::WithinAbs(1.6f, 0.001f));
 }
 
 TEST_CASE("parse: same beat_index entries keep authored order for identical timing", "[parse][beat_times][ordering]") {
@@ -919,9 +932,9 @@ TEST_CASE("parse: same beat_index entries keep authored order for identical timi
     })";
 
     REQUIRE(parse_beat_map(json, map, errors));
-    REQUIRE(map.beats.size() == 2);
-    CHECK(map.beats[0].shape == Shape::Square);
-    CHECK(map.beats[1].shape == Shape::Triangle);
+    REQUIRE(map.shape_gate_beats.size() == 2);
+    CHECK(map.shape_gate_beats[0].shape == Shape::Square);
+    CHECK(map.shape_gate_beats[1].shape == Shape::Triangle);
 }
 
 TEST_CASE("parse: blocked lane arrays are rejected from active beatmaps", "[parse][blocked_mask][issue873]") {
@@ -1036,7 +1049,7 @@ TEST_CASE("validate: unsupported timing range fails before beat range conversion
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = std::numeric_limits<float>::max();
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -1050,8 +1063,8 @@ TEST_CASE("validate: authored time_sec beyond duration fails", "[validate][beat_
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 3.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0.5f, true});
-    map.beats.push_back({4, ObstacleKind::ShapeGate, Shape::Square, 1, 3.5f, true});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.5f, true});
+    map.shape_gate_beats.push_back({4, Shape::Square, 1, 3.5f, true});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -1065,8 +1078,8 @@ TEST_CASE("validate: authored time_sec must be non-decreasing", "[validate][beat
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 60.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 1.2f, true});
-    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 1.1f, true});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 1.2f, true});
+    map.shape_gate_beats.push_back({2, Shape::Circle, 1, 1.1f, true});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -1080,11 +1093,10 @@ TEST_CASE("validate: mixed authored time_sec edge cases are checked", "[validate
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 10.0f;
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0.0f, true});
-    map.beats.push_back({1, ObstacleKind::ShapeGate, Shape::Circle, 1, 0.0f, false});
-    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 1.0f, true});
-    map.beats.push_back({3, ObstacleKind::ShapeGate, Shape::Circle, 1,
-                         std::numeric_limits<float>::quiet_NaN(), true});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, true});
+    map.shape_gate_beats.push_back({1, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_beats.push_back({2, Shape::Circle, 1, 1.0f, true});
+    map.shape_gate_beats.push_back({3, Shape::Circle, 1, std::numeric_limits<float>::quiet_NaN(), true});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -1098,8 +1110,8 @@ TEST_CASE("validate: same beat_index requires non-decreasing resolved time", "[v
     map.offset = 0.0f;
     map.lead_beats = 4;
     map.duration = 10.0f;
-    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 1.5f, true});
-    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Square, 1, 1.4f, true});
+    map.shape_gate_beats.push_back({2, Shape::Circle, 1, 1.5f, true});
+    map.shape_gate_beats.push_back({2, Shape::Square, 1, 1.4f, true});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -1114,7 +1126,7 @@ TEST_CASE("validate: beat index out of range for beat_times fails", "[validate][
     map.lead_beats = 4;
     map.duration = 60.0f;
     map.beat_times = {0.0f, 0.5f}; // valid indices: 0..1
-    map.beats.push_back({2, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({2, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -1129,7 +1141,7 @@ TEST_CASE("validate: beat_times must be finite", "[validate][beat_times][issue99
     map.lead_beats = 4;
     map.duration = 60.0f;
     map.beat_times = {0.0f, std::numeric_limits<float>::infinity()};
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
@@ -1144,8 +1156,8 @@ TEST_CASE("validate: beat_times must be non-decreasing", "[validate][beat_times]
     map.lead_beats = 4;
     map.duration = 60.0f;
     map.beat_times = {1.0f, 0.5f};
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
-    map.beats.push_back({1, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_beats.push_back({1, Shape::Circle, 1, 0.0f, false});
 
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));

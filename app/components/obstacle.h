@@ -6,42 +6,12 @@
 #include "player.h"
 #include "tags/tags.h"
 
-enum class ObstacleKind : uint8_t {
-    ShapeGate,
-    SplitPath,
-    OnsetMarker,
-};
-
-constexpr bool obstacle_kind_is_active_runtime_spawnable(ObstacleKind kind) {
-    return kind == ObstacleKind::ShapeGate ||
-           kind == ObstacleKind::SplitPath ||
-           kind == ObstacleKind::OnsetMarker;
-}
-
-constexpr bool obstacle_kind_is_active_blocking_beatmap_kind(ObstacleKind kind) {
-    return kind == ObstacleKind::ShapeGate || kind == ObstacleKind::SplitPath;
-}
-
-constexpr bool obstacle_kind_is_active_beatmap_spawnable(ObstacleKind kind) {
-    return obstacle_kind_is_active_blocking_beatmap_kind(kind) ||
-           kind == ObstacleKind::OnsetMarker;
-}
-
 struct Obstacle {
     int16_t      base_points = 200;
 
     constexpr Obstacle() = default;
     constexpr explicit Obstacle(int16_t points) : base_points(points) {}
 };
-
-constexpr ObstacleKind obstacle_kind_from_components(bool has_required_shape,
-                                                     bool has_required_lane) {
-    if (has_required_lane) {
-        return ObstacleKind::SplitPath;
-    }
-    (void)has_required_shape;
-    return ObstacleKind::ShapeGate;
-}
 
 struct RequiredShape {
     Shape shape = Shape::Circle;
