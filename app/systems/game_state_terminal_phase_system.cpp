@@ -78,7 +78,7 @@ void game_state_enter_terminal_phase(entt::registry& reg, GamePhase phase) {
     emit_terminal_feedback(reg, phase, is_new_high_score);
 
     auto& gs = reg.ctx().get<GameState>();
-    enter_phase(gs, phase);
+    enter_phase(reg, gs, phase);
 
     if (phase != GamePhase::GameOver) return;
 

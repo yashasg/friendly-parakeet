@@ -28,6 +28,7 @@
 #include "systems/runtime_systems.h"
 #include "systems/input_routing.h"
 #include "systems/input_system_private.h"
+#include "systems/game_phase_transition.h"
 
 // Sets up a registry with all singletons in their default state
 inline entt::registry make_registry() {
@@ -41,6 +42,7 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<GameState>(GameState{
         GamePhase::Playing, 0.0f, false, GamePhase::Playing
     });
+    sync_game_phase_tags(reg, GamePhase::Playing);
     reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<ScoreDisplay>();
     reg.ctx().emplace<CurrentSongHighScore>();
