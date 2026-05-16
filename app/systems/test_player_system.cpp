@@ -197,32 +197,43 @@ void test_player_system(entt::registry& reg, float dt) {
     if (!state || !state->active) return;
 
     auto& gs    = reg.ctx().get<GameState>();
-    auto& disp  = reg.ctx().get<entt::dispatcher>();
-    auto* log   = reg.ctx().find<SessionLog>();
-    auto* song  = reg.ctx().find<SongState>();
+    auto& ctx   = reg.ctx();
+    auto& disp  = ctx.get<entt::dispatcher>();
+    auto* log   = ctx.find<SessionLog>();
+    auto* song  = ctx.find<SongState>();
     float song_time = song ? song->song_time : 0.0f;
 
+    // Per Fabian's existential processing (issue #1202/#1204, PR F): each
+    // former `gs.phase == GamePhase::X` branch dispatches on the per-phase
+    // ctx-tag mirror seeded by `enter_phase()` / `sync_game_phase_tags()`.
+    // `phase_timer` stays a scalar on `GameState` until PR G deletes the
+    // enum-typed field.
+    const bool title_phase         = ctx.contains<GamePhaseTitleTag>();
+    const bool game_over_phase     = ctx.contains<GamePhaseGameOverTag>();
+    const bool song_complete_phase = ctx.contains<GamePhaseSongCompleteTag>();
+    const bool paused_phase        = ctx.contains<GamePhasePausedTag>();
+    const bool level_select_phase  = ctx.contains<GamePhaseLevelSelectTag>();
+    const bool playing_phase       = ctx.contains<GamePhasePlayingTag>();
+
     // ── AUTO-START ───────────────────────────────────────────
-    if (gs.phase == GamePhase::Title || gs.phase == GamePhase::GameOver ||
-        gs.phase == GamePhase::SongComplete) {
+    if (title_phase || game_over_phase || song_complete_phase) {
         if (gs.phase_timer > constants::TEST_PLAYER_AUTO_START_DELAY) {
             // On end screens, press Restart; on Title, press Confirm
-            auto target_action = (gs.phase == GamePhase::GameOver ||
-                                  gs.phase == GamePhase::SongComplete)
+            auto target_action = (game_over_phase || song_complete_phase)
                                  ? MenuActionKind::Restart
                                  : MenuActionKind::Confirm;
             disp.enqueue<MenuPressEvent>({target_action, 0});
             if (log) {
                 const char* phase_name =
-                    (gs.phase == GamePhase::Title) ? "Title" :
-                    (gs.phase == GamePhase::SongComplete) ? "SongComplete" : "GameOver";
+                    title_phase         ? "Title" :
+                    song_complete_phase ? "SongComplete" : "GameOver";
                 session_log_write(*log, song_time, "PLAYER",
                     "AUTO_START phase=%s", phase_name);
 
                 // Log song results before replaying
-                if (gs.phase == GamePhase::SongComplete) {
-                    auto* results = reg.ctx().find<SongResults>();
-                    auto* score = reg.ctx().find<ScoreState>();
+                if (song_complete_phase) {
+                    auto* results = ctx.find<SongResults>();
+                    auto* score = ctx.find<ScoreState>();
                     if (results && score) {
                         session_log_write(*log, song_time, "GAME",
                             "SONG_END result=CLEAR score=%d perfect=%d good=%d ok=%d bad=%d miss=%d",
@@ -237,18 +248,18 @@ void test_player_system(entt::registry& reg, float dt) {
         return;
     }
 
-    if (gs.phase == GamePhase::Paused) {
+    if (paused_phase) {
         disp.enqueue<MenuPressEvent>({MenuActionKind::Confirm, 0});
         return;
     }
 
     // Auto-confirm on LevelSelect (level/difficulty already set in main.cpp)
-    if (gs.phase == GamePhase::LevelSelect && gs.phase_timer > constants::UI_ENTRY_DEBOUNCE) {
+    if (level_select_phase && gs.phase_timer > constants::UI_ENTRY_DEBOUNCE) {
         disp.enqueue<MenuPressEvent>({MenuActionKind::Confirm, 0});
         return;
     }
 
-    if (gs.phase != GamePhase::Playing) return;
+    if (!playing_phase) return;
     if (!song) return;
 
     // Reset stale state when a new play session starts (after enter_playing

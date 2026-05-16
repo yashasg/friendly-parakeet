@@ -418,10 +418,13 @@ void input_system(entt::registry& reg, float raw_dt) {
 
     // ── Background / suspend (edge-triggered) ─────────────
     // Pause only on the frame focus is *lost*, not every frame while unfocused.
+    // Per Fabian's existential processing (issue #1202/#1204, PR F), the
+    // current-phase predicate dispatches on the `GamePhasePlayingTag` ctx
+    // mirror rather than reading `gs.phase`.
     {
         bool focused = IsWindowFocused();
         if (priv.was_focused && !focused &&
-            reg.ctx().get<GameState>().phase == GamePhase::Playing) {
+            reg.ctx().contains<GamePhasePlayingTag>()) {
             auto& gs = reg.ctx().get<GameState>();
             gs.transition_pending = true;
             gs.next_phase = GamePhase::Paused;

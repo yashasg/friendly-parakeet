@@ -43,7 +43,6 @@ const Font& popup_font_for_size(const TextContext& ctx, FontSize font_size) {
 
 void ui_render_system(entt::registry& reg, float /*alpha*/) {
     auto& text_ctx = reg.ctx().get<TextContext>();
-    const auto& gs = reg.ctx().get<GameState>();
     const auto& st = reg.ctx().get<ScreenTransform>();
     auto& ui_cam = ui_camera(reg).cam;
 
@@ -75,7 +74,7 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     }
 
     // Overlay (if active)
-    if (gs.phase == GamePhase::Paused) {
+    if (reg.ctx().contains<GamePhasePausedTag>()) {
         DrawRectangleRec({0, 0, constants::SCREEN_W_F, constants::SCREEN_H_F},
                          {0, 0, 0, 160});
     }

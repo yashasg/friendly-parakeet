@@ -12,7 +12,7 @@ using Catch::Matchers::WithinAbs;
 
 TEST_CASE("tick_playing_systems: no-op when phase is Paused", "[phase_guard]") {
     auto reg = make_rhythm_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::Paused;
+    set_test_phase(reg, GamePhase::Paused);
 
     // Observable state that at least three different playing systems would mutate:
     //   scoring_system    → ScoreState::score (distance bonus each tick)
@@ -38,7 +38,7 @@ TEST_CASE("tick_playing_systems: no-op when phase is Paused", "[phase_guard]") {
 
 TEST_CASE("tick_playing_systems: no-op when phase is GameOver", "[phase_guard]") {
     auto reg = make_rhythm_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
 
     // Expired obstacle to match Paused coverage (MissTag / ScoredTag guard).
     auto obs = reg.create();
@@ -134,7 +134,7 @@ TEST_CASE("tick_playing_systems: shape window activates before collision", "[pha
 TEST_CASE("tick_fixed_systems: popup_feedback and energy run in score-feedback chain", "[phase_guard][integration][order_regression]") {
     auto reg = make_rhythm_registry();
     // Phase must be Playing for popup_feedback and energy guards to pass.
-    reg.ctx().get<GameState>().phase = GamePhase::Playing;
+    set_test_phase(reg, GamePhase::Playing);
 
     // Pre-seed a popup request directly (bypasses scoring_system path; tests
     // that popup_feedback_system is wired and consumes the queue).

@@ -19,7 +19,7 @@ void request_energy_depleted_game_over(entt::registry& reg) {
 }  // namespace
 
 void energy_system(entt::registry& reg, float dt) {
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+    if (!reg.ctx().contains<GamePhasePlayingTag>()) return;
     auto* energy = reg.ctx().find<EnergyState>();
     if (!energy) return;
     auto* song = reg.ctx().find<SongState>();

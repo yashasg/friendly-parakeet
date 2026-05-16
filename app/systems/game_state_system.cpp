@@ -30,9 +30,9 @@ void reset_web_playing_lane_marker(entt::registry& reg) {
     wasm_smoke_lane_marker_state(reg).last_lane = -1;
 }
 
-void update_web_playing_lane_marker(entt::registry& reg, const GameState& gs) {
+void update_web_playing_lane_marker(entt::registry& reg) {
     auto& marker = wasm_smoke_lane_marker_state(reg);
-    if (gs.phase != GamePhase::Playing) {
+    if (!reg.ctx().contains<GamePhasePlayingTag>()) {
         marker.last_lane = -1;
         return;
     }
@@ -122,10 +122,13 @@ void game_state_system(entt::registry& reg, float dt) {
             // See #482 for the rationale that converged screen controllers
             // and input routing on the deferred (transition_pending) path.
             //
-            // NB: this `gs.phase == GamePhase::Paused` check is on the
-            // current phase (not the dispatch target) and is migrated as
-            // part of PR F (`if (gs.phase == X)` sweep), not PR C.
-            if (gs.phase == GamePhase::Paused) {
+            // Resume-from-pause check reads the current-phase tag mirror
+            // (`GamePhasePausedTag`), not `gs.phase`, per Fabian's existential
+            // processing (issue #1202/#1204, PR F): consumers dispatch on
+            // tag presence, never on the enum value. `sync_next_phase_tags`
+            // above mutates only the `NextPhase*Tag` mirror, so the current
+            // phase tag still reflects the pre-transition phase here.
+            if (ctx.contains<GamePhasePausedTag>()) {
                 enter_phase(reg, gs, GamePhase::Playing);
             } else {
                 setup_play_session(reg);
@@ -157,7 +160,7 @@ void game_state_system(entt::registry& reg, float dt) {
 
         clear_next_phase_tags(reg);
 #if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
-        if (gs.phase != GamePhase::Playing) {
+        if (!reg.ctx().contains<GamePhasePlayingTag>()) {
             reset_web_playing_lane_marker(reg);
         }
 #endif
@@ -165,7 +168,8 @@ void game_state_system(entt::registry& reg, float dt) {
     }
 
     // LevelSelect input handling
-    if (gs.phase == GamePhase::LevelSelect && gs.phase_timer > constants::UI_ENTRY_DEBOUNCE) {
+    if (reg.ctx().contains<GamePhaseLevelSelectTag>() &&
+        gs.phase_timer > constants::UI_ENTRY_DEBOUNCE) {
         auto& lss = reg.ctx().get<LevelSelectState>();
         if (lss.confirmed) {
             lss.confirmed = false;
@@ -178,10 +182,10 @@ void game_state_system(entt::registry& reg, float dt) {
     }
 
 #if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
-    update_web_playing_lane_marker(reg, gs);
+    update_web_playing_lane_marker(reg);
 #endif
     // Playing → SongComplete when song finishes (all obstacles cleared)
-    if (gs.phase == GamePhase::Playing) {
+    if (reg.ctx().contains<GamePhasePlayingTag>()) {
         auto* energy = reg.ctx().find<EnergyState>();
         auto* song = reg.ctx().find<SongState>();
         if (energy && energy->energy <= 0.0f) {

@@ -304,7 +304,7 @@ TEST_CASE("player_movement: slide returns to grounded", "[player]") {
 
 TEST_CASE("player_action: not in Playing phase skips processing", "[player]") {
     auto reg = make_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::Title;
+    set_test_phase(reg, GamePhase::Title);
     make_player(reg);
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
@@ -319,7 +319,7 @@ TEST_CASE("player_action: not in Playing phase skips processing", "[player]") {
 
 TEST_CASE("player_movement: not in Playing phase skips processing", "[player]") {
     auto reg = make_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::Paused;
+    set_test_phase(reg, GamePhase::Paused);
     auto p = make_player(reg);
     reg.get<PlayerShape>(p).morph_t = 0.0f;
 

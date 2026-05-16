@@ -202,10 +202,9 @@ TEST_CASE("R7: GoEvent delivered in GameOver phase — player_input_handle_go no
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& lane  = reg.get<Lane>(player);
-    auto& gs    = reg.ctx().get<GameState>();
     auto& disp  = reg.ctx().get<entt::dispatcher>();
 
-    gs.phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
 
     disp.enqueue(GoEvent{Direction::Right});
     disp.update<GoEvent>();
@@ -229,7 +228,7 @@ TEST_CASE("R7: drain-first order — GoEvent processed in pre-transition phase, 
     disp.update<GoEvent>();
     CHECK(lane.target == 2);
 
-    gs.phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
 
     disp.update<GoEvent>();
     CHECK(lane.target == 2);
@@ -250,7 +249,7 @@ TEST_CASE("R7: two-tick stale-event regression — GoEvent from tick N absent in
 
     lane.lerp_t = 0.5f;
 
-    gs.phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
 
     disp.update<GoEvent>();
 

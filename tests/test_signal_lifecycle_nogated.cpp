@@ -18,7 +18,7 @@ TEST_CASE("game_state: finished song waits for obstacle drain before SongComplet
           "[game_state][runtime]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Playing;
+    set_test_phase(reg, GamePhase::Playing);
     gs.transition_pending = false;
 
     auto& song = reg.ctx().get<SongState>();

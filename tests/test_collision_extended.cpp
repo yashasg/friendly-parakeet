@@ -386,7 +386,7 @@ TEST_CASE("collision: multiple misses accumulate in miss_count", "[collision][rh
     // Reset game over for second collision
     auto& gs = reg.ctx().get<GameState>();
     gs.transition_pending = false;
-    gs.phase = GamePhase::Playing;
+    set_test_phase(reg, GamePhase::Playing);
 
     // Second miss
     make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);

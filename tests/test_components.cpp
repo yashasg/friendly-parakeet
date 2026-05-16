@@ -145,7 +145,7 @@ TEST_CASE("ecs: make_registry dispatcher is wired — GoEvent listeners register
     auto reg = make_registry();
 
     // Promote to Playing so player_input_handle_go has observable effect.
-    reg.ctx().get<GameState>().phase = GamePhase::Playing;
+    set_test_phase(reg, GamePhase::Playing);
     auto player = make_player(reg);
     auto& lane  = reg.get<Lane>(player);
 

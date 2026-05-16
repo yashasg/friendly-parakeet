@@ -128,7 +128,7 @@ TEST_CASE("shape_window: not in Playing phase skips processing", "[shape_window]
     auto player = make_rhythm_player(reg);
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
-    reg.ctx().get<GameState>().phase = GamePhase::Paused;
+    set_test_phase(reg, GamePhase::Paused);
 
     set_window_phase_morph_in(reg, player);
     sw.window_start = song.song_time;

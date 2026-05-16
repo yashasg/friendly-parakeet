@@ -4,8 +4,7 @@
 #include "../systems/input_events.h"
 
 void level_select_handle_go(entt::registry& reg, const GoEvent& evt) {
-    auto& gs = reg.ctx().get<GameState>();
-    if (gs.phase != GamePhase::LevelSelect) return;
+    if (!reg.ctx().contains<GamePhaseLevelSelectTag>()) return;
 
     auto& lss = reg.ctx().get<LevelSelectState>();
     if (evt.dir == Direction::Up) {
@@ -21,7 +20,7 @@ void level_select_handle_go(entt::registry& reg, const GoEvent& evt) {
 
 void level_select_handle_press_menu(entt::registry& reg, const MenuPressEvent& evt) {
     auto& gs = reg.ctx().get<GameState>();
-    if (gs.phase != GamePhase::LevelSelect) return;
+    if (!reg.ctx().contains<GamePhaseLevelSelectTag>()) return;
     if (gs.phase_timer < 0.05f) return;
 
     auto& lss = reg.ctx().get<LevelSelectState>();

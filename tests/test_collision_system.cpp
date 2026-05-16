@@ -261,7 +261,7 @@ TEST_CASE("collision: no player means no collision processing", "[collision]") {
 
 TEST_CASE("collision: not in Playing phase skips processing", "[collision]") {
     auto reg = make_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
     make_player(reg);
     make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
 
