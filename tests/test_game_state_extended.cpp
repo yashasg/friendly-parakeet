@@ -30,14 +30,13 @@ TEST_CASE("game_state: energy depletion beats song complete after playback finis
     song.finished = true;
     song.playing = false;
     reg.ctx().get<EnergyState>().energy = 0.0f;
-    auto& game_over = reg.ctx().get<GameOverState>();
-    game_over.cause = DeathCause::None;
+    REQUIRE(reg.ctx().find<EnergyDepletedDeath>() == nullptr);
 
     game_state_system(reg, 0.016f);
 
     CHECK(gs.transition_pending);
     CHECK(gs.next_phase == GamePhase::GameOver);
-    CHECK(game_over.cause == DeathCause::EnergyDepleted);
+    CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);
 }
 
 TEST_CASE("game_state: song complete waits for obstacles to clear", "[gamestate]") {

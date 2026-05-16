@@ -11,10 +11,7 @@ void request_energy_depleted_game_over(entt::registry& reg) {
     auto& gs = reg.ctx().get<GameState>();
     if (gs.transition_pending) return;
 
-    auto* gos = reg.ctx().find<GameOverState>();
-    if (gos) {
-        gos->cause = DeathCause::EnergyDepleted;
-    }
+    reg.ctx().insert_or_assign(EnergyDepletedDeath{});
     gs.transition_pending = true;
     gs.next_phase = GamePhase::GameOver;
 }

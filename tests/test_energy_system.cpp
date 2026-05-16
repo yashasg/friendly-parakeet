@@ -106,7 +106,7 @@ TEST_CASE("energy: game_state triggers game over when energy reaches zero", "[en
     auto& gs = reg.ctx().get<GameState>();
     CHECK(gs.transition_pending);
     CHECK(gs.next_phase == GamePhase::GameOver);
-    CHECK(reg.ctx().get<GameOverState>().cause == DeathCause::EnergyDepleted);
+    CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);
 }
 
 TEST_CASE("energy: no action when SongState not present", "[energy]") {
@@ -136,7 +136,7 @@ TEST_CASE("energy: depleted energy requests game over when song is not playing",
     auto& gs = reg.ctx().get<GameState>();
     CHECK(gs.transition_pending);
     CHECK(gs.next_phase == GamePhase::GameOver);
-    CHECK(reg.ctx().get<GameOverState>().cause == DeathCause::EnergyDepleted);
+    CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);
 }
 
 TEST_CASE("energy: no action when EnergyState not present", "[energy]") {
