@@ -92,5 +92,5 @@ void render_game_over_screen_ui(entt::registry& reg) {
     auto& gs = reg.ctx().get<GameState>();
     if (gs.phase_timer <= constants::GAME_OVER_INPUT_DELAY) return;
 
-    dispatch_end_screen_choice(gs, controller.state());
+    dispatch_end_screen_choice(reg, controller.state());
 }

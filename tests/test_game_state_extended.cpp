@@ -137,13 +137,15 @@ TEST_CASE("game_state: song_complete button choice restart", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::SongComplete;
     gs.phase_timer = 1.0f;
-    gs.end_choice = EndScreenChoice::Restart;
+    reg.ctx().emplace<EndChoiceRestart>();
 
     game_state_system(reg, 0.016f);
 
     CHECK(gs.transition_pending);
     CHECK(gs.next_phase == GamePhase::Playing);
-    CHECK(gs.end_choice == EndScreenChoice::None);
+    CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceMainMenu>() == nullptr);
 }
 
 TEST_CASE("game_state: song_complete button choice level_select", "[gamestate]") {
@@ -151,13 +153,15 @@ TEST_CASE("game_state: song_complete button choice level_select", "[gamestate]")
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::SongComplete;
     gs.phase_timer = 1.0f;
-    gs.end_choice = EndScreenChoice::LevelSelect;
+    reg.ctx().emplace<EndChoiceLevelSelect>();
 
     game_state_system(reg, 0.016f);
 
     CHECK(gs.transition_pending);
     CHECK(gs.next_phase == GamePhase::LevelSelect);
-    CHECK(gs.end_choice == EndScreenChoice::None);
+    CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceMainMenu>() == nullptr);
 }
 
 TEST_CASE("game_state: song_complete button choice main_menu", "[gamestate]") {
@@ -165,7 +169,7 @@ TEST_CASE("game_state: song_complete button choice main_menu", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::SongComplete;
     gs.phase_timer = 1.0f;
-    gs.end_choice = EndScreenChoice::MainMenu;
+    reg.ctx().emplace<EndChoiceMainMenu>();
 
     game_state_system(reg, 0.016f);
 
@@ -178,7 +182,7 @@ TEST_CASE("game_state: song_complete ignores choice during delay", "[gamestate]"
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::SongComplete;
     gs.phase_timer = 0.2f;  // < 0.5s delay
-    gs.end_choice = EndScreenChoice::Restart;
+    reg.ctx().emplace<EndChoiceRestart>();
 
     game_state_system(reg, 0.016f);
 
@@ -392,7 +396,7 @@ TEST_CASE("game_state: game_over restart button triggers playing", "[gamestate]"
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.5f;
-    gs.end_choice = EndScreenChoice::Restart;
+    reg.ctx().emplace<EndChoiceRestart>();
 
     game_state_system(reg, 0.016f);
 
@@ -405,7 +409,7 @@ TEST_CASE("game_state: game_over main_menu button triggers title", "[gamestate]"
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.5f;
-    gs.end_choice = EndScreenChoice::MainMenu;
+    reg.ctx().emplace<EndChoiceMainMenu>();
 
     game_state_system(reg, 0.016f);
 
@@ -418,13 +422,15 @@ TEST_CASE("game_state: game_over level_select button triggers level_select", "[g
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.5f;
-    gs.end_choice = EndScreenChoice::LevelSelect;
+    reg.ctx().emplace<EndChoiceLevelSelect>();
 
     game_state_system(reg, 0.016f);
 
     CHECK(gs.transition_pending);
     CHECK(gs.next_phase == GamePhase::LevelSelect);
-    CHECK(gs.end_choice == EndScreenChoice::None);
+    CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceMainMenu>() == nullptr);
 }
 
 TEST_CASE("game_state: game_over ignores choice at readiness boundary", "[gamestate]") {
@@ -432,12 +438,14 @@ TEST_CASE("game_state: game_over ignores choice at readiness boundary", "[gamest
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.4f;
-    gs.end_choice = EndScreenChoice::Restart;
+    reg.ctx().emplace<EndChoiceRestart>();
 
     game_state_system(reg, 0.0f);
 
     CHECK_FALSE(gs.transition_pending);
-    CHECK(gs.end_choice == EndScreenChoice::Restart);
+    // Tag persists across the input-delay window so the press is honored
+    // once the delay elapses (pre-migration semantics).
+    CHECK(reg.ctx().find<EndChoiceRestart>() != nullptr);
 }
 
 TEST_CASE("game_state: game_over ignores missing end choice", "[gamestate]") {
@@ -445,12 +453,16 @@ TEST_CASE("game_state: game_over ignores missing end choice", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.5f;
-    gs.end_choice = EndScreenChoice::None;
+    REQUIRE(reg.ctx().find<EndChoiceRestart>() == nullptr);
+    REQUIRE(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
+    REQUIRE(reg.ctx().find<EndChoiceMainMenu>() == nullptr);
 
     game_state_system(reg, 0.016f);
 
     CHECK_FALSE(gs.transition_pending);
-    CHECK(gs.end_choice == EndScreenChoice::None);
+    CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceMainMenu>() == nullptr);
 }
 
 TEST_CASE("game_state: game_over restart enters fresh play session on next tick", "[gamestate][play_session]") {
@@ -458,7 +470,7 @@ TEST_CASE("game_state: game_over restart enters fresh play session on next tick"
     auto& gs = reg.ctx().get<GameState>();
     gs.phase = GamePhase::GameOver;
     gs.phase_timer = 0.5f;
-    gs.end_choice = EndScreenChoice::Restart;
+    reg.ctx().emplace<EndChoiceRestart>();
 
     auto stale = reg.create();
     reg.emplace<ObstacleTag>(stale);

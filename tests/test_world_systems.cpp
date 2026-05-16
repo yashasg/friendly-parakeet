@@ -171,7 +171,9 @@ TEST_CASE("game_state: song complete keyboard confirm waits for button debounce"
     game_state_system(reg, 0.0f);
 
     CHECK_FALSE(gs.transition_pending);
-    CHECK(gs.end_choice == EndScreenChoice::None);
+    CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
+    CHECK(reg.ctx().find<EndChoiceMainMenu>() == nullptr);
 }
 
 TEST_CASE("game_state: game over ignores touch during delay", "[gamestate]") {

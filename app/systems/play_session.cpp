@@ -173,6 +173,9 @@ void setup_play_session(entt::registry& reg) {
         erase_ctx_if_exists<EnergyState>(reg);
         erase_ctx_if_exists<SongResults>(reg);
         erase_ctx_if_exists<EnergyDepletedDeath>(reg);
+        erase_ctx_if_exists<EndChoiceRestart>(reg);
+        erase_ctx_if_exists<EndChoiceLevelSelect>(reg);
+        erase_ctx_if_exists<EndChoiceMainMenu>(reg);
         lss.confirmed = false;
         auto& gs = reg.ctx().get<GameState>();
         enter_phase(gs, GamePhase::LevelSelect);
@@ -246,9 +249,13 @@ void setup_play_session(entt::registry& reg) {
         results.total_notes = count_result_notes(beatmap);
         assign_or_emplace_ctx(reg, results);
     }
-    // Clear any death-cause tags carried over from a previous run; absence
-    // of all *Death ctx tags is the "no terminal cause recorded yet" state.
+    // Clear any death-cause and end-screen-choice tags carried over from a
+    // previous run; absence of all *Death and EndChoice* ctx tags is the
+    // "no terminal cause / no choice recorded yet" state.
     erase_ctx_if_exists<EnergyDepletedDeath>(reg);
+    erase_ctx_if_exists<EndChoiceRestart>(reg);
+    erase_ctx_if_exists<EndChoiceLevelSelect>(reg);
+    erase_ctx_if_exists<EndChoiceMainMenu>(reg);
 
     // Load stored high score for this song+difficulty into CurrentSongHighScore
     if (auto* hs = reg.ctx().find<HighScoreState>()) {

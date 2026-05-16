@@ -14,15 +14,24 @@ enum class GamePhase : uint8_t {
     Tutorial     = 7
 };
 
-enum class EndScreenChoice : uint8_t { None = 0, Restart = 1, LevelSelect = 2, MainMenu = 3 };
-
 struct GameState {
     GamePhase phase            = GamePhase::Title;
     float     phase_timer      = 0.0f;
     bool      transition_pending = false;
     GamePhase next_phase       = GamePhase::Title;
-    EndScreenChoice end_choice = EndScreenChoice::None;
 };
+
+// ── End-screen menu choice (per-choice ctx tables) ───────────
+// Per Fabian's existential processing (issue #1202/#1204), each former
+// EndScreenChoice value is its own zero-column table on `registry.ctx()`.
+// Presence of an EndChoice* tag signals the player's selection on a Game
+// Over or Song Complete screen; absence of all three is the "no choice
+// yet" state (what EndScreenChoice::None represented). One transform per
+// tag in `game_state_end_screen_system` consumes the choice when the
+// per-phase input delay has elapsed; until then the tag persists.
+struct EndChoiceRestart {};
+struct EndChoiceLevelSelect {};
+struct EndChoiceMainMenu {};
 
 struct LevelSelectState {
     int selected_level      = 0;
