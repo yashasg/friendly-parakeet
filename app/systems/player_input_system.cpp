@@ -1,5 +1,6 @@
 #include "all_systems.h"
 #include "../components/game_state.h"
+#include "game_phase_transition.h"
 #include "../components/player.h"
 #include "../components/rendering.h"
 #include "input_events.h"
@@ -14,12 +15,10 @@
 namespace {
 
 bool gameplay_input_enabled(entt::registry& reg) {
-    // Per Fabian's existential processing (issue #1202/#1204, PR F): dispatch
-    // on the per-phase ctx-tag mirror rather than `gs.phase`. The
-    // `transition_pending` scalar stays on `GameState` until PR G deletes the
-    // enum-typed field.
-    const auto& gs = reg.ctx().get<GameState>();
-    return reg.ctx().contains<GamePhasePlayingTag>() && !gs.transition_pending;
+    // Per Fabian's existential processing (issue #1202/#1204): dispatch on the
+    // per-phase ctx-tag mirror; the pending-transition signal is the presence
+    // of any `NextPhase*Tag` on `reg.ctx()` (`is_phase_transition_pending`).
+    return reg.ctx().contains<GamePhasePlayingTag>() && !is_phase_transition_pending(reg);
 }
 
 void push_haptic(entt::registry& reg, HapticEvent event) {

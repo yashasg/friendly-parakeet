@@ -1,6 +1,7 @@
 // Tutorial screen controller - renders raygui layout and dispatches start action.
 
 #include "../../components/game_state.h"
+#include "../../systems/game_phase_transition.h"
 #include "../../systems/input.h"
 #include "../../constants.h"
 #include "../../entities/settings.h"
@@ -60,9 +61,7 @@ void tutorial_screen_continue(entt::registry& reg) {
         }
     }
 
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::Playing;
+    request_phase_transition<NextPhasePlayingTag>(reg);
 }
 
 void render_tutorial_screen_ui(entt::registry& reg) {

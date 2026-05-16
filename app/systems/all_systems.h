@@ -11,7 +11,8 @@ void test_player_system(entt::registry& reg, float dt);
 
 // Phase 2: Game State
 void game_state_system(entt::registry& reg, float dt);
-void game_state_enter_terminal_phase(entt::registry& reg, GamePhase phase);
+void game_state_enter_terminal_phase_game_over(entt::registry& reg);
+void game_state_enter_terminal_phase_song_complete(entt::registry& reg);
 void game_state_end_screen_system(entt::registry& reg, float dt);
 
 // Phase 3: Rhythm Engine (headless)

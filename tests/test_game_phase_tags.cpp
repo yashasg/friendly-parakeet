@@ -1,17 +1,16 @@
-// Per-phase ctx-tag mirror invariant — issue #1202 / #1204 (GamePhase PR A).
+// Per-phase ctx-tag mirror invariant — issue #1202 / #1204 (GamePhase PR G).
 //
 // Per Fabian's existential processing chapter, each former enum value gets its
-// own zero-column table. For GamePhase, the value-typed `gs.phase` field is
-// mirrored 1:1 by a ctx-tag — exactly one of GamePhase{Title,...,Tutorial}Tag
-// is present on `reg.ctx()` at any time. `enter_phase()` and the public
-// `sync_game_phase_tags()` are the only writers that keep the mirror correct;
-// these tests pin the invariant so the mirror cannot drift as subsequent
-// migration PRs migrate consumers off `gs.phase`.
+// own zero-column table. For the active game phase, exactly one of
+// `GamePhase{Title,...,Tutorial}Tag` is present on `reg.ctx()` at any time;
+// `enter_phase<...>()` and `sync_game_phase_tags<...>()` are the only writers
+// that keep the mirror correct. These tests pin the invariant so it cannot
+// drift as future systems migrate or new phases are introduced.
 //
-// PR C (`NextPhase*Tag`) adds a second mirror for the pending-transition
-// target (`gs.next_phase`). The mirror is pulsed by `sync_next_phase_tags()`
-// at the top of the dispatch block and drained by `clear_next_phase_tags()`
-// at the bottom — exactly one `NextPhase*Tag` between those two points,
+// A second per-tag table (`NextPhase*Tag`) carries the pending-transition
+// target. The mirror is pulsed by `request_phase_transition<...>` at the
+// request site and drained by `clear_next_phase_tags()` at the bottom of the
+// dispatch block — exactly one `NextPhase*Tag` between those two points,
 // zero outside the block. These tests also pin that invariant so the
 // pending-transition dispatch (per-tag transforms in `game_state_system`)
 // cannot drift either.
@@ -59,20 +58,20 @@ TEST_CASE("game_phase_tags: sync emplaces exactly the matching tag",
     entt::registry reg;
     reg.ctx().emplace<GameState>();
 
-    sync_game_phase_tags(reg, GamePhase::Title);
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
     CHECK(count_phase_tags(reg) == 1);
     CHECK(reg.ctx().find<GamePhaseTitleTag>() != nullptr);
 
-    sync_game_phase_tags(reg, GamePhase::Playing);
+    sync_game_phase_tags<GamePhasePlayingTag>(reg);
     CHECK(count_phase_tags(reg) == 1);
     CHECK(reg.ctx().find<GamePhaseTitleTag>() == nullptr);
     CHECK(reg.ctx().find<GamePhasePlayingTag>() != nullptr);
 
-    sync_game_phase_tags(reg, GamePhase::GameOver);
+    sync_game_phase_tags<GamePhaseGameOverTag>(reg);
     CHECK(count_phase_tags(reg) == 1);
     CHECK(reg.ctx().find<GamePhaseGameOverTag>() != nullptr);
 
-    sync_game_phase_tags(reg, GamePhase::SongComplete);
+    sync_game_phase_tags<GamePhaseSongCompleteTag>(reg);
     CHECK(count_phase_tags(reg) == 1);
     CHECK(reg.ctx().find<GamePhaseSongCompleteTag>() != nullptr);
 }
@@ -80,71 +79,65 @@ TEST_CASE("game_phase_tags: sync emplaces exactly the matching tag",
 TEST_CASE("game_phase_tags: enter_phase keeps the tag mirror in lockstep",
           "[game_phase][tags][ecs_refactor][issue_1202]") {
     entt::registry reg;
-    auto& gs = reg.ctx().emplace<GameState>();
-    sync_game_phase_tags(reg, gs.phase);
+    reg.ctx().emplace<GameState>();
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
     REQUIRE(reg.ctx().find<GamePhaseTitleTag>() != nullptr);
 
-    enter_phase(reg, gs, GamePhase::Playing);
-    CHECK(gs.phase == GamePhase::Playing);
+    enter_phase<GamePhasePlayingTag>(reg);
+    CHECK(reg.ctx().contains<GamePhasePlayingTag>());
     CHECK(count_phase_tags(reg) == 1);
     CHECK(reg.ctx().find<GamePhasePlayingTag>() != nullptr);
     CHECK(reg.ctx().find<GamePhaseTitleTag>() == nullptr);
 
-    enter_phase(reg, gs, GamePhase::Paused);
-    CHECK(gs.phase == GamePhase::Paused);
+    enter_phase<GamePhasePausedTag>(reg);
+    CHECK(reg.ctx().contains<GamePhasePausedTag>());
     CHECK(count_phase_tags(reg) == 1);
     CHECK(reg.ctx().find<GamePhasePausedTag>() != nullptr);
 
-    enter_phase(reg, gs, GamePhase::GameOver);
-    CHECK(gs.phase == GamePhase::GameOver);
+    enter_phase<GamePhaseGameOverTag>(reg);
+    CHECK(reg.ctx().contains<GamePhaseGameOverTag>());
     CHECK(count_phase_tags(reg) == 1);
     CHECK(reg.ctx().find<GamePhaseGameOverTag>() != nullptr);
 
-    enter_phase(reg, gs, GamePhase::Tutorial);
-    CHECK(gs.phase == GamePhase::Tutorial);
+    enter_phase<GamePhaseTutorialTag>(reg);
+    CHECK(reg.ctx().contains<GamePhaseTutorialTag>());
     CHECK(count_phase_tags(reg) == 1);
     CHECK(reg.ctx().find<GamePhaseTutorialTag>() != nullptr);
 }
 
-TEST_CASE("game_phase_tags: every phase value has a matching tag",
+TEST_CASE("game_phase_tags: every phase tag exercise keeps mirror count at one",
           "[game_phase][tags][ecs_refactor][issue_1202]") {
     entt::registry reg;
-    auto& gs = reg.ctx().emplace<GameState>();
+    reg.ctx().emplace<GameState>();
 
-    const GamePhase all[] = {
-        GamePhase::Title,
-        GamePhase::LevelSelect,
-        GamePhase::Playing,
-        GamePhase::Paused,
-        GamePhase::GameOver,
-        GamePhase::SongComplete,
-        GamePhase::Settings,
-        GamePhase::Tutorial,
-    };
-    for (GamePhase p : all) {
-        enter_phase(reg, gs, p);
-        CHECK(count_phase_tags(reg) == 1);
-    }
+    enter_phase<GamePhaseTitleTag>(reg);        CHECK(count_phase_tags(reg) == 1);
+    enter_phase<GamePhaseLevelSelectTag>(reg);  CHECK(count_phase_tags(reg) == 1);
+    enter_phase<GamePhasePlayingTag>(reg);      CHECK(count_phase_tags(reg) == 1);
+    enter_phase<GamePhasePausedTag>(reg);       CHECK(count_phase_tags(reg) == 1);
+    enter_phase<GamePhaseGameOverTag>(reg);     CHECK(count_phase_tags(reg) == 1);
+    enter_phase<GamePhaseSongCompleteTag>(reg); CHECK(count_phase_tags(reg) == 1);
+    enter_phase<GamePhaseSettingsTag>(reg);     CHECK(count_phase_tags(reg) == 1);
+    enter_phase<GamePhaseTutorialTag>(reg);     CHECK(count_phase_tags(reg) == 1);
 }
 
-TEST_CASE("next_phase_tags: sync emplaces exactly the matching tag",
+TEST_CASE("next_phase_tags: request_phase_transition emplaces exactly the matching tag",
           "[game_phase][tags][ecs_refactor][issue_1202]") {
     entt::registry reg;
 
-    sync_next_phase_tags(reg, GamePhase::Title);
+    request_phase_transition<NextPhaseTitleTag>(reg);
     CHECK(count_next_phase_tags(reg) == 1);
     CHECK(reg.ctx().find<NextPhaseTitleTag>() != nullptr);
 
-    sync_next_phase_tags(reg, GamePhase::Playing);
+    request_phase_transition<NextPhasePlayingTag>(reg);
     CHECK(count_next_phase_tags(reg) == 1);
     CHECK(reg.ctx().find<NextPhaseTitleTag>() == nullptr);
     CHECK(reg.ctx().find<NextPhasePlayingTag>() != nullptr);
 
-    sync_next_phase_tags(reg, GamePhase::GameOver);
+    request_phase_transition<NextPhaseGameOverTag>(reg);
     CHECK(count_next_phase_tags(reg) == 1);
     CHECK(reg.ctx().find<NextPhaseGameOverTag>() != nullptr);
 
-    sync_next_phase_tags(reg, GamePhase::SongComplete);
+    request_phase_transition<NextPhaseSongCompleteTag>(reg);
     CHECK(count_next_phase_tags(reg) == 1);
     CHECK(reg.ctx().find<NextPhaseSongCompleteTag>() != nullptr);
 }
@@ -152,7 +145,7 @@ TEST_CASE("next_phase_tags: sync emplaces exactly the matching tag",
 TEST_CASE("next_phase_tags: clear drains every tag",
           "[game_phase][tags][ecs_refactor][issue_1202]") {
     entt::registry reg;
-    sync_next_phase_tags(reg, GamePhase::Tutorial);
+    request_phase_transition<NextPhaseTutorialTag>(reg);
     REQUIRE(count_next_phase_tags(reg) == 1);
 
     clear_next_phase_tags(reg);
@@ -163,22 +156,32 @@ TEST_CASE("next_phase_tags: clear drains every tag",
     CHECK(count_next_phase_tags(reg) == 0);
 }
 
-TEST_CASE("next_phase_tags: every phase value has a matching tag",
+TEST_CASE("next_phase_tags: every phase tag exercise keeps mirror count at one",
           "[game_phase][tags][ecs_refactor][issue_1202]") {
     entt::registry reg;
 
-    const GamePhase all[] = {
-        GamePhase::Title,
-        GamePhase::LevelSelect,
-        GamePhase::Playing,
-        GamePhase::Paused,
-        GamePhase::GameOver,
-        GamePhase::SongComplete,
-        GamePhase::Settings,
-        GamePhase::Tutorial,
-    };
-    for (GamePhase p : all) {
-        sync_next_phase_tags(reg, p);
-        CHECK(count_next_phase_tags(reg) == 1);
-    }
+    request_phase_transition<NextPhaseTitleTag>(reg);        CHECK(count_next_phase_tags(reg) == 1);
+    request_phase_transition<NextPhaseLevelSelectTag>(reg);  CHECK(count_next_phase_tags(reg) == 1);
+    request_phase_transition<NextPhasePlayingTag>(reg);      CHECK(count_next_phase_tags(reg) == 1);
+    request_phase_transition<NextPhasePausedTag>(reg);       CHECK(count_next_phase_tags(reg) == 1);
+    request_phase_transition<NextPhaseGameOverTag>(reg);     CHECK(count_next_phase_tags(reg) == 1);
+    request_phase_transition<NextPhaseSongCompleteTag>(reg); CHECK(count_next_phase_tags(reg) == 1);
+    request_phase_transition<NextPhaseSettingsTag>(reg);     CHECK(count_next_phase_tags(reg) == 1);
+    request_phase_transition<NextPhaseTutorialTag>(reg);     CHECK(count_next_phase_tags(reg) == 1);
+}
+
+TEST_CASE("phase_transition: is_phase_transition_pending reflects NextPhase*Tag presence",
+          "[game_phase][tags][ecs_refactor][issue_1202]") {
+    entt::registry reg;
+
+    CHECK_FALSE(is_phase_transition_pending(reg));
+
+    request_phase_transition<NextPhasePlayingTag>(reg);
+    CHECK(is_phase_transition_pending(reg));
+
+    clear_next_phase_tags(reg);
+    CHECK_FALSE(is_phase_transition_pending(reg));
+
+    request_phase_transition<NextPhaseGameOverTag>(reg);
+    CHECK(is_phase_transition_pending(reg));
 }

@@ -5,7 +5,7 @@
 TEST_CASE("level_select_controller: select difficulty press updates state", "[level_select][ui]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::LevelSelect);
+    set_test_phase<GamePhaseLevelSelectTag>(reg);
     gs.phase_timer = 0.2f;
 
     auto& lss = reg.ctx().get<LevelSelectState>();
@@ -21,7 +21,7 @@ TEST_CASE("level_select_controller: select difficulty press updates state", "[le
 TEST_CASE("level_select_controller: select level press updates state", "[level_select][ui]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::LevelSelect);
+    set_test_phase<GamePhaseLevelSelectTag>(reg);
     gs.phase_timer = 0.2f;
 
     auto& lss = reg.ctx().get<LevelSelectState>();
@@ -38,7 +38,7 @@ TEST_CASE("level_select_controller: invalid semantic indices do not update selec
           "[level_select][ui][issue738]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::LevelSelect);
+    set_test_phase<GamePhaseLevelSelectTag>(reg);
     gs.phase_timer = 0.2f;
 
     auto& lss = reg.ctx().get<LevelSelectState>();
@@ -59,7 +59,7 @@ TEST_CASE("level_select_controller: invalid semantic indices do not update selec
 TEST_CASE("level_select_controller: ignores menu presses during entry delay", "[level_select][ui]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::LevelSelect);
+    set_test_phase<GamePhaseLevelSelectTag>(reg);
     gs.phase_timer = 0.01f;
 
     auto& lss = reg.ctx().get<LevelSelectState>();

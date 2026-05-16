@@ -24,9 +24,9 @@ TEST_CASE("death_model: one miss drains energy without immediate GameOver", "[de
                Catch::Matchers::WithinAbs(constants::ENERGY_MAX - constants::ENERGY_DRAIN_MISS,
                                             0.0001f));
     CHECK(energy.flash_timer > 0.0f);
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("death_model: GameOver is requested when energy depletes", "[death_model]") {
@@ -52,7 +52,7 @@ TEST_CASE("death_model: GameOver is requested when energy depletes", "[death_mod
                Catch::Matchers::WithinAbs(
                    constants::ENERGY_MAX - static_cast<float>(SAFE_MISS_COUNT) * constants::ENERGY_DRAIN_MISS,
                    0.0001f));
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 
     make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
     collision_system(reg, 0.016f);
@@ -60,13 +60,12 @@ TEST_CASE("death_model: GameOver is requested when energy depletes", "[death_mod
     energy_system(reg, 0.016f);
 
     CHECK(energy.energy == 0.0f);
-    CHECK(reg.ctx().get<GameState>().transition_pending);
-    CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
+    CHECK(is_phase_transition_pending(reg));
+    CHECK(reg.ctx().contains<NextPhaseGameOverTag>());
 
     game_state_system(reg, 0.016f);
 
-    const auto& state = reg.ctx().get<GameState>();
-    CHECK(state.phase == GamePhase::GameOver);
+    CHECK(reg.ctx().contains<GamePhaseGameOverTag>());
     CHECK_FALSE(reg.ctx().get<SongState>().playing);
 }
 
@@ -95,7 +94,7 @@ TEST_CASE("death_model: timing recovery can preserve survival margin", "[death_m
                Catch::Matchers::WithinAbs(0.15f + constants::ENERGY_RECOVER_PERFECT -
                                                constants::ENERGY_DRAIN_MISS,
                                            0.0001f));
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("death_model: close hit banks points without instant GameOver", "[death_model]") {
@@ -115,7 +114,7 @@ TEST_CASE("death_model: close hit banks points without instant GameOver", "[deat
 
     CHECK(reg.all_of<ScoredTag>(obstacle));
     CHECK(reg.ctx().get<EnergyState>().energy == constants::ENERGY_MAX);
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("death_model: close miss drains energy instead of instant GameOver", "[death_model]") {
@@ -139,7 +138,7 @@ TEST_CASE("death_model: close miss drains energy instead of instant GameOver", "
     CHECK_THAT(reg.ctx().get<EnergyState>().energy,
                Catch::Matchers::WithinAbs(constants::ENERGY_MAX - constants::ENERGY_DRAIN_MISS,
                                            0.0001f));
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("death_model: collision clamps depleted energy and requests GameOver", "[death_model]") {
@@ -155,11 +154,11 @@ TEST_CASE("death_model: collision clamps depleted energy and requests GameOver",
     energy_system(reg, 0.016f);
 
     CHECK(energy.energy == 0.0f);
-    CHECK(reg.ctx().get<GameState>().transition_pending);
-    CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
+    CHECK(is_phase_transition_pending(reg));
+    CHECK(reg.ctx().contains<NextPhaseGameOverTag>());
 
     game_state_system(reg, 0.016f);
-    CHECK(reg.ctx().get<GameState>().phase == GamePhase::GameOver);
+    CHECK(reg.ctx().contains<GamePhaseGameOverTag>());
 }
 
 TEST_CASE("death_model: scroll-past miss drains energy and requests GameOver", "[death_model]") {
@@ -180,18 +179,18 @@ TEST_CASE("death_model: scroll-past miss drains energy and requests GameOver", "
     CHECK(reg.all_of<MissTag>(obstacle));
     CHECK(reg.all_of<ScoredTag>(obstacle));
     // Energy not yet drained — scoring_system hasn't run.
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 
     scoring_system(reg, 0.016f);
     energy_system(reg, 0.016f);
 
     CHECK(energy.energy == 0.0f);
     CHECK(reg.ctx().get<SongResults>().miss_count == 1);
-    CHECK(reg.ctx().get<GameState>().transition_pending);
-    CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
+    CHECK(is_phase_transition_pending(reg));
+    CHECK(reg.ctx().contains<NextPhaseGameOverTag>());
 
     game_state_system(reg, 0.016f);
-    CHECK(reg.ctx().get<GameState>().phase == GamePhase::GameOver);
+    CHECK(reg.ctx().contains<GamePhaseGameOverTag>());
 }
 
 // Regression: a scroll-past miss that depletes energy to 0 triggers GameOver
@@ -212,11 +211,11 @@ TEST_CASE("death_model: scroll-past fatal miss triggers GameOver same frame", "[
     energy_system(reg, 0.016f);
 
     CHECK(energy.energy == 0.0f);
-    CHECK(reg.ctx().get<GameState>().transition_pending);
-    CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
+    CHECK(is_phase_transition_pending(reg));
+    CHECK(reg.ctx().contains<NextPhaseGameOverTag>());
 
     game_state_system(reg, 0.016f);
-    CHECK(reg.ctx().get<GameState>().phase == GamePhase::GameOver);
+    CHECK(reg.ctx().contains<GamePhaseGameOverTag>());
 }
 
 // Regression: a scroll-past miss must not double-drain (energy delta = exactly

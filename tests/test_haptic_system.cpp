@@ -51,9 +51,8 @@ TEST_CASE("haptic_system: safe when dispatcher absent from context", "[haptic]")
 
 TEST_CASE("game state haptic: DeathCrash enqueued on game over", "[haptic]") {
     auto reg = make_registry();
-    set_test_phase(reg, GamePhase::Playing);
-    reg.ctx().get<GameState>().transition_pending = true;
-    reg.ctx().get<GameState>().next_phase = GamePhase::GameOver;
+    set_test_phase<GamePhasePlayingTag>(reg);
+    request_phase_transition<NextPhaseGameOverTag>(reg);
 
     game_state_system(reg, 0.016f);
 
@@ -70,8 +69,7 @@ TEST_CASE("game state haptic: NewHighScore enqueued when score exceeds high scor
     auto& current = reg.ctx().get<CurrentSongHighScore>();
     score.score = 1000;
     current.value = 500;
-    reg.ctx().get<GameState>().transition_pending = true;
-    reg.ctx().get<GameState>().next_phase = GamePhase::GameOver;
+    request_phase_transition<NextPhaseGameOverTag>(reg);
 
     game_state_system(reg, 0.016f);
 
@@ -88,8 +86,7 @@ TEST_CASE("game state haptic: NewHighScore NOT enqueued when no new high score o
     auto& current = reg.ctx().get<CurrentSongHighScore>();
     score.score = 400;
     current.value = 500;
-    reg.ctx().get<GameState>().transition_pending = true;
-    reg.ctx().get<GameState>().next_phase = GamePhase::GameOver;
+    request_phase_transition<NextPhaseGameOverTag>(reg);
 
     game_state_system(reg, 0.016f);
 
@@ -107,8 +104,7 @@ TEST_CASE("game state haptic: DeathCrash still enqueued; listener gates hardware
     // haptic_system completes without crash when the listener gates the hardware call.
     auto reg = make_registry();
     settings_state(reg).haptics_enabled = false;
-    reg.ctx().get<GameState>().transition_pending = true;
-    reg.ctx().get<GameState>().next_phase = GamePhase::GameOver;
+    request_phase_transition<NextPhaseGameOverTag>(reg);
 
     game_state_system(reg, 0.016f);
 
@@ -124,7 +120,7 @@ TEST_CASE("game state haptic: DeathCrash still enqueued; listener gates hardware
 
 TEST_CASE("game state haptic: RetryTap enqueued when Restart pressed on end screen", "[haptic]") {
     auto reg = make_registry();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     reg.ctx().get<GameState>().phase_timer = 1.0f;
 
     auto btn = make_menu_button(reg, MenuActionKind::Restart);
@@ -141,7 +137,7 @@ TEST_CASE("game state haptic: RetryTap enqueued when Restart pressed on end scre
 
 TEST_CASE("game state haptic: UIButtonTap enqueued for non-Restart end screen button", "[haptic]") {
     auto reg = make_registry();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     reg.ctx().get<GameState>().phase_timer = 1.0f;
 
     auto btn = make_menu_button(reg, MenuActionKind::GoMainMenu);
@@ -160,7 +156,7 @@ TEST_CASE("game state haptic: haptic_system no-crash when haptics_enabled=false 
     // Listener gates platform call; system must complete cleanly.
     auto reg = make_registry();
     settings_state(reg).haptics_enabled = false;
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     reg.ctx().get<GameState>().phase_timer = 1.0f;
 
     auto btn = make_menu_button(reg, MenuActionKind::Restart);

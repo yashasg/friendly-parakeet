@@ -34,7 +34,7 @@ TEST_CASE("song_playback: song_time advances by dt", "[song_playback]") {
 
 TEST_CASE("song_playback: no advancement when not Playing", "[song_playback]") {
     auto reg = make_rhythm_registry();
-    set_test_phase(reg, GamePhase::Title);
+    set_test_phase<GamePhaseTitleTag>(reg);
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 1.0f;
 
@@ -189,8 +189,7 @@ TEST_CASE("song_playback: finished song stays latched and does not restart on la
 TEST_CASE("song_playback: obstacles can clear after playback ends without soft-lock",
           "[song_playback][gamestate][issue444]") {
     auto reg = make_rhythm_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Playing);
+    set_test_phase<GamePhasePlayingTag>(reg);
 
     auto& song = reg.ctx().get<SongState>();
     song.duration_sec = 1.0f;
@@ -213,15 +212,13 @@ TEST_CASE("song_playback: obstacles can clear after playback ends without soft-l
     CHECK(reg.view<ObstacleTag>().empty());
 
     tick_fixed_systems(reg, 0.016f);
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::SongComplete);
+    CHECK(reg.ctx().contains<NextPhaseSongCompleteTag>());
 }
 
 TEST_CASE("song_playback: end-of-song transitions to SongComplete and remains stopped",
           "[song_playback][gamestate][song_complete][regression]") {
     auto reg = make_rhythm_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Playing);
+    set_test_phase<GamePhasePlayingTag>(reg);
 
     auto& song = reg.ctx().get<SongState>();
     song.duration_sec = 1.0f;
@@ -235,12 +232,11 @@ TEST_CASE("song_playback: end-of-song transitions to SongComplete and remains st
     REQUIRE_FALSE(song.playing);
 
     game_state_system(reg, 0.016f);
-    REQUIRE(gs.transition_pending);
-    REQUIRE(gs.next_phase == GamePhase::SongComplete);
+    REQUIRE(reg.ctx().contains<NextPhaseSongCompleteTag>());
 
     game_state_system(reg, 0.016f);
-    REQUIRE_FALSE(gs.transition_pending);
-    REQUIRE(gs.phase == GamePhase::SongComplete);
+    REQUIRE_FALSE(is_phase_transition_pending(reg));
+    REQUIRE(reg.ctx().contains<GamePhaseSongCompleteTag>());
 
     const float terminal_song_time = song.song_time;
     song_playback_system(reg, 1.0f);
@@ -300,7 +296,7 @@ TEST_CASE("song_playback: pause to playing resume guard is one-shot",
     music.started = true;
     music.paused = true;
 
-    set_test_phase(reg, GamePhase::Playing);
+    set_test_phase<GamePhasePlayingTag>(reg);
     song.playing = true;
 
     song_playback_system(reg, 0.016f);

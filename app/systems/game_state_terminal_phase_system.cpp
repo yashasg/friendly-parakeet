@@ -58,14 +58,21 @@ bool update_and_persist_high_score(entt::registry& reg) {
     return recorded_new_high_score;
 }
 
-void emit_terminal_feedback(entt::registry& reg, GamePhase phase, bool is_new_high_score) {
+void emit_terminal_feedback_game_over(entt::registry& reg, bool is_new_high_score) {
     auto* disp = reg.ctx().find<entt::dispatcher>();
     if (!disp) return;
 
-    if (phase == GamePhase::GameOver) {
-        disp->enqueue<PlaySfxEvent>({SFX::Crash});
-        disp->enqueue<PlayHapticEvent>({HapticEvent::DeathCrash});
+    disp->enqueue<PlaySfxEvent>({SFX::Crash});
+    disp->enqueue<PlayHapticEvent>({HapticEvent::DeathCrash});
+    if (is_new_high_score) {
+        disp->enqueue<PlayHapticEvent>({HapticEvent::NewHighScore});
     }
+}
+
+void emit_terminal_feedback_song_complete(entt::registry& reg, bool is_new_high_score) {
+    auto* disp = reg.ctx().find<entt::dispatcher>();
+    if (!disp) return;
+
     if (is_new_high_score) {
         disp->enqueue<PlayHapticEvent>({HapticEvent::NewHighScore});
     }
@@ -73,17 +80,21 @@ void emit_terminal_feedback(entt::registry& reg, GamePhase phase, bool is_new_hi
 
 }  // namespace
 
-void game_state_enter_terminal_phase(entt::registry& reg, GamePhase phase) {
+void game_state_enter_terminal_phase_game_over(entt::registry& reg) {
     const bool is_new_high_score = update_and_persist_high_score(reg);
-    emit_terminal_feedback(reg, phase, is_new_high_score);
+    emit_terminal_feedback_game_over(reg, is_new_high_score);
 
-    auto& gs = reg.ctx().get<GameState>();
-    enter_phase(reg, gs, phase);
-
-    if (phase != GamePhase::GameOver) return;
+    enter_phase<GamePhaseGameOverTag>(reg);
 
     if (auto* song = reg.ctx().find<SongState>()) {
         song->finished = true;
         song->playing = false;
     }
+}
+
+void game_state_enter_terminal_phase_song_complete(entt::registry& reg) {
+    const bool is_new_high_score = update_and_persist_high_score(reg);
+    emit_terminal_feedback_song_complete(reg, is_new_high_score);
+
+    enter_phase<GamePhaseSongCompleteTag>(reg);
 }

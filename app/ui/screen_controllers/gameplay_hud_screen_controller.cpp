@@ -2,6 +2,7 @@
 
 #include "../../components/game_state.h"
 #include "../../components/energy_bar.h"
+#include "../../systems/game_phase_transition.h"
 #include "../../systems/input.h"
 #include "../../systems/input_events.h"
 #include "../../components/obstacle.h"
@@ -399,9 +400,7 @@ void gameplay_hud_apply_button_presses(entt::registry& reg,
     }
 
     if (pause_pressed) {
-        auto& gs = reg.ctx().get<GameState>();
-        gs.transition_pending = true;
-        gs.next_phase = GamePhase::Paused;
+        request_phase_transition<NextPhasePausedTag>(reg);
     }
 }
 

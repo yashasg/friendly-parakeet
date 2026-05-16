@@ -271,8 +271,7 @@ TEST_CASE("pipeline: gameplay HUD pause release is collected before the fixed ti
           "[input_pipeline][hud][issue833]") {
     auto reg = make_rhythm_registry();
     auto& input = reg.ctx().get<InputState>();
-    auto& gs = reg.ctx().get<GameState>();
-    REQUIRE(gs.phase == GamePhase::Playing);
+    REQUIRE(reg.ctx().contains<GamePhasePlayingTag>());
 
     input.click = true;
     input.end_x = 660.0f;
@@ -281,16 +280,15 @@ TEST_CASE("pipeline: gameplay HUD pause release is collected before the fixed ti
     gameplay_hud_process_button_input(reg);
     run_pipeline(reg);
 
-    CHECK(gs.phase == GamePhase::Paused);
-    CHECK_FALSE(gs.transition_pending);
+    CHECK(reg.ctx().contains<GamePhasePausedTag>());
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("pipeline: gameplay HUD touch release can pause before the fixed tick",
           "[input_pipeline][hud][mobile][issue986]") {
     auto reg = make_rhythm_registry();
     auto& input = reg.ctx().get<InputState>();
-    auto& gs = reg.ctx().get<GameState>();
-    REQUIRE(gs.phase == GamePhase::Playing);
+    REQUIRE(reg.ctx().contains<GamePhasePlayingTag>());
 
     input.touch_up = true;
     input.end_x = 660.0f;
@@ -299,31 +297,29 @@ TEST_CASE("pipeline: gameplay HUD touch release can pause before the fixed tick"
     gameplay_hud_process_button_input(reg);
     run_pipeline(reg);
 
-    CHECK(gs.phase == GamePhase::Paused);
-    CHECK_FALSE(gs.transition_pending);
+    CHECK(reg.ctx().contains<GamePhasePausedTag>());
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("pipeline: pending phase transition blocks queued shape input",
           "[input_pipeline][transition][issue823]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& gs = reg.ctx().get<GameState>();
     auto& lane = reg.get<Lane>(player);
 
-    REQUIRE(gs.phase == GamePhase::Playing);
+    REQUIRE(reg.ctx().contains<GamePhasePlayingTag>());
     REQUIRE(window_phase_is_idle(reg, player));
     REQUIRE(lane.current == 1);
     lane.target = lane.current;
     REQUIRE(lane.target == 1);
 
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::Paused;
+    request_phase_transition<NextPhasePausedTag>(reg);
     reg.ctx().get<entt::dispatcher>().enqueue<ShapePressCircleEvent>({});
 
     run_pipeline(reg);
 
-    CHECK(gs.phase == GamePhase::Paused);
-    CHECK_FALSE(gs.transition_pending);
+    CHECK(reg.ctx().contains<GamePhasePausedTag>());
+    CHECK_FALSE(is_phase_transition_pending(reg));
     CHECK(window_phase_is_idle(reg, player));
     CHECK(current_target_shape(reg, player) == Shape::Hexagon);
     CHECK(lane.target == 1);
@@ -333,24 +329,22 @@ TEST_CASE("pipeline: pending phase transition blocks queued go input",
           "[input_pipeline][transition][issue823]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& gs = reg.ctx().get<GameState>();
     auto& lane = reg.get<Lane>(player);
 
-    REQUIRE(gs.phase == GamePhase::Playing);
+    REQUIRE(reg.ctx().contains<GamePhasePlayingTag>());
     REQUIRE(lane.current == 1);
     lane.target = lane.current;
     REQUIRE(lane.target == 1);
     REQUIRE_FALSE(reg.any_of<Jumping, Sliding>(player));
 
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::Paused;
+    request_phase_transition<NextPhasePausedTag>(reg);
     push_go(reg, Direction::Right);
     push_go(reg, Direction::Up);
 
     run_pipeline(reg);
 
-    CHECK(gs.phase == GamePhase::Paused);
-    CHECK_FALSE(gs.transition_pending);
+    CHECK(reg.ctx().contains<GamePhasePausedTag>());
+    CHECK_FALSE(is_phase_transition_pending(reg));
     CHECK(lane.target == 1);
     CHECK_FALSE(reg.any_of<Jumping, Sliding>(player));
 }
@@ -415,7 +409,7 @@ TEST_CASE("pipeline: gameplay HUD proximity ring progresses through far near per
 TEST_CASE("pipeline: gameplay HUD raygui shape presses ignored outside Playing",
           "[input_pipeline][hud]") {
     auto reg = make_rhythm_registry();
-    set_test_phase(reg, GamePhase::Paused);
+    set_test_phase<GamePhasePausedTag>(reg);
     auto player = make_rhythm_player(reg);
     REQUIRE(window_phase_is_idle(reg, player));
     gameplay_hud_apply_button_presses(reg,

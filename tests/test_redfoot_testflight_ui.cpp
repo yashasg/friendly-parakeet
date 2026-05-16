@@ -113,9 +113,8 @@ entt::entity spawn_obstacle(entt::registry& reg, float y) {
 TEST_CASE("redfoot/#168: collision miss is non-terminal cause context",
            "[ui][redfoot][game_over][wiring]") {
     entt::registry reg;
-    auto& gs = reg.ctx().emplace<GameState>();
-    gs.phase = GamePhase::Playing;
-    sync_game_phase_tags(reg, GamePhase::Playing);
+    reg.ctx().emplace<GameState>();
+    sync_game_phase_tags<GamePhasePlayingTag>(reg);
     reg.ctx().emplace<EnergyState>();
     reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<ScoreDisplay>();
@@ -137,9 +136,8 @@ TEST_CASE("redfoot/#168: collision miss is non-terminal cause context",
 TEST_CASE("redfoot/#168: energy depletion falls back to ENERGY DEPLETED",
           "[ui][redfoot][game_over][wiring]") {
     entt::registry reg;
-    auto& gs = reg.ctx().emplace<GameState>();
-    gs.phase = GamePhase::Playing;
-    sync_game_phase_tags(reg, GamePhase::Playing);
+    reg.ctx().emplace<GameState>();
+    sync_game_phase_tags<GamePhasePlayingTag>(reg);
     reg.ctx().emplace<entt::dispatcher>();
     auto& energy = reg.ctx().emplace<EnergyState>();
     auto& song = reg.ctx().emplace<SongState>();
@@ -154,9 +152,8 @@ TEST_CASE("redfoot/#168: energy depletion falls back to ENERGY DEPLETED",
 TEST_CASE("redfoot/#168: energy depletion writes terminal cause",
            "[ui][redfoot][game_over][wiring]") {
     entt::registry reg;
-    auto& gs = reg.ctx().emplace<GameState>();
-    gs.phase = GamePhase::Playing;
-    sync_game_phase_tags(reg, GamePhase::Playing);
+    reg.ctx().emplace<GameState>();
+    sync_game_phase_tags<GamePhasePlayingTag>(reg);
     reg.ctx().emplace<entt::dispatcher>();
     auto& energy = reg.ctx().emplace<EnergyState>();
     auto& song = reg.ctx().emplace<SongState>();

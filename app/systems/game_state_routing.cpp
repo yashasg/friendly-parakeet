@@ -1,5 +1,6 @@
 #include "input_routing.h"
 #include "../components/game_state.h"
+#include "game_phase_transition.h"
 #include "input.h"
 #include "input_events.h"
 #include "audio_events.h"
@@ -8,10 +9,12 @@
 #include "../constants.h"
 
 namespace {
-// Per Fabian's existential processing (issue #1202/#1204, PR F): the former
+// Per Fabian's existential processing (issue #1202/#1204, PR G): the former
 // `gs.phase == GamePhase::X` consumers dispatch on the per-phase ctx-tag
-// mirror. `phase_timer`, `transition_pending`, and `next_phase` stay on
-// `GameState` until PR G deletes the enum-typed field.
+// mirror; the former `gs.transition_pending = true; gs.next_phase = X` pair
+// is now `request_phase_transition<NextPhase*Tag>()` — presence of the tag
+// IS the pending request, and `game_state_system` swaps phases on the next
+// tick (deferred-transition pattern per #482).
 bool game_state_handle_end_screen_press(entt::registry& reg, const MenuPressEvent& evt) {
     auto& gs = reg.ctx().get<GameState>();
     auto& ctx = reg.ctx();
@@ -54,8 +57,7 @@ void game_state_handle_go(entt::registry& reg, const GoEvent& /*evt*/) {
     if (!reg.ctx().contains<GamePhasePausedTag>()) return;
     if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
     // Deferred per #482 — let game_state_system perform the resume swap.
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::Playing;
+    request_phase_transition<NextPhasePlayingTag>(reg);
 }
 
 void game_state_handle_press_menu(entt::registry& reg, const MenuPressEvent& evt) {
@@ -71,8 +73,7 @@ void game_state_handle_press_menu(entt::registry& reg, const MenuPressEvent& evt
             ctx.get<InputState>().quit_requested = true;
 #endif
         } else if (evt.action == MenuActionKind::Confirm) {
-            gs.transition_pending = true;
-            gs.next_phase = GamePhase::LevelSelect;
+            request_phase_transition<NextPhaseLevelSelectTag>(reg);
         }
         return;
     }
@@ -90,16 +91,14 @@ void game_state_handle_press_menu(entt::registry& reg, const MenuPressEvent& evt
                 settings::mark_dirty_and_save(*persistence, *settings_state);
             }
         }
-        gs.transition_pending = true;
-        gs.next_phase = GamePhase::Playing;
+        request_phase_transition<NextPhasePlayingTag>(reg);
         return;
     }
 
     if (ctx.contains<GamePhasePausedTag>()) {
         if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
         // Deferred per #482 — see game_state_handle_go above.
-        gs.transition_pending = true;
-        gs.next_phase = GamePhase::Playing;
+        request_phase_transition<NextPhasePlayingTag>(reg);
         return;
     }
 }

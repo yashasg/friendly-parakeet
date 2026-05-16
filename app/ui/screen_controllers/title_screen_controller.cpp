@@ -1,6 +1,7 @@
 // Title screen controller - bridges generated rguilayout output to game systems.
 
 #include "../../components/game_state.h"
+#include "../../systems/game_phase_transition.h"
 #include "../../systems/input.h"
 #include "screen_controller_base.h"
 #include <raygui.h>
@@ -58,14 +59,10 @@ void render_title_screen_ui(entt::registry& reg) {
 #endif
 
     if (state.SettingsButtonPressed) {
-        auto& gs = reg.ctx().get<GameState>();
-        gs.transition_pending = true;
-        gs.next_phase = GamePhase::Settings;
+        request_phase_transition<NextPhaseSettingsTag>(reg);
     }
 
     if (is_start_tap(reg, state)) {
-        auto& gs = reg.ctx().get<GameState>();
-        gs.transition_pending = true;
-        gs.next_phase = GamePhase::LevelSelect;
+        request_phase_transition<NextPhaseLevelSelectTag>(reg);
     }
 }

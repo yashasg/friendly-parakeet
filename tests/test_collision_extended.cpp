@@ -62,8 +62,7 @@ TEST_CASE("collision: Hexagon shape never matches shape gate", "[collision]") {
     scoring_system(reg, 0.016f);
     energy_system(reg, 0.016f);
 
-    auto& gs = reg.ctx().get<GameState>();
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
     auto& energy = reg.ctx().get<EnergyState>();
     CHECK(energy.energy < 1.0f);
     CHECK(energy.flash_timer > 0.0f);
@@ -91,8 +90,7 @@ TEST_CASE("collision: Hexagon fails even when matching gate shape", "[collision]
     energy_system(reg, 0.016f);
 
     // Hexagon should NEVER clear shape gates
-    auto& gs = reg.ctx().get<GameState>();
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
     auto& energy = reg.ctx().get<EnergyState>();
     CHECK(energy.energy < 1.0f);
     CHECK(energy.flash_timer > 0.0f);
@@ -384,9 +382,8 @@ TEST_CASE("collision: multiple misses accumulate in miss_count", "[collision][rh
     energy_system(reg, 0.016f);
 
     // Reset game over for second collision
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = false;
-    set_test_phase(reg, GamePhase::Playing);
+    clear_next_phase_tags(reg);
+    set_test_phase<GamePhasePlayingTag>(reg);
 
     // Second miss
     make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);

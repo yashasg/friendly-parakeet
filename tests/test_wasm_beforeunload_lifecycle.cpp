@@ -65,7 +65,7 @@ TEST_CASE("wasm lifecycle: visibilitychange callback pauses active play",
 
     CHECK(platform_source.find("emscripten_set_visibilitychange_callback") != std::string::npos);
     CHECK(platform_source.find("on_visibility_change") != std::string::npos);
-    CHECK(platform_source.find("gs->next_phase = GamePhase::Paused;") != std::string::npos);
+    CHECK(platform_source.find("request_phase_transition<NextPhasePausedTag>") != std::string::npos);
 }
 
 TEST_CASE("wasm smoke phase title markers are compile-gated",
