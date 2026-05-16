@@ -30,11 +30,12 @@ TEST_CASE("beatmap: parse minimal valid JSON", "[rhythm][beatmap]") {
     CHECK(map.bpm == 120.0f);
     CHECK(map.offset == 0.2f);
     CHECK(map.lead_beats == 4);
-    CHECK(map.shape_gate_beats.size() == 2);
-    CHECK(map.shape_gate_beats[0].beat_index == 4);
-    CHECK(map.shape_gate_beats[0].shape == Shape::Circle);
-    CHECK(map.shape_gate_beats[1].beat_index == 8);
-    CHECK(map.shape_gate_beats[1].shape == Shape::Triangle);
+    REQUIRE(map.shape_gate_circle_beats.size() == 1);
+    REQUIRE(map.shape_gate_triangle_beats.size() == 1);
+    CHECK(map.shape_gate_square_beats.empty());
+    CHECK(shape_gate_count(map) == 2);
+    CHECK(map.shape_gate_circle_beats[0].beat_index == 4);
+    CHECK(map.shape_gate_triangle_beats[0].beat_index == 8);
 }
 
 TEST_CASE("beatmap: parse active obstacle kinds", "[rhythm][beatmap][issue873]") {
@@ -49,9 +50,9 @@ TEST_CASE("beatmap: parse active obstacle kinds", "[rhythm][beatmap][issue873]")
     })";
 
     REQUIRE(parse_beat_map(json, map, errors));
-    REQUIRE(map.shape_gate_beats.size() == 1);
+    REQUIRE(map.shape_gate_circle_beats.size() == 1);
     REQUIRE(map.onset_marker_beats.size() == 1);
-    CHECK(map.shape_gate_beats[0].beat_index == 4);
+    CHECK(map.shape_gate_circle_beats[0].beat_index == 4);
     CHECK(map.onset_marker_beats[0].beat_index == 8);
 }
 
@@ -70,7 +71,7 @@ TEST_CASE("beatmap: tempo_changes in JSON are ignored", "[rhythm][beatmap]") {
 
     REQUIRE(parse_beat_map(json, map, errors));
     CHECK(map.bpm == 120.0f);
-    CHECK(map.shape_gate_beats.size() == 1);
+    CHECK(shape_gate_count(map) == 1);
 }
 
 TEST_CASE("beatmap: invalid JSON returns error", "[rhythm][beatmap]") {
@@ -80,7 +81,7 @@ TEST_CASE("beatmap: invalid JSON returns error", "[rhythm][beatmap]") {
     REQUIRE_FALSE(errors.empty());
 }
 
-TEST_CASE("beatmap: beats sorted by beat_index", "[rhythm][beatmap]") {
+TEST_CASE("beatmap: beats sorted by beat_index within per-shape vectors", "[rhythm][beatmap]") {
     BeatMap map;
     std::vector<BeatMapError> errors;
     std::string json = R"({
@@ -93,10 +94,12 @@ TEST_CASE("beatmap: beats sorted by beat_index", "[rhythm][beatmap]") {
     })";
 
     REQUIRE(parse_beat_map(json, map, errors));
-    REQUIRE(map.shape_gate_beats.size() == 3);
-    CHECK(map.shape_gate_beats[0].beat_index == 4);
-    CHECK(map.shape_gate_beats[1].beat_index == 8);
-    CHECK(map.shape_gate_beats[2].beat_index == 12);
+    REQUIRE(shape_gate_count(map) == 3);
+    REQUIRE(map.shape_gate_circle_beats.size() == 2);
+    REQUIRE(map.shape_gate_square_beats.size() == 1);
+    CHECK(map.shape_gate_circle_beats[0].beat_index == 4);
+    CHECK(map.shape_gate_circle_beats[1].beat_index == 8);
+    CHECK(map.shape_gate_square_beats[0].beat_index == 12);
 }
 
 // Beat Map Validation
@@ -104,7 +107,7 @@ TEST_CASE("beatmap: beats sorted by beat_index", "[rhythm][beatmap]") {
 TEST_CASE("beatmap: validate BPM range", "[rhythm][beatmap]") {
     BeatMap map;
     map.bpm = 50.0f; map.offset = 0.0f; map.lead_beats = 4; map.duration = 60.0f;
-    map.shape_gate_beats.push_back({4, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({4, 1, 0.0f, false});
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
 
@@ -118,7 +121,7 @@ TEST_CASE("beatmap: validate BPM range", "[rhythm][beatmap]") {
 TEST_CASE("beatmap: validate offset range", "[rhythm][beatmap]") {
     BeatMap map;
     map.bpm = 120.0f; map.offset = -1.0f; map.lead_beats = 4; map.duration = 60.0f;
-    map.shape_gate_beats.push_back({4, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({4, 1, 0.0f, false});
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
 }
@@ -126,7 +129,7 @@ TEST_CASE("beatmap: validate offset range", "[rhythm][beatmap]") {
 TEST_CASE("beatmap: validate lead_beats range", "[rhythm][beatmap]") {
     BeatMap map;
     map.bpm = 120.0f; map.offset = 0.0f; map.lead_beats = 1; map.duration = 60.0f;
-    map.shape_gate_beats.push_back({4, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({4, 1, 0.0f, false});
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
 }
@@ -141,8 +144,8 @@ TEST_CASE("beatmap: validate empty beats rejected", "[rhythm][beatmap]") {
 TEST_CASE("beatmap: validate different-shape gates min spacing", "[rhythm][beatmap]") {
     BeatMap map;
     map.bpm = 120.0f; map.offset = 0.0f; map.lead_beats = 4; map.duration = 60.0f;
-    map.shape_gate_beats.push_back({4, Shape::Circle, 1, 0.0f, false});
-    map.shape_gate_beats.push_back({5, Shape::Triangle, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({4, 1, 0.0f, false});
+    map.shape_gate_triangle_beats.push_back({5, 1, 0.0f, false});
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
 }
@@ -150,8 +153,8 @@ TEST_CASE("beatmap: validate different-shape gates min spacing", "[rhythm][beatm
 TEST_CASE("beatmap: same-shape gates can be adjacent", "[rhythm][beatmap]") {
     BeatMap map;
     map.bpm = 120.0f; map.offset = 0.0f; map.lead_beats = 4; map.duration = 60.0f;
-    map.shape_gate_beats.push_back({4, Shape::Circle, 1, 0.0f, false});
-    map.shape_gate_beats.push_back({5, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({4, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({5, 1, 0.0f, false});
     std::vector<BeatMapError> errors;
     CHECK(validate_beat_map(map, errors));
 }
@@ -159,7 +162,7 @@ TEST_CASE("beatmap: same-shape gates can be adjacent", "[rhythm][beatmap]") {
 TEST_CASE("beatmap: validate beat index beyond duration", "[rhythm][beatmap]") {
     BeatMap map;
     map.bpm = 120.0f; map.offset = 0.0f; map.lead_beats = 4; map.duration = 10.0f;
-    map.shape_gate_beats.push_back({100, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({100, 1, 0.0f, false});
     std::vector<BeatMapError> errors;
     CHECK_FALSE(validate_beat_map(map, errors));
 }
@@ -247,7 +250,7 @@ TEST_CASE("beat_scheduler: spawns obstacle at spawn_time", "[rhythm][scheduler]"
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
-    map.shape_gate_beats.push_back({4, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({4, 1, 0.0f, false});
     song.playing = true;
     // Advance past spawn_time
     song.song_time = 0.1f;
@@ -259,7 +262,7 @@ TEST_CASE("beat_scheduler: obstacle has correct BeatInfo", "[rhythm][scheduler]"
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
-    map.shape_gate_beats.push_back({8, Shape::Triangle, 1, 0.0f, false});
+    map.shape_gate_triangle_beats.push_back({8, 1, 0.0f, false});
     song.playing = true; song.song_time = 2.5f;
     beat_scheduler_system(reg, 0.016f);
     auto obs_view = reg.view<ObstacleTag, BeatInfo>();
@@ -275,7 +278,7 @@ TEST_CASE("beat_scheduler: does not spawn before spawn_time", "[rhythm][schedule
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
-    map.shape_gate_beats.push_back({20, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({20, 1, 0.0f, false});
     song.playing = true; song.song_time = 0.5f;
     beat_scheduler_system(reg, 0.016f);
     CHECK(reg.view<ObstacleTag>().size() == 0);
@@ -285,8 +288,8 @@ TEST_CASE("beat_scheduler: spawns multiple when time catches up", "[rhythm][sche
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
-    map.shape_gate_beats.push_back({4, Shape::Circle, 1, 0.0f, false});
-    map.shape_gate_beats.push_back({8, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({4, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({8, 1, 0.0f, false});
     song.playing = true; song.song_time = 3.0f;
     beat_scheduler_system(reg, 0.016f);
     CHECK(reg.view<ObstacleTag>().size() == 2);
@@ -296,7 +299,7 @@ TEST_CASE("beat_scheduler: rhythm obstacles use BeatInfo without Vector2", "[rhy
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
-    map.shape_gate_beats.push_back({4, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({4, 1, 0.0f, false});
     song.playing = true; song.song_time = 0.1f;
     beat_scheduler_system(reg, 0.016f);
     auto obs_view = reg.view<ObstacleTag, BeatInfo>();
@@ -862,7 +865,7 @@ TEST_CASE("integration: obstacle arrives on-beat within 1 frame", "[rhythm][inte
     make_rhythm_player(reg);
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
-    map.shape_gate_beats.push_back({4, Shape::Circle, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({4, 1, 0.0f, false});
     song.playing = true; song.song_time = 0.1f;
     constexpr float dt = 1.0f / 60.0f;
     bool obstacle_at_player = false;

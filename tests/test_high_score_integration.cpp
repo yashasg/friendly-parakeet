@@ -39,8 +39,8 @@ struct TempBeatMapFile {
 };
 
 int count_result_notes(const BeatMap& beatmap) {
-    return static_cast<int>(beatmap.shape_gate_beats.size() +
-                            beatmap.split_path_beats.size());
+    return static_cast<int>(shape_gate_count(beatmap) +
+                            split_path_count(beatmap));
 }
 
 int count_mesh_children(entt::registry& reg) {
@@ -133,9 +133,7 @@ TEST_CASE("Play session: missing selected beatmap returns to level select withou
     CHECK_FALSE(lss.confirmed);
     {
         const auto& bm = beat_map(reg);
-        CHECK(bm.shape_gate_beats.empty());
-        CHECK(bm.split_path_beats.empty());
-        CHECK(bm.onset_marker_beats.empty());
+        CHECK(beat_map_empty(bm));
     }
     CHECK(reg.view<PlayerTag>().empty());
     CHECK(reg.ctx().find<ScoreState>() == nullptr);
@@ -200,8 +198,8 @@ TEST_CASE("Play session: SongResults total_notes excludes onset marker metadata"
             setup_play_session(reg);
 
             const auto& beatmap = beat_map(reg);
-            const size_t total_beats = beatmap.shape_gate_beats.size() +
-                                       beatmap.split_path_beats.size() +
+            const size_t total_beats = shape_gate_count(beatmap) +
+                                       split_path_count(beatmap) +
                                        beatmap.onset_marker_beats.size();
             REQUIRE(total_beats > 0);
             saw_onset_marker = saw_onset_marker || !beatmap.onset_marker_beats.empty();

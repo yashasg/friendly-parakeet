@@ -39,14 +39,21 @@ struct SongState {
     bool   restart_music = false;  // set true by setup_play_session; consumed/cleared
                                    //   on the next tick by song_playback_system
 
-    // ── Beat-schedule cursors (per-kind, reset at session init) ─────────────
+    // ── Beat-schedule cursors (per-(kind, shape), reset at session init) ────
     // Replaces the former `next_spawn_idx` single cursor (issue #1202/#1204).
-    // beat_scheduler_system runs one per-kind transform per cursor; each
-    // cursor advances independently over its own per-kind vector in
-    // BeatMap.
-    size_t next_shape_gate_idx    = 0;
-    size_t next_split_path_idx    = 0;
-    size_t next_onset_marker_idx  = 0;
+    // Each former enum value (`ObstacleKind`, `Shape`) was a hidden lookup
+    // table; per Fabian's relational-database mechanic, each value gets its
+    // own row in BeatMap and its own cursor here. beat_scheduler_system runs
+    // one per-cursor transform; each cursor advances independently over its
+    // own vector in BeatMap. Shape::Hexagon is not a valid required shape
+    // for shape_gate / split_path, so no `*_hexagon_idx` cursor exists.
+    size_t next_shape_gate_circle_idx    = 0;
+    size_t next_shape_gate_square_idx    = 0;
+    size_t next_shape_gate_triangle_idx  = 0;
+    size_t next_split_path_circle_idx    = 0;
+    size_t next_split_path_square_idx    = 0;
+    size_t next_split_path_triangle_idx  = 0;
+    size_t next_onset_marker_idx         = 0;
 };
 
 // ── Song Results (singleton, accumulates during play) ─

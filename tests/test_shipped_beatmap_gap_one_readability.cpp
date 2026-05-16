@@ -60,14 +60,19 @@ TEST_CASE("gap=1 readability: adjacent authored beats remain shape gates",
             if (!load_beat_map(path, map, errors, difficulty)) continue;
 
             std::vector<RequiredEntry> required_beats;
-            required_beats.reserve(map.shape_gate_beats.size() +
-                                   map.split_path_beats.size());
-            for (const auto& b : map.shape_gate_beats) {
-                required_beats.push_back({RequiredKind::ShapeGate, b.beat_index});
-            }
-            for (const auto& b : map.split_path_beats) {
-                required_beats.push_back({RequiredKind::SplitPath, b.beat_index});
-            }
+            required_beats.reserve(shape_gate_count(map) + split_path_count(map));
+            auto add_shape_gate = [&](const std::vector<BeatEntry>& bin) {
+                for (const auto& b : bin) required_beats.push_back({RequiredKind::ShapeGate, b.beat_index});
+            };
+            auto add_split_path = [&](const std::vector<BeatEntry>& bin) {
+                for (const auto& b : bin) required_beats.push_back({RequiredKind::SplitPath, b.beat_index});
+            };
+            add_shape_gate(map.shape_gate_circle_beats);
+            add_shape_gate(map.shape_gate_square_beats);
+            add_shape_gate(map.shape_gate_triangle_beats);
+            add_split_path(map.split_path_circle_beats);
+            add_split_path(map.split_path_square_beats);
+            add_split_path(map.split_path_triangle_beats);
             std::stable_sort(required_beats.begin(), required_beats.end(),
                              [](const RequiredEntry& a, const RequiredEntry& b) {
                                  return a.beat_index < b.beat_index;
