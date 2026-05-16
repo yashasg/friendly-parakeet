@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include "test_helpers.h"
-#include "ui/level_select_controller.h"
+#include "systems/level_select_input_handlers.h"
 
-TEST_CASE("level_select_controller: select difficulty press updates state", "[level_select][ui]") {
+TEST_CASE("level_select_input_handlers: select difficulty press updates state", "[level_select][ui]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     set_test_phase<GamePhaseLevelSelectTag>(reg);
@@ -16,7 +16,7 @@ TEST_CASE("level_select_controller: select difficulty press updates state", "[le
     CHECK(lss.selected_difficulty == 2);
 }
 
-TEST_CASE("level_select_controller: select level press updates state", "[level_select][ui]") {
+TEST_CASE("level_select_input_handlers: select level press updates state", "[level_select][ui]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     set_test_phase<GamePhaseLevelSelectTag>(reg);
@@ -30,7 +30,7 @@ TEST_CASE("level_select_controller: select level press updates state", "[level_s
     CHECK(lss.selected_level == 2);
 }
 
-TEST_CASE("level_select_controller: invalid semantic indices do not update selection",
+TEST_CASE("level_select_input_handlers: invalid semantic indices do not update selection",
           "[level_select][ui][issue738]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
@@ -48,7 +48,7 @@ TEST_CASE("level_select_controller: invalid semantic indices do not update selec
     CHECK(lss.selected_difficulty == 2);
 }
 
-TEST_CASE("level_select_controller: ignores menu presses during entry delay", "[level_select][ui]") {
+TEST_CASE("level_select_input_handlers: ignores menu presses during entry delay", "[level_select][ui]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
     set_test_phase<GamePhaseLevelSelectTag>(reg);

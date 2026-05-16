@@ -1,7 +1,7 @@
-#include "level_select_controller.h"
+#include "level_select_input_handlers.h"
 #include "../components/game_state.h"
 #include "../util/level_content_config.h"
-#include "../systems/input_events.h"
+#include "input_events.h"
 
 namespace {
 // Shared gate for level-select menu presses: only fire on the level-select

@@ -1,6 +1,6 @@
 #include "input_routing.h"
 #include "input_events.h"
-#include "../ui/level_select_controller.h"
+#include "level_select_input_handlers.h"
 #include <entt/entt.hpp>
 #include <stdexcept>
 
