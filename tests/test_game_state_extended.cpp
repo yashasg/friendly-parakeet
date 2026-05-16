@@ -46,7 +46,7 @@ TEST_CASE("game_state: song complete waits for obstacles to clear", "[gamestate]
     // Create an unscored obstacle
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, 0.0f}});
+    reg.emplace<WorldPosition>(obs, WorldPosition{{0.0f, 0.0f}});
 
     game_state_system(reg, 0.016f);
 
@@ -82,7 +82,7 @@ TEST_CASE("game_state: song complete waits for scored obstacle to be destroyed",
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, 0.0f}});
+    reg.emplace<WorldPosition>(obs, WorldPosition{{0.0f, 0.0f}});
 
     game_state_system(reg, 0.016f);
 
@@ -451,7 +451,7 @@ TEST_CASE("game_state: game_over restart enters fresh play session on next tick"
 
     auto stale = reg.create();
     reg.emplace<ObstacleTag>(stale);
-    reg.emplace<WorldTransform>(stale, WorldTransform{{0.0f, 0.0f}});
+    reg.emplace<WorldPosition>(stale, WorldPosition{{0.0f, 0.0f}});
     reg.ctx().get<ScoreState>().score = 3210;
 
     game_state_system(reg, 0.016f);

@@ -31,7 +31,7 @@
 #include "systems/popup_display_system.h"
 #include "components/text.h"      // FontSize
 #include "tags/tags.h"            // TimingPerfectTag / Good / Ok / Bad
-#include "components/transform.h" // WorldTransform, Vector2
+#include "components/transform.h" // WorldPosition, Vector2
 #include "entities/settings.h"    // SettingsState (reduce_motion)
 #include "systems/all_systems.h"  // popup_display_system declaration
 #include "entities/popup_entity.h"
@@ -273,7 +273,7 @@ TEST_CASE("spawn_score_popup_good: creates the full popup display archetype",
     auto e = spawn_score_popup_good(reg, 100.0f, 200.0f, 50);
 
     REQUIRE(reg.all_of<ScorePopup, PopupDisplay, Color, Vector2,
-                       WorldTransform, TagHUDPass>(e));
+                       WorldPosition, TagHUDPass>(e));
     CHECK(reg.all_of<TimingGoodTag>(e));
     CHECK(std::strcmp(reg.get<PopupDisplay>(e).text, "GOOD") == 0);
 }
@@ -315,13 +315,13 @@ TEST_CASE("init_popup_display_untimed: formats numeric value (#251)",
 // the full expected component bundle with correct values plus the matching
 // per-tier tag.
 
-TEST_CASE("spawn_score_popup_untimed: entity has WorldTransform at pos - 40",
+TEST_CASE("spawn_score_popup_untimed: entity has WorldPosition at pos - 40",
           "[popup_entity][issue349]") {
     entt::registry reg;
     auto e = spawn_score_popup_untimed(reg, 100.0f, 500.0f, 200);
 
-    REQUIRE(reg.all_of<WorldTransform>(e));
-    const auto& wt = reg.get<WorldTransform>(e);
+    REQUIRE(reg.all_of<WorldPosition>(e));
+    const auto& wt = reg.get<WorldPosition>(e);
     CHECK(wt.position.x == 100.0f);
     CHECK(wt.position.y == 460.0f);  // 500 - 40
 }

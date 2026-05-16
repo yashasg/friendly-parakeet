@@ -14,7 +14,7 @@ entt::entity create_popup_archetype(entt::registry& reg,
                                     float x, float y, int points,
                                     Color color) {
     auto popup = reg.create();
-    reg.emplace<WorldTransform>(popup, WorldTransform{{x, y - 40.0f}});
+    reg.emplace<WorldPosition>(popup, WorldPosition{{x, y - 40.0f}});
     reg.emplace<Vector2>(popup, Vector2{0.0f, -80.0f});
     reg.emplace<ScorePopup>(popup, ScorePopup{points,
                                               constants::POPUP_DURATION,

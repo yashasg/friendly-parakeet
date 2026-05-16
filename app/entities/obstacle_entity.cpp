@@ -21,7 +21,7 @@ entt::entity create_shape_gate(entt::registry& reg, const ShapeGateSpawn& params
         throw std::logic_error("Invalid obstacle shape");
     }
     auto e = reg.create();
-    reg.emplace<WorldTransform>(e, WorldTransform{{params.x, params.y}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{params.x, params.y}});
     reg.emplace<TagWorldPass>(e);
     reg.emplace<ShapeGateTag>(e);
     reg.emplace<Obstacle>(e, int16_t{constants::PTS_SHAPE_GATE});
@@ -41,7 +41,7 @@ entt::entity create_split_path(entt::registry& reg, const SplitPathSpawn& params
         throw std::logic_error("Invalid obstacle lane");
     }
     auto e = reg.create();
-    reg.emplace<WorldTransform>(e, WorldTransform{{params.x, params.y}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{params.x, params.y}});
     reg.emplace<TagWorldPass>(e);
     reg.emplace<SplitPathTag>(e);
     reg.emplace<Obstacle>(e, int16_t{constants::PTS_SPLIT_PATH});
@@ -54,7 +54,7 @@ entt::entity create_split_path(entt::registry& reg, const SplitPathSpawn& params
 
 entt::entity create_onset_marker(entt::registry& reg, const OnsetMarkerSpawn& params) {
     auto e = reg.create();
-    reg.emplace<WorldTransform>(e, WorldTransform{{params.x, params.y}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{params.x, params.y}});
     reg.emplace<TagWorldPass>(e);
     reg.emplace<OnsetMarkerTag>(e);
     reg.emplace<Obstacle>(e, int16_t{0});

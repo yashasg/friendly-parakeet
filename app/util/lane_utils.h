@@ -20,7 +20,7 @@ inline int8_t valid_or_default(int8_t lane) {
     return is_valid(lane) ? lane : kDefaultLane;
 }
 
-inline void snap_to_current_lane(const Lane& lane, WorldTransform& transform) {
+inline void snap_to_current_lane(const Lane& lane, WorldPosition& transform) {
     transform.position.x = constants::LANE_X[lane.current];
 }
 
@@ -39,7 +39,7 @@ inline int8_t nearest_lane_for_x(float x) {
     return nearest_lane;
 }
 
-inline bool normalize(Lane& lane, WorldTransform* transform = nullptr) {
+inline bool normalize(Lane& lane, WorldPosition* transform = nullptr) {
     if (!is_valid(lane.current)) {
         lane.current = kDefaultLane;
         lane.target = kNoTargetLane;

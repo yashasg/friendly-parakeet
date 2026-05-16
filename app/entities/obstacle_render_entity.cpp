@@ -92,7 +92,7 @@ static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
 }
 
 void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
-    const auto* wt_ptr = reg.try_get<WorldTransform>(logical);
+    const auto* wt_ptr = reg.try_get<WorldPosition>(logical);
     auto& col = reg.get<Color>(logical);
     auto& dsz = reg.get<DrawSize>(logical);
 

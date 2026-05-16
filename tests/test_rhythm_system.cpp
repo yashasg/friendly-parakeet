@@ -667,7 +667,7 @@ TEST_CASE("scoring: timing_mult applied to scored obstacle", "[rhythm][scoring]"
     score.score = 0; score.chain_count = 0;
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
+    reg.emplace<WorldPosition>(obs, WorldPosition{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<Obstacle>(obs, int16_t{200});
     reg.emplace<ScoredTag>(obs);
     emplace_timing_perfect(reg, obs, 1.0f);
@@ -874,7 +874,7 @@ TEST_CASE("integration: obstacle arrives on-beat within 1 frame", "[rhythm][inte
         beat_scheduler_system(reg, dt);
         scroll_system(reg, dt);
         frames++;
-        auto view = reg.view<ObstacleTag, WorldTransform>();
+        auto view = reg.view<ObstacleTag, WorldPosition>();
         for (auto [e, wt] : view.each()) {
             if (wt.position.y >= constants::PLAYER_Y) {
                 obstacle_at_player = true;

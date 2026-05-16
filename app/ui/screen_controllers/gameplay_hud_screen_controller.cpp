@@ -156,7 +156,7 @@ void render_shape_buttons(const entt::registry& reg,
 
     std::array<float, 4> nearest_dist = {-1.0f, -1.0f, -1.0f, -1.0f};
     for (auto [entity, obstacle, obstacle_pos] :
-         reg.view<ObstacleTag, Obstacle, WorldTransform>(entt::exclude<ScoredTag>).each()) {
+         reg.view<ObstacleTag, Obstacle, WorldPosition>(entt::exclude<ScoredTag>).each()) {
         (void)entity;
         (void)obstacle;
         if (!has_required_shape_tag(reg, entity)) continue;

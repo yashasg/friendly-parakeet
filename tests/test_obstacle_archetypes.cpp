@@ -33,7 +33,7 @@ int count_mesh_children(entt::registry& reg) {
 
 entt::entity make_mesh_factory_obstacle(entt::registry& reg) {
     auto parent = reg.create();
-    reg.emplace<WorldTransform>(parent, WorldTransform{{constants::LANE_X[1], -120.0f}});
+    reg.emplace<WorldPosition>(parent, WorldPosition{{constants::LANE_X[1], -120.0f}});
     reg.emplace<Obstacle>(parent, int16_t{0});
     reg.emplace<DrawSize>(parent, constants::SCREEN_W_F, 80.0f);
     reg.emplace<Color>(parent, Color{255, 255, 255, 255});
@@ -52,7 +52,7 @@ TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype
     entt::registry reg;
     auto e = spawn_shape_gate_obstacle(reg, {360.0f, -120.0f, Shape::Circle});
 
-    REQUIRE(reg.all_of<ObstacleTag, Vector2, WorldTransform, Obstacle, int8_t, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, Vector2, WorldPosition, Obstacle, int8_t, DrawSize, Color>(e));
     REQUIRE(has_required_shape_tag(reg, e));
     CHECK(!reg.all_of<uint8_t>(e));
     CHECK(!reg.all_of<SplitPathTag>(e));
@@ -60,8 +60,8 @@ TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_SHAPE_GATE});
     CHECK(current_required_shape(reg, e) == Shape::Circle);
     CHECK(reg.get<int8_t>(e) == int8_t{1});
-    CHECK(reg.get<WorldTransform>(e).position.x == 360.0f);
-    CHECK(reg.get<WorldTransform>(e).position.y == -120.0f);
+    CHECK(reg.get<WorldPosition>(e).position.x == 360.0f);
+    CHECK(reg.get<WorldPosition>(e).position.y == -120.0f);
 
     auto& c = reg.get<Color>(e);
     CHECK(c.r == 80); CHECK(c.g == 200); CHECK(c.b == 255);
@@ -97,7 +97,7 @@ TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[a
     entt::registry reg;
 
     auto parent = reg.create();
-    reg.emplace<WorldTransform>(parent, WorldTransform{{360.0f, -120.0f}});
+    reg.emplace<WorldPosition>(parent, WorldPosition{{360.0f, -120.0f}});
     reg.emplace<Obstacle>(parent, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<DrawSize>(parent, constants::SCREEN_W_F, 80.0f);
     reg.emplace<Color>(parent, Color{80, 200, 255, 255});
@@ -194,7 +194,7 @@ TEST_CASE("entity: spawn_obstacle rejects invalid SplitPath lane before creating
                                                     Shape::Square, int8_t{3}}),
                     std::logic_error);
     CHECK(reg.view<ObstacleTag>().begin() == reg.view<ObstacleTag>().end());
-    CHECK(reg.view<WorldTransform>().begin() == reg.view<WorldTransform>().end());
+    CHECK(reg.view<WorldPosition>().begin() == reg.view<WorldPosition>().end());
     CHECK(count_mesh_children(reg) == 0);
 }
 
@@ -219,7 +219,7 @@ TEST_CASE("entity: SplitPath - required shape tag and required lane", "[archetyp
     auto e = spawn_split_path_obstacle(reg, {360.0f, -120.0f,
                                               Shape::Square, int8_t{2}});
 
-    REQUIRE(reg.all_of<ObstacleTag, Vector2, WorldTransform, Obstacle, int8_t, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, Vector2, WorldPosition, Obstacle, int8_t, DrawSize, Color>(e));
     REQUIRE(has_required_shape_tag(reg, e));
     CHECK(!reg.all_of<uint8_t>(e));
 
@@ -233,7 +233,7 @@ TEST_CASE("entity: ShapeGate position x/y propagated from input", "[archetype]")
     entt::registry reg;
     auto e = spawn_shape_gate_obstacle(reg, {123.5f, 456.7f});
 
-    auto& transform = reg.get<WorldTransform>(e);
+    auto& transform = reg.get<WorldPosition>(e);
     CHECK(transform.position.x == 123.5f);
     CHECK(transform.position.y == 456.7f);
 }

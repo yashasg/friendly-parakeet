@@ -25,7 +25,7 @@ void init_popup_display_ok     (PopupDisplay& pd, const Color& base);
 void init_popup_display_bad    (PopupDisplay& pd, const Color& base);
 
 // Per-tier popup spawn functions. Each emplaces the full popup archetype
-// (WorldTransform, Vector2 drift, ScorePopup, Color, TagHUDPass, PopupDisplay)
+// (WorldPosition, Vector2 drift, ScorePopup, Color, TagHUDPass, PopupDisplay)
 // plus the matching per-tier tag on the popup entity so renderers can identify
 // the popup's tier via tag presence (no enum lookup).
 //

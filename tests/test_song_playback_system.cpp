@@ -203,7 +203,7 @@ TEST_CASE("song_playback: obstacles can clear after playback ends without soft-l
 
     auto obstacle = reg.create();
     reg.emplace<ObstacleTag>(obstacle);
-    reg.emplace<WorldTransform>(obstacle, WorldTransform{{constants::LANE_X[1], start_y}});
+    reg.emplace<WorldPosition>(obstacle, WorldPosition{{constants::LANE_X[1], start_y}});
     reg.emplace<BeatInfo>(obstacle, BeatInfo{0, song.song_time, spawn_time});
 
     tick_fixed_systems(reg, 0.1f);

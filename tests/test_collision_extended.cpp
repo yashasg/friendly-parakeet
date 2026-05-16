@@ -77,7 +77,7 @@ TEST_CASE("collision: Hexagon fails even when matching gate shape", "[collision]
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<ShapeGateTag>(obs);
-    reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
+    reg.emplace<WorldPosition>(obs, WorldPosition{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<Vector2>(obs, Vector2{0.0f, 400.0f});
     reg.emplace<Obstacle>(obs, int16_t{200});
     set_required_shape_tag(reg, obs, Shape::Hexagon);
@@ -154,7 +154,7 @@ TEST_CASE("collision: on-beat shape press requires player hitbox to reach target
     song.song_time = 5.0f;
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
-    reg.get<WorldTransform>(obs).position.x = constants::LANE_X[0];
+    reg.get<WorldPosition>(obs).position.x = constants::LANE_X[0];
     reg.get<int8_t>(obs) = int8_t{0};
     reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
 
@@ -168,7 +168,7 @@ TEST_CASE("collision: on-beat shape press requires player hitbox to reach target
     song.song_time += song.morph_duration + 0.001f;
     shape_window_system(reg, song.morph_duration + 0.001f);
 
-    const auto& transform = reg.get<WorldTransform>(player);
+    const auto& transform = reg.get<WorldPosition>(player);
     REQUIRE(lane.current == 1);
     REQUIRE(lane.target == 0);
     REQUIRE(transform.position.x == constants::LANE_X[1]);
@@ -404,7 +404,7 @@ TEST_CASE("collision: split path succeeds with correct shape and lane", "[collis
     set_player_shape_tag(reg, p, Shape::Triangle);
     auto& lane = reg.get<Lane>(p);
     lane.current = 2;
-    reg.get<WorldTransform>(p).position.x = constants::LANE_X[2];
+    reg.get<WorldPosition>(p).position.x = constants::LANE_X[2];
 
     auto obs = make_split_path(reg, Shape::Triangle, 2, constants::PLAYER_Y);
 

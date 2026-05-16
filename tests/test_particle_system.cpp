@@ -11,7 +11,7 @@ static entt::entity make_particle(entt::registry& reg, float size, float life_re
     reg.emplace<ParticleTag>(e);
     reg.emplace<ParticleData>(e, size, life_remaining, life_max);
     reg.emplace<Vector2>(e, Vector2{vx, vy});
-    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{100.0f, 200.0f}});
     reg.emplace<TagEffectsPass>(e);
     return e;
 }

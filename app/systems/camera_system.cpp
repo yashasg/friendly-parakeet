@@ -249,7 +249,7 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
 
         auto record_stale_or_compute_z = [&](entt::entity entity, const MeshChild& mc,
                                              float& out_z) -> bool {
-            auto* parent_wt = reg.try_get<WorldTransform>(mc.parent);
+            auto* parent_wt = reg.try_get<WorldPosition>(mc.parent);
             if (!parent_wt) {
                 if (stale_children.size() >= stale_children.capacity()) {
                     ++scratch->capacity_exceeded_count;
@@ -296,7 +296,7 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
 
     // 3. Player shape transform
     {
-        auto view = reg.view<PlayerTag, WorldTransform, PlayerShape, Color>();
+        auto view = reg.view<PlayerTag, WorldPosition, PlayerShape, Color>();
         for (auto [entity, transform, pshape, col] : view.each()) {
             (void)pshape;
             const auto* jump = reg.try_get<Jumping>(entity);
@@ -324,7 +324,7 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
 
     // 4. Particle transforms
     {
-        auto view = reg.view<ParticleTag, WorldTransform, ParticleData, Color>();
+        auto view = reg.view<ParticleTag, WorldPosition, ParticleData, Color>();
         for (auto [entity, transform, pdata, col] : view.each()) {
             float ratio = (pdata.max_time > 0.0f) ? (pdata.remaining / pdata.max_time) : 1.0f;
             float sz = pdata.size * ratio;
@@ -389,7 +389,7 @@ void ui_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
     // Popup screen-space projection
     {
         auto& cam = game_camera(reg).cam;
-        auto view = reg.view<ScorePopup, WorldTransform>();
+        auto view = reg.view<ScorePopup, WorldPosition>();
         for (auto [entity, popup, transform] : view.each()) {
             Vector3 world_pos = {transform.position.x, 5.0f, transform.position.y};
             Vector2 sp = GetWorldToScreenEx(world_pos, cam,

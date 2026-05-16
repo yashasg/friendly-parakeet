@@ -314,7 +314,7 @@ inline entt::registry make_rhythm_registry() {
 inline entt::entity make_player(entt::registry& reg) {
     auto player = reg.create();
     reg.emplace<PlayerTag>(player);
-    reg.emplace<WorldTransform>(player, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
+    reg.emplace<WorldPosition>(player, WorldPosition{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<PlayerShape>(player);
     // Default player shape is Circle (presence of `ShapeCircleTag`) — matches
     // the legacy `PlayerShape::current` default (enum first value).
@@ -391,7 +391,7 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<ShapeGateTag>(obs);
-    reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
+    reg.emplace<WorldPosition>(obs, WorldPosition{{constants::LANE_X[1], y}});
     reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_SHAPE_GATE});
     set_required_shape_tag(reg, obs, shape);
@@ -408,7 +408,7 @@ inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lan
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<SplitPathTag>(obs);
-    reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
+    reg.emplace<WorldPosition>(obs, WorldPosition{{constants::LANE_X[1], y}});
     reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_SPLIT_PATH});
     set_required_shape_tag(reg, obs, shape);

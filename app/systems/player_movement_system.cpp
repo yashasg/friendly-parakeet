@@ -53,7 +53,7 @@ void player_movement_system(entt::registry& reg, float dt) {
     auto* song = reg.ctx().find<SongState>();
     const bool rhythm_mode = (song != nullptr && (song->playing || song->finished));
 
-    auto view = reg.view<PlayerTag, WorldTransform, PlayerShape, Lane>();
+    auto view = reg.view<PlayerTag, WorldPosition, PlayerShape, Lane>();
     for (auto [entity, transform, pshape, lane] : view.each()) {
         lane_utils::normalize(lane, &transform);
 

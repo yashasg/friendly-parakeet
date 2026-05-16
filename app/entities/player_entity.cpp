@@ -14,7 +14,7 @@ entt::entity create_player_entity(entt::registry& reg) {
 
     auto player = reg.create();
     reg.emplace<PlayerTag>(player);
-    reg.emplace<WorldTransform>(player, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
+    reg.emplace<WorldPosition>(player, WorldPosition{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<PlayerShape>(player);
     // Player starts as Hexagon: presence of `ShapeHexagonTag` IS the data
     // (issue #1202/#1204 — see `app/util/shape_tag.h`).

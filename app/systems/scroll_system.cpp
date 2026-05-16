@@ -19,7 +19,7 @@ void scroll_system(entt::registry& reg, [[maybe_unused]] float dt) {
             return;
         }
 
-        auto beat_view = reg.view<ObstacleTag, WorldTransform, BeatInfo>();
+        auto beat_view = reg.view<ObstacleTag, WorldPosition, BeatInfo>();
         for (auto [entity, wt, info] : beat_view.each()) {
             (void)entity;
             wt.position.y = constants::SPAWN_Y
