@@ -9,31 +9,8 @@
 namespace {
 
 #if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
-const char* game_phase_name(GamePhase phase) {
-    switch (phase) {
-        case GamePhase::Title:
-            return "Title";
-        case GamePhase::LevelSelect:
-            return "LevelSelect";
-        case GamePhase::Playing:
-            return "Playing";
-        case GamePhase::Paused:
-            return "Paused";
-        case GamePhase::GameOver:
-            return "GameOver";
-        case GamePhase::SongComplete:
-            return "SongComplete";
-        case GamePhase::Settings:
-            return "Settings";
-        case GamePhase::Tutorial:
-            return "Tutorial";
-        default:
-            return "Unknown";
-    }
-}
-
-void update_web_title(GamePhase phase) {
-    const std::string title = std::string("SHAPESHIFTER [") + game_phase_name(phase) + "]";
+void set_web_title(const char* phase_name) {
+    const std::string title = std::string("SHAPESHIFTER [") + phase_name + "]";
     EM_ASM(
         {
             if (typeof document !== 'undefined') {
@@ -41,6 +18,27 @@ void update_web_title(GamePhase phase) {
             }
         },
         title.c_str());
+}
+
+// Per Fabian's existential processing (issue #1202/#1204, PR E): the former
+// eight-case `switch (phase)` over the WASM smoke title is replaced by per-tag
+// transforms on the `GamePhase*Tag` ctx mirror seeded by
+// `sync_game_phase_tags()`. The mirror invariant pinned by
+// `tests/test_game_phase_tags.cpp` guarantees that exactly one
+// `GamePhase*Tag` is present at any time, so these eight `if` blocks are
+// mutually exclusive even without `else` chaining and dispatch on tag
+// presence rather than on an enum compare. Callers must invoke this only
+// after `sync_game_phase_tags()` so the mirror reflects the new phase.
+void update_web_title(entt::registry& reg) {
+    const auto& ctx = reg.ctx();
+    if (ctx.contains<GamePhaseTitleTag>())        { set_web_title("Title"); }
+    if (ctx.contains<GamePhaseLevelSelectTag>())  { set_web_title("LevelSelect"); }
+    if (ctx.contains<GamePhasePlayingTag>())      { set_web_title("Playing"); }
+    if (ctx.contains<GamePhasePausedTag>())       { set_web_title("Paused"); }
+    if (ctx.contains<GamePhaseGameOverTag>())     { set_web_title("GameOver"); }
+    if (ctx.contains<GamePhaseSongCompleteTag>()) { set_web_title("SongComplete"); }
+    if (ctx.contains<GamePhaseSettingsTag>())     { set_web_title("Settings"); }
+    if (ctx.contains<GamePhaseTutorialTag>())     { set_web_title("Tutorial"); }
 }
 #endif
 
@@ -109,6 +107,6 @@ void enter_phase(entt::registry& reg, GameState& gs, GamePhase next_phase) {
     gs.phase_timer = 0.0f;
     sync_game_phase_tags(reg, gs.phase);
 #if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
-    update_web_title(gs.phase);
+    update_web_title(reg);
 #endif
 }
