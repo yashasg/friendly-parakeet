@@ -112,14 +112,14 @@ static EM_BOOL on_visibility_change(int /*event_type*/,
     }
 
     if (auto* gs = state->reg->ctx().find<GameState>()) {
-        // Per Fabian's existential processing (issue #1202/#1204, PR F): the
+        (void)gs;
+        // Per Fabian's existential processing (issue #1202/#1204): the
         // suspend-pause predicate dispatches on the `GamePhasePlayingTag` ctx
-        // mirror rather than reading `gs->phase`. The `GameState::find`
-        // probe is retained because the registry may not yet hold the
-        // singleton during early WASM bootstrap.
+        // mirror; the request is expressed as `NextPhasePausedTag` presence.
+        // The `GameState` probe is retained because the registry may not
+        // yet hold the singleton during early WASM bootstrap.
         if (state->reg->ctx().contains<GamePhasePlayingTag>()) {
-            gs->transition_pending = true;
-            gs->next_phase = GamePhase::Paused;
+            request_phase_transition<NextPhasePausedTag>(*state->reg);
         }
     }
     return EM_FALSE;

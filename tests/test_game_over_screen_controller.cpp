@@ -54,7 +54,7 @@ TEST_CASE("game_over: ENERGY DEPLETED reason renders when EnergyDepletedDeath ta
     // Absent tag: no reason text appears.
     REQUIRE(reg.ctx().find<EnergyDepletedDeath>() == nullptr);
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.0f;
 
     render_game_over_screen_ui(reg);
@@ -81,7 +81,7 @@ TEST_CASE("game_over: score / high score / cause are visible via registry single
     reg.ctx().insert_or_assign(EnergyDepletedDeath{});
 
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 1.0f;
 
     // Controller-bound values — these are exactly the fields the
@@ -106,7 +106,7 @@ TEST_CASE("game_over: render binds score/high-score/reason into scoreboard draw 
     reg.ctx().insert_or_assign(EnergyDepletedDeath{});
 
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.0f;
 
     render_game_over_screen_ui(reg);
@@ -129,7 +129,7 @@ TEST_CASE("game_over: render binds new-best badge and previous score", "[game_ov
     reg.ctx().insert_or_assign(EnergyDepletedDeath{});
 
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.0f;
 
     render_game_over_screen_ui(reg);
@@ -150,7 +150,7 @@ TEST_CASE("game_over: render omits empty reason binding when no death-cause tag 
     REQUIRE(reg.ctx().find<EnergyDepletedDeath>() == nullptr);
 
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.0f;
 
     render_game_over_screen_ui(reg);

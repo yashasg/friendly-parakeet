@@ -205,7 +205,7 @@ void test_player_system(entt::registry& reg, float dt) {
 
     // Per Fabian's existential processing (issue #1202/#1204, PR F): each
     // former `gs.phase == GamePhase::X` branch dispatches on the per-phase
-    // ctx-tag mirror seeded by `enter_phase()` / `sync_game_phase_tags()`.
+    // ctx-tag mirror seeded by `enter_phase<...>()`.
     // `phase_timer` stays a scalar on `GameState` until PR G deletes the
     // enum-typed field.
     const bool title_phase         = ctx.contains<GamePhaseTitleTag>();

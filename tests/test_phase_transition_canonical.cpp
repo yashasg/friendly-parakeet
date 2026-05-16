@@ -135,7 +135,7 @@ bool is_type_like_prev_char(char c) {
 }
 
 bool has_direct_enter_phase_call(const std::string& source) {
-    static const std::regex kEnterPhaseToken(R"(\benter_phase\s*\()");
+    static const std::regex kEnterPhaseToken(R"(\benter_phase\s*[<(])");
     const std::string sanitized = strip_comments_and_literals(source);
 
     for (std::sregex_iterator it(sanitized.begin(), sanitized.end(), kEnterPhaseToken), end;
@@ -249,9 +249,9 @@ TEST_CASE("phase_transition: app sources enforce canonical enter_phase allow-lis
 TEST_CASE("phase_transition: enforcement catches non-UI/non-input direct callers (#503)",
           "[phase_transition][architecture]") {
     const std::vector<SourceRecord> fixtures = {
-        {"app/systems/game_state_system.cpp", "void ok(GameState& gs){ enter_phase(gs, GamePhase::Paused); }"},
-        {"app/systems/rogue_system.cpp", "void bad(GameState& gs){ enter_phase(gs, GamePhase::Title); }"},
-        {"app/ui/screen_controllers/title_screen_controller.cpp", "void ui(GameState& gs){ gs.transition_pending = true; }"},
+        {"app/systems/game_state_system.cpp", "void ok(entt::registry& reg){ enter_phase<GamePhasePausedTag>(reg); }"},
+        {"app/systems/rogue_system.cpp", "void bad(entt::registry& reg){ enter_phase<GamePhaseTitleTag>(reg); }"},
+        {"app/ui/screen_controllers/title_screen_controller.cpp", "void ui(entt::registry& reg){ request_phase_transition<NextPhasePausedTag>(reg); }"},
     };
 
     const auto offenders = collect_enter_phase_offenders(fixtures, canonical_enter_phase_allowlist());
@@ -273,24 +273,31 @@ TEST_CASE("phase_transition: Tutorial and Paused controllers guard entry input",
 TEST_CASE("phase_transition matcher catches whitespace variants and ignores strings/comments",
           "[phase_transition][architecture]") {
     const std::string direct_call = R"cpp(
-        void bad(GameState& gs) {
-            enter_phase ( gs, GamePhase::Title );
+        void bad(entt::registry& reg) {
+            enter_phase<GamePhaseTitleTag>(reg);
+        }
+    )cpp";
+    const std::string template_with_spaces = R"cpp(
+        void bad(entt::registry& reg) {
+            enter_phase < GamePhaseTitleTag > ( reg );
         }
     )cpp";
     const std::string string_literal_only = R"cpp(
-        const char* text = "enter_phase( should not trigger";
+        const char* text = "enter_phase<GamePhaseTitleTag>( should not trigger";
     )cpp";
     const std::string comments_only = R"cpp(
-        // enter_phase(gs, GamePhase::Title);
+        // enter_phase<GamePhaseTitleTag>(reg);
         /*
-          enter_phase ( gs, GamePhase::Title );
+          enter_phase < GamePhaseTitleTag > ( reg );
         */
     )cpp";
     const std::string declaration_only = R"cpp(
-        void enter_phase(GameState&, GamePhase);
+        template <typename PhaseTag>
+        void enter_phase(entt::registry& reg);
     )cpp";
 
     CHECK(has_direct_enter_phase_call(direct_call));
+    CHECK(has_direct_enter_phase_call(template_with_spaces));
     CHECK_FALSE(has_direct_enter_phase_call(string_literal_only));
     CHECK_FALSE(has_direct_enter_phase_call(comments_only));
     CHECK_FALSE(has_direct_enter_phase_call(declaration_only));

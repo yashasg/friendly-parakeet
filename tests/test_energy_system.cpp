@@ -7,14 +7,13 @@
 
 TEST_CASE("energy: no action when not in Playing phase", "[energy]") {
     auto reg = make_rhythm_registry();
-    set_test_phase(reg, GamePhase::Title);
+    set_test_phase<GamePhaseTitleTag>(reg);
     auto& energy = reg.ctx().get<EnergyState>();
     energy.energy = 0.0f;
 
     energy_system(reg, 0.016f);
 
-    auto& gs = reg.ctx().get<GameState>();
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("energy: no action when energy is positive", "[energy]") {
@@ -24,8 +23,7 @@ TEST_CASE("energy: no action when energy is positive", "[energy]") {
 
     energy_system(reg, 0.016f);
 
-    auto& gs = reg.ctx().get<GameState>();
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
     CHECK(reg.ctx().get<SongState>().playing);
 }
 
@@ -103,9 +101,7 @@ TEST_CASE("energy: game_state triggers game over when energy reaches zero", "[en
 
     game_state_system(reg, 0.016f);
 
-    auto& gs = reg.ctx().get<GameState>();
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::GameOver);
+    CHECK(reg.ctx().contains<NextPhaseGameOverTag>());
     CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);
 }
 
@@ -113,16 +109,13 @@ TEST_CASE("energy: no action when SongState not present", "[energy]") {
     entt::registry bare_reg;
     bare_reg.ctx().emplace<InputState>();
     
-    bare_reg.ctx().emplace<GameState>(GameState{
-        GamePhase::Playing, 0.0f, false, GamePhase::Playing
-    });
+    bare_reg.ctx().emplace<GameState>(GameState{ 0.0f });
     bare_reg.ctx().emplace<EnergyState>(EnergyState{0.0f, 0.0f, 0.0f});
     runtime_system_scratch_init(bare_reg);
 
     energy_system(bare_reg, 0.016f);
 
-    auto& gs = bare_reg.ctx().get<GameState>();
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(bare_reg));
 }
 
 TEST_CASE("energy: depleted energy requests game over when song is not playing", "[energy][issue961]") {
@@ -133,9 +126,7 @@ TEST_CASE("energy: depleted energy requests game over when song is not playing",
 
     energy_system(reg, 0.016f);
 
-    auto& gs = reg.ctx().get<GameState>();
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::GameOver);
+    CHECK(reg.ctx().contains<NextPhaseGameOverTag>());
     CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);
 }
 
@@ -143,16 +134,13 @@ TEST_CASE("energy: no action when EnergyState not present", "[energy]") {
     entt::registry bare_reg;
     bare_reg.ctx().emplace<InputState>();
     
-    bare_reg.ctx().emplace<GameState>(GameState{
-        GamePhase::Playing, 0.0f, false, GamePhase::Playing
-    });
+    bare_reg.ctx().emplace<GameState>(GameState{ 0.0f });
     auto& song = bare_reg.ctx().emplace<SongState>();
     song.playing = true;
 
     energy_system(bare_reg, 0.016f);
 
-    auto& gs = bare_reg.ctx().get<GameState>();
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(bare_reg));
 }
 
 TEST_CASE("energy: small positive energy does not trigger game over", "[energy]") {
@@ -162,8 +150,7 @@ TEST_CASE("energy: small positive energy does not trigger game over", "[energy]"
 
     game_state_system(reg, 0.016f);
 
-    auto& gs = reg.ctx().get<GameState>();
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
     CHECK(reg.ctx().get<SongState>().playing);
 }
 
@@ -193,9 +180,7 @@ TEST_CASE("energy: flash timer decrements", "[energy]") {
 
 TEST_CASE("energy: enter_game_over owns song stop", "[energy][gamestate]") {
     auto reg = make_rhythm_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::GameOver;
+    request_phase_transition<NextPhaseGameOverTag>(reg);
 
     game_state_system(reg, 0.016f);
 

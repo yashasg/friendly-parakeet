@@ -94,7 +94,7 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     //
     // Per Fabian's existential processing (issue #1202/#1204, PR D): each
     // former `case GamePhase::X` is its own per-tag transform on the ctx-tag
-    // mirror seeded by `sync_game_phase_tags()` / `enter_phase()`. The mirror
+    // mirror seeded by `enter_phase<...>()`. The mirror
     // invariant pinned by `tests/test_game_phase_tags.cpp` guarantees that
     // exactly one `GamePhase*Tag` is present at any time, so these eight
     // `if` blocks are mutually exclusive even without `else` chaining and

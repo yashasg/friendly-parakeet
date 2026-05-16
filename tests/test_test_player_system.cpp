@@ -48,7 +48,7 @@ static void tick_systems(entt::registry& reg, int frames, float dt = 1.0f / 60.0
         scoring_system(reg, dt);
         obstacle_despawn_system(reg, dt);
         // Stop early if game over
-        if (reg.ctx().get<GameState>().transition_pending) break;
+        if (is_phase_transition_pending(reg)) break;
     }
 }
 
@@ -74,8 +74,7 @@ TEST_CASE("test_player: init level fallback uses canonical default", "[test_play
 #endif
 
 static bool survived(entt::registry& reg) {
-    auto& gs = reg.ctx().get<GameState>();
-    return gs.phase == GamePhase::Playing && !gs.transition_pending;
+    return reg.ctx().contains<GamePhasePlayingTag>() && !is_phase_transition_pending(reg);
 }
 
 static entt::entity make_loggable_obstacle(entt::registry& reg) {
@@ -212,7 +211,7 @@ TEST_CASE("test_player: auto-starts from title screen", "[test_player]") {
     auto reg = make_test_player_registry();
     make_rhythm_player(reg);
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Title);
+    set_test_phase<GamePhaseTitleTag>(reg);
     gs.phase_timer = 1.0f;
 
     // Create a Confirm menu button (as title screen would have)
@@ -316,8 +315,7 @@ TEST_CASE("session_logger: non-fatal MissTag logs result MISS (#111)",
 TEST_CASE("session_logger: fatal MissTag logs result MISS (#111)",
           "[session_logger][issue-111]") {
     auto reg = make_rhythm_registry();
-    reg.ctx().get<GameState>().transition_pending = true;
-    reg.ctx().get<GameState>().next_phase = GamePhase::GameOver;
+    request_phase_transition<NextPhaseGameOverTag>(reg);
     auto& log = reg.ctx().emplace<SessionLog>();
     log.file = std::tmpfile();
     REQUIRE(log.file != nullptr);

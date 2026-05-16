@@ -17,9 +17,8 @@ TEST_CASE("obstacle_runtime: obstacle view emptiness tracks obstacle entity life
 TEST_CASE("game_state: finished song waits for obstacle drain before SongComplete",
           "[game_state][runtime]") {
     auto reg = make_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Playing);
-    gs.transition_pending = false;
+    set_test_phase<GamePhasePlayingTag>(reg);
+    clear_next_phase_tags(reg);
 
     auto& song = reg.ctx().get<SongState>();
     song.playing = true;
@@ -32,10 +31,9 @@ TEST_CASE("game_state: finished song waits for obstacle drain before SongComplet
     reg.emplace<ObstacleTag>(e);
 
     game_state_system(reg, 1.0f / 60.0f);
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 
     reg.destroy(e);
     game_state_system(reg, 1.0f / 60.0f);
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::SongComplete);
+    CHECK(reg.ctx().contains<NextPhaseSongCompleteTag>());
 }

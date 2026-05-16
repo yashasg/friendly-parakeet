@@ -7,6 +7,7 @@
 #include "entities/camera_entity.h"
 #include "entities/obstacle_entity.h"
 #include "entities/obstacle_render_entity.h"
+#include "systems/game_phase_transition.h"
 #include "systems/play_session.h"
 #include "test_helpers.h"
 #include "systems/high_score_system.h"
@@ -116,7 +117,6 @@ TEST_CASE("Play session: restart clears obstacle mesh children without stale lis
 TEST_CASE("Play session: missing selected beatmap returns to level select without score session",
           "[play_session][issue835]") {
     auto reg = make_registry();
-    auto& gs = reg.ctx().get<GameState>();
     auto& lss = reg.ctx().get<LevelSelectState>();
     auto& high_scores = reg.ctx().get<HighScoreState>();
     high_score::set_score(high_scores, "1_stomper|medium", 4321);
@@ -129,7 +129,7 @@ TEST_CASE("Play session: missing selected beatmap returns to level select withou
 
     setup_play_session(reg);
 
-    CHECK(gs.phase == GamePhase::LevelSelect);
+    CHECK(reg.ctx().contains<GamePhaseLevelSelectTag>());
     CHECK_FALSE(lss.confirmed);
     {
         const auto& bm = beat_map(reg);
@@ -148,7 +148,7 @@ TEST_CASE("Play session: missing selected beatmap returns to level select withou
     REQUIRE_NOTHROW(setup_play_session(reg));
     CHECK(reg.ctx().find<SongState>() != nullptr);
     CHECK(reg.ctx().find<ScoreState>() != nullptr);
-    CHECK(gs.phase == GamePhase::Playing);
+    CHECK(reg.ctx().contains<GamePhasePlayingTag>());
     CHECK_FALSE(reg.view<PlayerTag>().empty());
 }
 
@@ -229,9 +229,7 @@ TEST_CASE("High score integration: new song-complete high score persists",
     current.value = 1000;
     score.score = 2500;
 
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::SongComplete;
+    request_phase_transition<NextPhaseSongCompleteTag>(reg);
 
     game_state_system(reg, 0.016f);
 
@@ -262,9 +260,7 @@ TEST_CASE("High score integration: lower game-over score does not overwrite pers
     current.value = 3000;
     score.score = 1000;
 
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::GameOver;
+    request_phase_transition<NextPhaseGameOverTag>(reg);
 
     game_state_system(reg, 0.016f);
 
@@ -290,9 +286,7 @@ TEST_CASE("High score integration: missing active entry does not report new best
     current.value = 1000;
     score.score = 2500;
 
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::SongComplete;
+    request_phase_transition<NextPhaseSongCompleteTag>(reg);
 
     game_state_system(reg, 0.016f);
 
@@ -327,9 +321,7 @@ TEST_CASE("High score integration: failed save keeps dirty state for retry",
     current.value = 1000;
     score.score = 2500;
 
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::SongComplete;
+    request_phase_transition<NextPhaseSongCompleteTag>(reg);
 
     game_state_system(reg, 0.016f);
 
@@ -341,8 +333,7 @@ TEST_CASE("High score integration: failed save keeps dirty state for retry",
     const auto retry_file = root / "high_scores.json";
     reg.ctx().get<HighScorePersistence>().path = retry_file.string();
     score.score = 1000;
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::GameOver;
+    request_phase_transition<NextPhaseGameOverTag>(reg);
 
     game_state_system(reg, 0.016f);
 
@@ -371,9 +362,9 @@ TEST_CASE("High score bootstrap: persistence path is populated for save call sit
     CHECK(high_score::load_high_scores(loaded_at_bootstrap, file).ok());
     reg.ctx().get<HighScoreState>() = loaded_at_bootstrap;
     reg.ctx().get<HighScorePersistence>() = HighScorePersistence{file.string()};
-    reg.ctx().get<GameState>() = GameState{
-        GamePhase::Playing, 0.0f, true, GamePhase::SongComplete
-    };
+    reg.ctx().get<GameState>() = GameState{ 0.0f };
+    sync_game_phase_tags<GamePhasePlayingTag>(reg);
+    request_phase_transition<NextPhaseSongCompleteTag>(reg);
     auto& score = reg.ctx().get<ScoreState>();
     auto& current = reg.ctx().get<CurrentSongHighScore>();
     current.value = 1000;

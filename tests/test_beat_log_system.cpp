@@ -63,7 +63,7 @@ TEST_CASE("beat_log: no-op when log file is null", "[beat_log]") {
 
 TEST_CASE("beat_log: no-op when not in Playing phase", "[beat_log]") {
     auto reg = make_rhythm_registry();
-    set_test_phase(reg, GamePhase::Title);
+    set_test_phase<GamePhaseTitleTag>(reg);
     auto& song = reg.ctx().get<SongState>();
     song.current_beat = 2;
 

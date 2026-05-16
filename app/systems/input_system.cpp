@@ -1,5 +1,6 @@
 #include "all_systems.h"
 #include "camera_system.h"
+#include "game_phase_transition.h"
 #include "input_system_private.h"
 #include "web_input_policy.h"
 #include "input.h"
@@ -425,9 +426,7 @@ void input_system(entt::registry& reg, float raw_dt) {
         bool focused = IsWindowFocused();
         if (priv.was_focused && !focused &&
             reg.ctx().contains<GamePhasePlayingTag>()) {
-            auto& gs = reg.ctx().get<GameState>();
-            gs.transition_pending = true;
-            gs.next_phase = GamePhase::Paused;
+            request_phase_transition<NextPhasePausedTag>(reg);
         }
         priv.was_focused = focused;
     }

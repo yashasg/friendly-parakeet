@@ -1,6 +1,7 @@
 // Paused screen controller - renders raygui layout and dispatches resume/menu actions.
 
 #include "../../components/game_state.h"
+#include "../../systems/game_phase_transition.h"
 #include "../../systems/input.h"
 #include "../../constants.h"
 #include "screen_controller_base.h"
@@ -31,12 +32,10 @@ void render_paused_screen_ui(entt::registry& reg) {
     if (controller.state().ResumeButtonPressed) {
         // Deferred per #482 — the canonical state-machine swap (game_state_system)
         // routes Paused→Playing as a resume that preserves session state.
-        gs.transition_pending = true;
-        gs.next_phase = GamePhase::Playing;
+        request_phase_transition<NextPhasePlayingTag>(reg);
     }
 
     if (controller.state().MenuButtonPressed) {
-        gs.transition_pending = true;
-        gs.next_phase = GamePhase::Title;
+        request_phase_transition<NextPhaseTitleTag>(reg);
     }
 }

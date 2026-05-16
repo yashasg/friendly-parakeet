@@ -457,8 +457,7 @@ TEST_CASE("collision: hexagon fails shape gates — drains energy", "[rhythm][co
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
     energy_system(reg, 0.016f);
-    auto& gs = reg.ctx().get<GameState>();
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
     auto& energy = reg.ctx().get<EnergyState>();
     CHECK(energy.energy < 1.0f);
     CHECK(energy.flash_timer > 0.0f);
@@ -473,8 +472,7 @@ TEST_CASE("collision: MISS drains energy", "[rhythm][collision]") {
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
     energy_system(reg, 0.016f);
-    auto& gs = reg.ctx().get<GameState>();
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
     auto& energy = reg.ctx().get<EnergyState>();
     CHECK(energy.energy < 1.0f);
     CHECK(energy.flash_timer > 0.0f);
@@ -615,7 +613,7 @@ TEST_CASE("collision: PERFECT clears obstacle without game over", "[rhythm][coll
     reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
     CHECK(reg.all_of<ScoredTag>(obs));
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("collision: SongResults updated", "[rhythm][collision]") {
@@ -639,15 +637,15 @@ TEST_CASE("game_state: triggers game over at 0 energy", "[rhythm][energy]") {
     auto reg = make_rhythm_registry();
     reg.ctx().get<EnergyState>().energy = 0.0f;
     game_state_system(reg, 0.016f);
-    CHECK(reg.ctx().get<GameState>().transition_pending);
-    CHECK(reg.ctx().get<GameState>().next_phase == GamePhase::GameOver);
+    CHECK(is_phase_transition_pending(reg));
+    CHECK(reg.ctx().contains<NextPhaseGameOverTag>());
 }
 
 TEST_CASE("energy_system: does nothing when energy is positive", "[rhythm][energy]") {
     auto reg = make_rhythm_registry();
     reg.ctx().get<EnergyState>().energy = 0.5f;
     energy_system(reg, 0.016f);
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("game_state: enter_game_over marks song finished on depletion", "[rhythm][energy]") {

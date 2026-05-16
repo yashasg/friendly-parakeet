@@ -12,7 +12,7 @@ using Catch::Matchers::WithinAbs;
 
 TEST_CASE("tick_playing_systems: no-op when phase is Paused", "[phase_guard]") {
     auto reg = make_rhythm_registry();
-    set_test_phase(reg, GamePhase::Paused);
+    set_test_phase<GamePhasePausedTag>(reg);
 
     // Observable state that at least three different playing systems would mutate:
     //   scoring_system    → ScoreState::score (distance bonus each tick)
@@ -38,7 +38,7 @@ TEST_CASE("tick_playing_systems: no-op when phase is Paused", "[phase_guard]") {
 
 TEST_CASE("tick_playing_systems: no-op when phase is GameOver", "[phase_guard]") {
     auto reg = make_rhythm_registry();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
 
     // Expired obstacle to match Paused coverage (MissTag / ScoredTag guard).
     auto obs = reg.create();
@@ -134,7 +134,7 @@ TEST_CASE("tick_playing_systems: shape window activates before collision", "[pha
 TEST_CASE("tick_fixed_systems: popup_feedback and energy run in score-feedback chain", "[phase_guard][integration][order_regression]") {
     auto reg = make_rhythm_registry();
     // Phase must be Playing for popup_feedback and energy guards to pass.
-    set_test_phase(reg, GamePhase::Playing);
+    set_test_phase<GamePhasePlayingTag>(reg);
 
     // Pre-seed a popup request directly (bypasses scoring_system path; tests
     // that popup_feedback_system is wired and consumes the queue).
@@ -169,7 +169,6 @@ TEST_CASE("tick_fixed_systems: popup_feedback and energy run in score-feedback c
 TEST_CASE("tick_fixed_systems: energy depletion requests GameOver before next Playing pass",
           "[phase_guard][energy][regression][issue781]") {
     auto reg = make_rhythm_registry();
-    auto& gs = reg.ctx().get<GameState>();
     auto& energy = reg.ctx().get<EnergyState>();
     auto& pending = reg.ctx().get<PendingEnergyEffects>();
     auto& results = reg.ctx().get<SongResults>();
@@ -180,8 +179,7 @@ TEST_CASE("tick_fixed_systems: energy depletion requests GameOver before next Pl
     tick_fixed_systems(reg, 0.016f);
 
     REQUIRE(energy.energy == 0.0f);
-    REQUIRE(gs.transition_pending);
-    REQUIRE(gs.next_phase == GamePhase::GameOver);
+    REQUIRE(reg.ctx().contains<NextPhaseGameOverTag>());
     CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);
     CHECK(pending.events.empty());
 
@@ -193,7 +191,7 @@ TEST_CASE("tick_fixed_systems: energy depletion requests GameOver before next Pl
 
     tick_fixed_systems(reg, 0.016f);
 
-    CHECK(gs.phase == GamePhase::GameOver);
+    CHECK(reg.ctx().contains<GamePhaseGameOverTag>());
     CHECK(results.miss_count == 0);
 
     const auto sfx = drain_sfx_events(reg);
@@ -212,7 +210,6 @@ TEST_CASE("tick_fixed_systems: energy depletion requests GameOver before next Pl
 TEST_CASE("tick_fixed_systems: fatal final drain wins after song finishes",
           "[phase_guard][energy][regression][issue961]") {
     auto reg = make_rhythm_registry();
-    auto& gs = reg.ctx().get<GameState>();
     auto& song = reg.ctx().get<SongState>();
     auto& energy = reg.ctx().get<EnergyState>();
     auto& pending = reg.ctx().get<PendingEnergyEffects>();
@@ -228,7 +225,6 @@ TEST_CASE("tick_fixed_systems: fatal final drain wins after song finishes",
     CHECK(song.finished);
     CHECK_FALSE(song.playing);
     REQUIRE(energy.energy == 0.0f);
-    REQUIRE(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::GameOver);
+    REQUIRE(reg.ctx().contains<NextPhaseGameOverTag>());
     CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);
 }

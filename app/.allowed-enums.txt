@@ -48,4 +48,3 @@ Shape              # lookup key — perfect-hash index into per-shape function-p
 # Each row below is a control-flow enum awaiting migration to per-case tags
 # or component tables. Removing a row here = the migration landed.
 # Adding a row here would be drift; eradicate instead.
-GamePhase             # #1202: per-phase tag/struct mix; blocked on game_state.h split

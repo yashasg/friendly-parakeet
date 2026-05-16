@@ -32,12 +32,10 @@
 
 // Sets up a registry with all singletons in their default state.
 //
-// Per Fabian's existential processing (#1202/#1204, PR F): the per-phase
-// ctx-tag mirror is primed alongside the `GameState` ctx singleton so
-// downstream consumers (`if (ctx.contains<GamePhase*Tag>())`) match the
-// `GameState::phase` field set here. Tests that mutate `gs.phase` directly
-// must call `set_test_phase()` below to keep the mirror in lockstep until
-// the enum-typed field itself is deleted in PR G.
+// Per Fabian's existential processing (#1202/#1204, PR G): there is no enum
+// phase field anymore — the per-phase ctx-tag is the active phase, and
+// tests prime it directly via `enter_phase<...>()` (or `set_test_phase<...>`
+// below when they need to pin a specific `phase_timer` value).
 inline entt::registry make_registry() {
     entt::registry reg;
     reg.ctx().emplace<InputState>();
@@ -46,10 +44,8 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<entt::dispatcher>();
     wire_input_dispatcher(reg);
     wire_audio_haptic_dispatcher(reg);
-    reg.ctx().emplace<GameState>(GameState{
-        GamePhase::Playing, 0.0f, false, GamePhase::Playing
-    });
-    sync_game_phase_tags(reg, GamePhase::Playing);
+    reg.ctx().emplace<GameState>();
+    sync_game_phase_tags<GamePhasePlayingTag>(reg);
     reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<ScoreDisplay>();
     reg.ctx().emplace<CurrentSongHighScore>();
@@ -66,13 +62,13 @@ inline entt::registry make_registry() {
     return reg;
 }
 
-// Mutate the phase in tests without going through `enter_phase()` (which
+// Mutate the phase in tests without going through `enter_phase<...>()` (which
 // also resets `phase_timer` and would defeat tests that pin a specific
-// timer value). Keeps the per-phase ctx-tag mirror invariant intact so
-// the migrated consumers in `app/` dispatch on the new phase immediately.
-inline void set_test_phase(entt::registry& reg, GamePhase phase) {
-    reg.ctx().get<GameState>().phase = phase;
-    sync_game_phase_tags(reg, phase);
+// timer value). Keeps the per-phase ctx-tag mirror invariant intact so the
+// migrated consumers in `app/` dispatch on the new phase immediately.
+template <typename PhaseTag>
+inline void set_test_phase(entt::registry& reg) {
+    sync_game_phase_tags<PhaseTag>(reg);
 }
 
 struct GoCapture {

@@ -9,7 +9,7 @@
 
 TEST_CASE("beat_scheduler: no spawn when not Playing", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
-    set_test_phase(reg, GamePhase::Title);
+    set_test_phase<GamePhaseTitleTag>(reg);
 
     auto& map = beat_map(reg);
     map.shape_gate_circle_beats.push_back({0, 1, 0.0f, false});

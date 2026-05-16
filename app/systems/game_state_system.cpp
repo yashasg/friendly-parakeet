@@ -95,24 +95,19 @@ void game_state_system(entt::registry& reg, float dt) {
     disp.update<MenuPressEvent>();
     disp.update<GoEvent>();
 
-    if (gs.transition_pending) {
-        gs.transition_pending = false;
-
+    if (is_phase_transition_pending(reg)) {
         // Clear any in-flight pointer capture when changing screens so
         // down/up state from the previous phase cannot leak into the next UI.
         // Owned by input_system because suppress_mouse_release lives in
         // InputSystemPrivate (issue #1196).
         input_system_clear_pointer_state(reg);
 
-        // Per Fabian's existential processing (issue #1202/#1204, PR C):
-        // each former `case GamePhase::X` is now its own per-tag transform.
-        // `sync_next_phase_tags` mirrors `gs.next_phase` into exactly one
-        // `NextPhase*Tag` ctx slot; the transforms below dispatch on tag
-        // presence; `clear_next_phase_tags` drains the mirror so a stale
-        // request cannot fire again next frame. The `gs.next_phase` field
-        // is retained during the staged migration; PR G deletes it along
-        // with the `GamePhase` enum itself.
-        sync_next_phase_tags(reg, gs.next_phase);
+        // Per Fabian's existential processing (issue #1202/#1204, PR G):
+        // each former `case GamePhase::X` is its own per-tag transform.
+        // `request_phase_transition<NextPhase*Tag>()` (called by UI / input /
+        // upstream systems) is the sole writer of the `NextPhase*Tag` mirror;
+        // the transforms below dispatch on tag presence; `clear_next_phase_tags`
+        // drains the mirror so a stale request cannot fire again next frame.
         auto& ctx = reg.ctx();
 
         if (ctx.contains<NextPhasePlayingTag>()) {
@@ -123,39 +118,39 @@ void game_state_system(entt::registry& reg, float dt) {
             // and input routing on the deferred (transition_pending) path.
             //
             // Resume-from-pause check reads the current-phase tag mirror
-            // (`GamePhasePausedTag`), not `gs.phase`, per Fabian's existential
-            // processing (issue #1202/#1204, PR F): consumers dispatch on
-            // tag presence, never on the enum value. `sync_next_phase_tags`
-            // above mutates only the `NextPhase*Tag` mirror, so the current
-            // phase tag still reflects the pre-transition phase here.
+            // (`GamePhasePausedTag`), per Fabian's existential processing
+            // (issue #1202/#1204): consumers dispatch on tag presence,
+            // never on an enum value. `request_phase_transition` mutates
+            // only the `NextPhase*Tag` mirror, so the current phase tag
+            // still reflects the pre-transition phase here.
             if (ctx.contains<GamePhasePausedTag>()) {
-                enter_phase(reg, gs, GamePhase::Playing);
+                enter_phase<GamePhasePlayingTag>(reg);
             } else {
                 setup_play_session(reg);
             }
         }
         if (ctx.contains<NextPhaseGameOverTag>()) {
-            game_state_enter_terminal_phase(reg, GamePhase::GameOver);
+            game_state_enter_terminal_phase_game_over(reg);
         }
         if (ctx.contains<NextPhaseSongCompleteTag>()) {
-            game_state_enter_terminal_phase(reg, GamePhase::SongComplete);
+            game_state_enter_terminal_phase_song_complete(reg);
         }
         if (ctx.contains<NextPhasePausedTag>()) {
-            enter_phase(reg, gs, GamePhase::Paused);
+            enter_phase<GamePhasePausedTag>(reg);
         }
         if (ctx.contains<NextPhaseTitleTag>()) {
-            enter_phase(reg, gs, GamePhase::Title);
+            enter_phase<GamePhaseTitleTag>(reg);
         }
         if (ctx.contains<NextPhaseLevelSelectTag>()) {
-            enter_phase(reg, gs, GamePhase::LevelSelect);
+            enter_phase<GamePhaseLevelSelectTag>(reg);
             auto& lss = reg.ctx().get<LevelSelectState>();
             lss.confirmed = false;
         }
         if (ctx.contains<NextPhaseSettingsTag>()) {
-            enter_phase(reg, gs, GamePhase::Settings);
+            enter_phase<GamePhaseSettingsTag>(reg);
         }
         if (ctx.contains<NextPhaseTutorialTag>()) {
-            enter_phase(reg, gs, GamePhase::Tutorial);
+            enter_phase<GamePhaseTutorialTag>(reg);
         }
 
         clear_next_phase_tags(reg);
@@ -174,10 +169,11 @@ void game_state_system(entt::registry& reg, float dt) {
         if (lss.confirmed) {
             lss.confirmed = false;
             const auto* settings_ptr = find_settings_state(reg);
-            gs.transition_pending = true;
-            gs.next_phase = settings_ptr && !settings::ftue_complete(*settings_ptr)
-                ? GamePhase::Tutorial
-                : GamePhase::Playing;
+            if (settings_ptr && !settings::ftue_complete(*settings_ptr)) {
+                request_phase_transition<NextPhaseTutorialTag>(reg);
+            } else {
+                request_phase_transition<NextPhasePlayingTag>(reg);
+            }
         }
     }
 
@@ -190,16 +186,14 @@ void game_state_system(entt::registry& reg, float dt) {
         auto* song = reg.ctx().find<SongState>();
         if (energy && energy->energy <= 0.0f) {
             reg.ctx().insert_or_assign(EnergyDepletedDeath{});
-            gs.transition_pending = true;
-            gs.next_phase = GamePhase::GameOver;
+            request_phase_transition<NextPhaseGameOverTag>(reg);
             return;
         }
 
         if (song && song->finished) {
             // Wait until all obstacle entities have been destroyed.
             if (reg.view<ObstacleTag>().empty()) {
-                gs.transition_pending = true;
-                gs.next_phase = GamePhase::SongComplete;
+                request_phase_transition<NextPhaseSongCompleteTag>(reg);
             }
         }
     }

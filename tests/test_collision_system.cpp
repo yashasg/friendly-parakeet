@@ -11,7 +11,7 @@ TEST_CASE("collision: shape gate cleared with matching shape", "[collision]") {
     collision_system(reg, 0.016f);
 
     CHECK(reg.all_of<ScoredTag>(obs));
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("collision: shape gate drains energy with wrong shape", "[collision]") {
@@ -26,8 +26,7 @@ TEST_CASE("collision: shape gate drains energy with wrong shape", "[collision]")
     scoring_system(reg, 0.016f);
     energy_system(reg, 0.016f);
 
-    auto& gs = reg.ctx().get<GameState>();
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
     auto& energy = reg.ctx().get<EnergyState>();
     CHECK(energy.energy < 1.0f);
     CHECK(energy.flash_timer > 0.0f);
@@ -135,7 +134,7 @@ TEST_CASE("collision: obstacle too far away is ignored", "[collision]") {
 
     collision_system(reg, 0.016f);
 
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("collision: beat line is collision point",
@@ -165,7 +164,7 @@ TEST_CASE("collision: already scored obstacles are skipped", "[collision]") {
 
     collision_system(reg, 0.016f);
 
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("collision: resolved hit obstacle is not re-tagged after scoring cleanup",
@@ -214,7 +213,7 @@ TEST_CASE("collision: split path cleared with matching shape and lane", "[collis
     collision_system(reg, 0.016f);
 
     CHECK(reg.all_of<ScoredTag>(obs));
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("collision: split path fails with wrong shape", "[collision]") {
@@ -227,7 +226,7 @@ TEST_CASE("collision: split path fails with wrong shape", "[collision]") {
     scoring_system(reg, 0.016f);
     energy_system(reg, 0.016f);
 
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
     auto& energy = reg.ctx().get<EnergyState>();
     CHECK(energy.energy < 1.0f);
     CHECK(energy.flash_timer > 0.0f);
@@ -243,7 +242,7 @@ TEST_CASE("collision: split path fails with wrong lane", "[collision]") {
     scoring_system(reg, 0.016f);
     energy_system(reg, 0.016f);
 
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
     auto& energy = reg.ctx().get<EnergyState>();
     CHECK(energy.energy < 1.0f);
     CHECK(energy.flash_timer > 0.0f);
@@ -256,18 +255,18 @@ TEST_CASE("collision: no player means no collision processing", "[collision]") {
 
     collision_system(reg, 0.016f);
 
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("collision: not in Playing phase skips processing", "[collision]") {
     auto reg = make_registry();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     make_player(reg);
     make_shape_gate(reg, Shape::Triangle, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
 
-    CHECK_FALSE(reg.ctx().get<GameState>().transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 

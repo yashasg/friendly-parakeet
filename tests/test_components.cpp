@@ -3,6 +3,7 @@
 #include "test_helpers.h"
 #include "components/audio.h"
 #include "systems/audio_events.h"
+#include "systems/game_phase_transition.h"
 #include "entities/obstacle_entity.h"
 #include "entities/obstacle_render_entity.h"
 
@@ -109,9 +110,12 @@ TEST_CASE("components: CurrentSongHighScore defaults to zero", "[components]") {
 }
 
 TEST_CASE("components: GameState defaults to title", "[components]") {
-    GameState gs{};
-    CHECK(gs.phase == GamePhase::Title);
-    CHECK_FALSE(gs.transition_pending);
+    entt::registry reg;
+    auto& gs = reg.ctx().emplace<GameState>();
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
+    CHECK(gs.phase_timer == 0.0f);
+    CHECK(reg.ctx().contains<GamePhaseTitleTag>());
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
@@ -145,7 +149,7 @@ TEST_CASE("ecs: make_registry dispatcher is wired — GoEvent listeners register
     auto reg = make_registry();
 
     // Promote to Playing so player_input_handle_go has observable effect.
-    set_test_phase(reg, GamePhase::Playing);
+    set_test_phase<GamePhasePlayingTag>(reg);
     auto player = make_player(reg);
     auto& lane  = reg.get<Lane>(player);
 

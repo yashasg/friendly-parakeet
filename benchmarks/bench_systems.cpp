@@ -16,6 +16,7 @@
 #include "systems/audio_routing.h"
 #include "constants.h"
 #include "systems/all_systems.h"
+#include "systems/game_phase_transition.h"
 #include "systems/input_routing.h"
 #include "util/shape_tag.h"
 
@@ -27,9 +28,8 @@ static entt::registry make_bench_registry() {
     reg.ctx().emplace<entt::dispatcher>();
     wire_input_dispatcher(reg);
     wire_audio_haptic_dispatcher(reg);
-    reg.ctx().emplace<GameState>(GameState{
-        GamePhase::Playing, 0.0f, false, GamePhase::Playing
-    });
+    reg.ctx().emplace<GameState>(GameState{ 0.0f });
+    sync_game_phase_tags<GamePhasePlayingTag>(reg);
     reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<SongState>();
     runtime_system_scratch_init(reg);
@@ -127,7 +127,7 @@ TEST_CASE("Bench: collision_system", "[!benchmark][bench]") {
         set_required_shape_tag(reg, obs, Shape::Circle);
         meter.measure([&] {
             if (reg.all_of<ScoredTag>(obs)) reg.remove<ScoredTag>(obs);
-            reg.ctx().get<GameState>().transition_pending = false;
+            clear_next_phase_tags(reg);
             collision_system(reg, DT);
         });
     };
@@ -136,7 +136,7 @@ TEST_CASE("Bench: collision_system", "[!benchmark][bench]") {
         make_bench_player(reg);
         spawn_obstacles(reg, 10);
         meter.measure([&] {
-            reg.ctx().get<GameState>().transition_pending = false;
+            clear_next_phase_tags(reg);
             collision_system(reg, DT);
         });
     };

@@ -211,7 +211,7 @@ TEST_CASE("scoring: ScoreDisplay rolls up toward score", "[scoring]") {
 
 TEST_CASE("scoring: not in Playing phase skips processing", "[scoring]") {
     auto reg = make_registry();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
 
     tick_playing_systems(reg, 1.0f);
 

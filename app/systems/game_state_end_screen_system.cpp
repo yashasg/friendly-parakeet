@@ -1,15 +1,16 @@
 #include "all_systems.h"
 #include "../components/game_state.h"
+#include "game_phase_transition.h"
 #include "../constants.h"
 
 namespace {
 
-// Per Fabian's existential processing (issue #1202/#1204, PR F): the former
-// `gs.phase == GamePhase::X` checks dispatch on tag presence in `reg.ctx()`.
-// `phase_timer` stays an enum-free scalar, so end_screen_input_ready takes
-// both — the tag from ctx and the timer from `GameState`. The tag mirror
-// invariant pinned by `tests/test_game_phase_tags.cpp` keeps the two in
-// lockstep until PR G deletes `GameState::phase` outright.
+// Per Fabian's existential processing (issue #1202/#1204, PR G): the former
+// `gs.phase == GamePhase::X` checks dispatch on tag presence in `reg.ctx()`;
+// the former `gs.transition_pending = true; gs.next_phase = X` pair is now
+// `request_phase_transition<NextPhase*Tag>()`. `phase_timer` is read directly
+// from `GameState` because the input-delay clock is per-phase data, not a
+// control-flow discriminator.
 bool end_screen_input_ready(entt::registry& reg, const GameState& gs) {
     const auto& ctx = reg.ctx();
     const bool game_over_ready =
@@ -35,8 +36,7 @@ void apply_end_choice_restart(entt::registry& reg) {
     if (!reg.ctx().find<EndChoiceRestart>()) return;
     auto& gs = reg.ctx().get<GameState>();
     if (!end_screen_input_ready(reg, gs)) return;
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::Playing;
+    request_phase_transition<NextPhasePlayingTag>(reg);
     erase_end_choice_tags(reg);
 }
 
@@ -44,8 +44,7 @@ void apply_end_choice_level_select(entt::registry& reg) {
     if (!reg.ctx().find<EndChoiceLevelSelect>()) return;
     auto& gs = reg.ctx().get<GameState>();
     if (!end_screen_input_ready(reg, gs)) return;
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::LevelSelect;
+    request_phase_transition<NextPhaseLevelSelectTag>(reg);
     erase_end_choice_tags(reg);
 }
 
@@ -53,8 +52,7 @@ void apply_end_choice_main_menu(entt::registry& reg) {
     if (!reg.ctx().find<EndChoiceMainMenu>()) return;
     auto& gs = reg.ctx().get<GameState>();
     if (!end_screen_input_ready(reg, gs)) return;
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::Title;
+    request_phase_transition<NextPhaseTitleTag>(reg);
     erase_end_choice_tags(reg);
 }
 

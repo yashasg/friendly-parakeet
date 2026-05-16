@@ -102,21 +102,20 @@ TEST_CASE("cleanup: non-obstacle entities are untouched", "[cleanup]") {
 
 TEST_CASE("game_state: title to level select on touch", "[gamestate]") {
     auto reg = make_registry();
-    set_test_phase(reg, GamePhase::Title);
+    set_test_phase<GamePhaseTitleTag>(reg);
     auto btn = make_menu_button(reg, MenuActionKind::Confirm);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
 
-    auto& gs = reg.ctx().get<GameState>();
-    CHECK_FALSE(gs.transition_pending);
-    CHECK(gs.phase == GamePhase::LevelSelect);
+    CHECK_FALSE(is_phase_transition_pending(reg));
+    CHECK(reg.ctx().contains<GamePhaseLevelSelectTag>());
 }
 
 TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.5f;
     auto btn = make_menu_button(reg, MenuActionKind::GoLevelSelect);
     press_button(reg, btn);
@@ -124,14 +123,13 @@ TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
     game_state_system(reg, 0.016f);
 
     // Button tap sets choice AND transitions in same frame
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::LevelSelect);
+    CHECK(reg.ctx().contains<NextPhaseLevelSelectTag>());
 }
 
 TEST_CASE("game_state: game over keyboard confirm routes to restart", "[gamestate][input][regression]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.5f;
 
     reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
@@ -139,14 +137,13 @@ TEST_CASE("game_state: game over keyboard confirm routes to restart", "[gamestat
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::Playing);
+    CHECK(reg.ctx().contains<NextPhasePlayingTag>());
 }
 
 TEST_CASE("game_state: song complete keyboard confirm routes to restart", "[gamestate][input][regression]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::SongComplete);
+    set_test_phase<GamePhaseSongCompleteTag>(reg);
     gs.phase_timer = constants::SONG_COMPLETE_INPUT_DELAY + 0.1f;
 
     reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
@@ -154,15 +151,14 @@ TEST_CASE("game_state: song complete keyboard confirm routes to restart", "[game
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::Playing);
+    CHECK(reg.ctx().contains<NextPhasePlayingTag>());
 }
 
 TEST_CASE("game_state: song complete keyboard confirm waits for button debounce",
           "[gamestate][input][regression]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::SongComplete);
+    set_test_phase<GamePhaseSongCompleteTag>(reg);
     gs.phase_timer = 0.45f;
 
     reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
@@ -170,7 +166,7 @@ TEST_CASE("game_state: song complete keyboard confirm waits for button debounce"
 
     game_state_system(reg, 0.0f);
 
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
     CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
     CHECK(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
     CHECK(reg.ctx().find<EndChoiceMainMenu>() == nullptr);
@@ -179,20 +175,20 @@ TEST_CASE("game_state: song complete keyboard confirm waits for button debounce"
 TEST_CASE("game_state: game over ignores touch during delay", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.2f;  // within GAME_OVER_INPUT_DELAY
     auto btn = make_menu_button(reg, MenuActionKind::Confirm);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
 
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("game_state: paused menu input waits for entry debounce", "[gamestate][input]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Paused);
+    set_test_phase<GamePhasePausedTag>(reg);
     gs.phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.1f;
     gs.phase_timer = 0.1f;
 
@@ -201,13 +197,13 @@ TEST_CASE("game_state: paused menu input waits for entry debounce", "[gamestate]
 
     game_state_system(reg, 0.0f);
 
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("game_state: paused menu input resumes after entry debounce", "[gamestate][input]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Paused);
+    set_test_phase<GamePhasePausedTag>(reg);
     gs.phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.1f;
 
     reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
@@ -215,7 +211,7 @@ TEST_CASE("game_state: paused menu input resumes after entry debounce", "[gamest
 
     game_state_system(reg, 0.0f);
 
-    CHECK(gs.phase == GamePhase::Playing);
+    CHECK(reg.ctx().contains<GamePhasePlayingTag>());
     CHECK(gs.phase_timer == 0.0f);
 }
 
@@ -237,9 +233,7 @@ TEST_CASE("game_state: enter_playing clears entities and creates player", "[game
     reg.emplace<ObstacleTag>(junk);
     reg.emplace<WorldTransform>(junk, WorldTransform{{0.0f, 0.0f}});
 
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::Playing;
+    request_phase_transition<NextPhasePlayingTag>(reg);
 
     game_state_system(reg, 0.016f);
 
@@ -253,7 +247,7 @@ TEST_CASE("game_state: enter_playing clears entities and creates player", "[game
     CHECK(player_count == 1);
 
     // Phase should be Playing
-    CHECK(gs.phase == GamePhase::Playing);
+    CHECK(reg.ctx().contains<GamePhasePlayingTag>());
 }
 
 TEST_CASE("game_state: enter_game_over updates high score", "[gamestate]") {
@@ -263,14 +257,12 @@ TEST_CASE("game_state: enter_game_over updates high score", "[gamestate]") {
     score.score = 5000;
     current.value = 3000;
 
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::GameOver;
+    request_phase_transition<NextPhaseGameOverTag>(reg);
 
     game_state_system(reg, 0.016f);
 
     CHECK(current.value == 5000);
-    CHECK(gs.phase == GamePhase::GameOver);
+    CHECK(reg.ctx().contains<GamePhaseGameOverTag>());
     const auto& terminal = reg.ctx().get<TerminalResultState>();
     CHECK(terminal.new_best);
     CHECK(terminal.previous_best == 3000);
@@ -278,9 +270,7 @@ TEST_CASE("game_state: enter_game_over updates high score", "[gamestate]") {
 
 TEST_CASE("game_state: enter_game_over pushes Crash SFX", "[gamestate]") {
     auto reg = make_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::GameOver;
+    request_phase_transition<NextPhaseGameOverTag>(reg);
 
     game_state_system(reg, 0.016f);
 
@@ -298,9 +288,7 @@ TEST_CASE("game_state: enter_game_over preserves high score if lower", "[gamesta
     score.score = 1000;
     current.value = 5000;
 
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::GameOver;
+    request_phase_transition<NextPhaseGameOverTag>(reg);
 
     game_state_system(reg, 0.016f);
 
@@ -313,21 +301,21 @@ TEST_CASE("game_state: enter_game_over preserves high score if lower", "[gamesta
 TEST_CASE("game_state: paused to playing on touch", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Paused);
+    set_test_phase<GamePhasePausedTag>(reg);
     gs.phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.1f;
     auto btn = make_menu_button(reg, MenuActionKind::Confirm);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.phase == GamePhase::Playing);
+    CHECK(reg.ctx().contains<GamePhasePlayingTag>());
     CHECK(gs.phase_timer == 0.0f);
 }
 
 TEST_CASE("game_state: paused resume preserves active play session state", "[gamestate][regression]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Paused);
+    set_test_phase<GamePhasePausedTag>(reg);
     gs.phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.1f;
 
     auto player = make_player(reg);
@@ -352,7 +340,7 @@ TEST_CASE("game_state: paused resume preserves active play session state", "[gam
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.phase == GamePhase::Playing);
+    CHECK(reg.ctx().contains<GamePhasePlayingTag>());
     CHECK(gs.phase_timer == 0.0f);
     CHECK(reg.valid(player));
     CHECK(reg.valid(obstacle));
@@ -373,51 +361,46 @@ TEST_CASE("game_state: paused resume preserves active play session state", "[gam
 
 TEST_CASE("game_state: title stays title without touch", "[gamestate]") {
     auto reg = make_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Title);
+    set_test_phase<GamePhaseTitleTag>(reg);
     // No press event in queue — no actions
 
     game_state_system(reg, 0.5f);
 
-    CHECK(gs.phase == GamePhase::Title);
-    CHECK_FALSE(gs.transition_pending);
+    CHECK(reg.ctx().contains<GamePhaseTitleTag>());
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("game_state: transition to Paused sets phase", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Playing);
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::Paused;
+    set_test_phase<GamePhasePlayingTag>(reg);
+    request_phase_transition<NextPhasePausedTag>(reg);
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.phase == GamePhase::Paused);
+    CHECK(reg.ctx().contains<GamePhasePausedTag>());
     CHECK(gs.phase_timer == 0.0f);
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("game_state: transition to Settings sets phase", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Title);
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::Settings;
+    set_test_phase<GamePhaseTitleTag>(reg);
+    request_phase_transition<NextPhaseSettingsTag>(reg);
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.phase == GamePhase::Settings);
+    CHECK(reg.ctx().contains<GamePhaseSettingsTag>());
     CHECK(gs.phase_timer == 0.0f);
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("game_state: enter_playing resets score", "[gamestate]") {
     auto reg = make_registry();
     reg.ctx().get<ScoreState>().score = 9999;
 
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::Playing;
+    request_phase_transition<NextPhasePlayingTag>(reg);
 
     game_state_system(reg, 0.016f);
 
@@ -428,7 +411,7 @@ TEST_CASE("game_state: enter_playing resets score", "[gamestate]") {
 
 TEST_CASE("scroll: no movement when not in Playing phase", "[scroll]") {
     auto reg = make_registry();
-    set_test_phase(reg, GamePhase::Title);
+    set_test_phase<GamePhaseTitleTag>(reg);
     auto e = reg.create();
     reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
     reg.emplace<Vector2>(e, Vector2{10.0f, 20.0f});
@@ -441,7 +424,7 @@ TEST_CASE("scroll: no movement when not in Playing phase", "[scroll]") {
 
 TEST_CASE("motion: no movement when not in Playing phase", "[motion]") {
     auto reg = make_registry();
-    set_test_phase(reg, GamePhase::Title);
+    set_test_phase<GamePhaseTitleTag>(reg);
     auto e = reg.create();
     reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
     reg.emplace<Vector2>(e, Vector2{10.0f, 20.0f});

@@ -178,12 +178,8 @@ bool game_loop_init(entt::registry& reg,
     wire_input_dispatcher(reg);
     wire_audio_haptic_dispatcher(reg);
     input_system_init(reg);
-    reset_ctx_singleton<GameState>(reg, GameState{
-        .phase = GamePhase::Title,
-        .phase_timer = 0.0f, .transition_pending = false,
-        .next_phase = GamePhase::Title
-    });
-    sync_game_phase_tags(reg, GamePhase::Title);
+    reset_ctx_singleton<GameState>(reg, GameState{});
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
     reset_ctx_singleton<ScoreState>(reg);
     reset_ctx_singleton<ScoreDisplay>(reg);
     reset_ctx_singleton<CurrentSongHighScore>(reg);

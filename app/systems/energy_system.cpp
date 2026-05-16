@@ -1,5 +1,6 @@
 #include "all_systems.h"
 #include "../components/game_state.h"
+#include "game_phase_transition.h"
 #include "gameplay_intents.h"
 #include "../components/rhythm.h"
 #include "../constants.h"
@@ -8,12 +9,10 @@
 namespace {
 
 void request_energy_depleted_game_over(entt::registry& reg) {
-    auto& gs = reg.ctx().get<GameState>();
-    if (gs.transition_pending) return;
+    if (is_phase_transition_pending(reg)) return;
 
     reg.ctx().insert_or_assign(EnergyDepletedDeath{});
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::GameOver;
+    request_phase_transition<NextPhaseGameOverTag>(reg);
 }
 
 }  // namespace

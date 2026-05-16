@@ -9,8 +9,7 @@
 
 TEST_CASE("game_state: song complete when song finished and no obstacles", "[gamestate]") {
     auto reg = make_rhythm_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Playing);
+    set_test_phase<GamePhasePlayingTag>(reg);
     auto& song = reg.ctx().get<SongState>();
     song.finished = true;
     song.playing = false;
@@ -18,15 +17,13 @@ TEST_CASE("game_state: song complete when song finished and no obstacles", "[gam
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::SongComplete);
+    CHECK(reg.ctx().contains<NextPhaseSongCompleteTag>());
 }
 
 TEST_CASE("game_state: energy depletion beats song complete after playback finishes",
           "[gamestate][issue755]") {
     auto reg = make_rhythm_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Playing);
+    set_test_phase<GamePhasePlayingTag>(reg);
     auto& song = reg.ctx().get<SongState>();
     song.finished = true;
     song.playing = false;
@@ -35,15 +32,13 @@ TEST_CASE("game_state: energy depletion beats song complete after playback finis
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::GameOver);
+    CHECK(reg.ctx().contains<NextPhaseGameOverTag>());
     CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);
 }
 
 TEST_CASE("game_state: song complete waits for obstacles to clear", "[gamestate]") {
     auto reg = make_rhythm_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Playing);
+    set_test_phase<GamePhasePlayingTag>(reg);
     auto& song = reg.ctx().get<SongState>();
     song.finished = true;
     song.playing = false;
@@ -55,13 +50,12 @@ TEST_CASE("game_state: song complete waits for obstacles to clear", "[gamestate]
 
     game_state_system(reg, 0.016f);
 
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("game_state: song complete proceeds when scored obstacle is destroyed", "[gamestate]") {
     auto reg = make_rhythm_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Playing);
+    set_test_phase<GamePhasePlayingTag>(reg);
     auto& song = reg.ctx().get<SongState>();
     song.finished = true;
     song.playing = false;
@@ -74,14 +68,12 @@ TEST_CASE("game_state: song complete proceeds when scored obstacle is destroyed"
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::SongComplete);
+    CHECK(reg.ctx().contains<NextPhaseSongCompleteTag>());
 }
 
 TEST_CASE("game_state: song complete waits for scored obstacle to be destroyed", "[gamestate]") {
     auto reg = make_rhythm_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Playing);
+    set_test_phase<GamePhasePlayingTag>(reg);
     auto& song = reg.ctx().get<SongState>();
     song.finished = true;
     song.playing = false;
@@ -94,7 +86,7 @@ TEST_CASE("game_state: song complete waits for scored obstacle to be destroyed",
 
     game_state_system(reg, 0.016f);
 
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("game_state: enter_song_complete updates high score", "[gamestate]") {
@@ -104,14 +96,12 @@ TEST_CASE("game_state: enter_song_complete updates high score", "[gamestate]") {
     score.score = 8000;
     current.value = 5000;
 
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::SongComplete;
+    request_phase_transition<NextPhaseSongCompleteTag>(reg);
 
     game_state_system(reg, 0.016f);
 
     CHECK(current.value == 8000);
-    CHECK(gs.phase == GamePhase::SongComplete);
+    CHECK(reg.ctx().contains<GamePhaseSongCompleteTag>());
     const auto& terminal = reg.ctx().get<TerminalResultState>();
     CHECK(terminal.new_best);
     CHECK(terminal.previous_best == 5000);
@@ -124,9 +114,7 @@ TEST_CASE("game_state: enter_song_complete preserves higher high_score", "[games
     score.score = 1000;
     current.value = 9000;
 
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::SongComplete;
+    request_phase_transition<NextPhaseSongCompleteTag>(reg);
 
     game_state_system(reg, 0.016f);
 
@@ -136,14 +124,13 @@ TEST_CASE("game_state: enter_song_complete preserves higher high_score", "[games
 TEST_CASE("game_state: song_complete button choice restart", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::SongComplete);
+    set_test_phase<GamePhaseSongCompleteTag>(reg);
     gs.phase_timer = 1.0f;
     reg.ctx().emplace<EndChoiceRestart>();
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::Playing);
+    CHECK(reg.ctx().contains<NextPhasePlayingTag>());
     CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
     CHECK(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
     CHECK(reg.ctx().find<EndChoiceMainMenu>() == nullptr);
@@ -152,14 +139,13 @@ TEST_CASE("game_state: song_complete button choice restart", "[gamestate]") {
 TEST_CASE("game_state: song_complete button choice level_select", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::SongComplete);
+    set_test_phase<GamePhaseSongCompleteTag>(reg);
     gs.phase_timer = 1.0f;
     reg.ctx().emplace<EndChoiceLevelSelect>();
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::LevelSelect);
+    CHECK(reg.ctx().contains<NextPhaseLevelSelectTag>());
     CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
     CHECK(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
     CHECK(reg.ctx().find<EndChoiceMainMenu>() == nullptr);
@@ -168,47 +154,43 @@ TEST_CASE("game_state: song_complete button choice level_select", "[gamestate]")
 TEST_CASE("game_state: song_complete button choice main_menu", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::SongComplete);
+    set_test_phase<GamePhaseSongCompleteTag>(reg);
     gs.phase_timer = 1.0f;
     reg.ctx().emplace<EndChoiceMainMenu>();
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::Title);
+    CHECK(reg.ctx().contains<NextPhaseTitleTag>());
 }
 
 TEST_CASE("game_state: song_complete ignores choice during delay", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::SongComplete);
+    set_test_phase<GamePhaseSongCompleteTag>(reg);
     gs.phase_timer = 0.2f;  // < 0.5s delay
     reg.ctx().emplace<EndChoiceRestart>();
 
     game_state_system(reg, 0.016f);
 
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("game_state: transition to LevelSelect resets confirmed", "[gamestate]") {
     auto reg = make_registry();
-    auto& gs = reg.ctx().get<GameState>();
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.confirmed = true;
 
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::LevelSelect;
+    request_phase_transition<NextPhaseLevelSelectTag>(reg);
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.phase == GamePhase::LevelSelect);
+    CHECK(reg.ctx().contains<GamePhaseLevelSelectTag>());
     CHECK_FALSE(lss.confirmed);
 }
 
 TEST_CASE("game_state: terminal to LevelSelect hides stale world renderables",
           "[gamestate][render][regression][issue921]") {
     auto reg = make_registry();
-    auto& gs = reg.ctx().get<GameState>();
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.confirmed = true;
 
@@ -216,13 +198,12 @@ TEST_CASE("game_state: terminal to LevelSelect hides stale world renderables",
     reg.emplace<ModelTransform>(stale);
     reg.emplace<TagWorldPass>(stale);
 
-    set_test_phase(reg, GamePhase::GameOver);
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::LevelSelect;
+    set_test_phase<GamePhaseGameOverTag>(reg);
+    request_phase_transition<NextPhaseLevelSelectTag>(reg);
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.phase == GamePhase::LevelSelect);
+    CHECK(reg.ctx().contains<GamePhaseLevelSelectTag>());
     CHECK_FALSE(lss.confirmed);
     REQUIRE(reg.valid(stale));
     CHECK(reg.all_of<ModelTransform, TagWorldPass>(stale));
@@ -232,21 +213,21 @@ TEST_CASE("game_state: terminal to LevelSelect hides stale world renderables",
 TEST_CASE("game_state: Settings hides stale world renderables",
           "[gamestate][render][regression][issue966]") {
     auto reg = make_registry();
-    sync_game_phase_tags(reg, GamePhase::Playing);
+    sync_game_phase_tags<GamePhasePlayingTag>(reg);
     CHECK(game_render_should_draw_world_meshes(reg));
-    sync_game_phase_tags(reg, GamePhase::Paused);
+    sync_game_phase_tags<GamePhasePausedTag>(reg);
     CHECK(game_render_should_draw_world_meshes(reg));
-    sync_game_phase_tags(reg, GamePhase::GameOver);
+    sync_game_phase_tags<GamePhaseGameOverTag>(reg);
     CHECK(game_render_should_draw_world_meshes(reg));
-    sync_game_phase_tags(reg, GamePhase::SongComplete);
+    sync_game_phase_tags<GamePhaseSongCompleteTag>(reg);
     CHECK(game_render_should_draw_world_meshes(reg));
-    sync_game_phase_tags(reg, GamePhase::Title);
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
     CHECK_FALSE(game_render_should_draw_world_meshes(reg));
-    sync_game_phase_tags(reg, GamePhase::LevelSelect);
+    sync_game_phase_tags<GamePhaseLevelSelectTag>(reg);
     CHECK_FALSE(game_render_should_draw_world_meshes(reg));
-    sync_game_phase_tags(reg, GamePhase::Settings);
+    sync_game_phase_tags<GamePhaseSettingsTag>(reg);
     CHECK_FALSE(game_render_should_draw_world_meshes(reg));
-    sync_game_phase_tags(reg, GamePhase::Tutorial);
+    sync_game_phase_tags<GamePhaseTutorialTag>(reg);
     CHECK_FALSE(game_render_should_draw_world_meshes(reg));
 }
 
@@ -269,7 +250,6 @@ TEST_CASE("wasm smoke lane marker state is registry-owned and reset with runtime
 
 TEST_CASE("game_state: transition clears in-flight pointer capture", "[gamestate][input]") {
     auto reg = make_registry();
-    auto& gs = reg.ctx().get<GameState>();
     auto& input = reg.ctx().get<InputState>();
     auto& priv = reg.ctx().get<InputSystemPrivate>();
 
@@ -280,8 +260,7 @@ TEST_CASE("game_state: transition clears in-flight pointer capture", "[gamestate
     priv.suppress_mouse_release = true;
     input.duration = 0.25f;
 
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::LevelSelect;
+    request_phase_transition<NextPhaseLevelSelectTag>(reg);
 
     game_state_system(reg, 0.016f);
 
@@ -297,21 +276,20 @@ TEST_CASE("game_state: transition clears in-flight pointer capture", "[gamestate
 TEST_CASE("game_state: transition to Title sets phase and resets timer", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Playing);
+    set_test_phase<GamePhasePlayingTag>(reg);
     gs.phase_timer = 5.0f;
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::Title;
+    request_phase_transition<NextPhaseTitleTag>(reg);
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.phase == GamePhase::Title);
+    CHECK(reg.ctx().contains<GamePhaseTitleTag>());
     CHECK(gs.phase_timer == 0.0f);
 }
 
 TEST_CASE("game_state: level select confirmed starts tutorial when FTUE is incomplete", "[gamestate][ftue][issue882]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::LevelSelect);
+    set_test_phase<GamePhaseLevelSelectTag>(reg);
     gs.phase_timer = 0.5f;  // past 0.2s guard
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.confirmed = true;
@@ -319,8 +297,7 @@ TEST_CASE("game_state: level select confirmed starts tutorial when FTUE is incom
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::Tutorial);
+    CHECK(reg.ctx().contains<NextPhaseTutorialTag>());
     CHECK_FALSE(lss.confirmed);
 }
 
@@ -328,7 +305,7 @@ TEST_CASE("game_state: level select confirmed triggers playing when FTUE is comp
           "[gamestate][ftue][issue882]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::LevelSelect);
+    set_test_phase<GamePhaseLevelSelectTag>(reg);
     gs.phase_timer = 0.5f;  // past 0.2s guard
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.confirmed = true;
@@ -336,16 +313,14 @@ TEST_CASE("game_state: level select confirmed triggers playing when FTUE is comp
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::Playing);
+    CHECK(reg.ctx().contains<NextPhasePlayingTag>());
     CHECK_FALSE(lss.confirmed);
 }
 
 TEST_CASE("tutorial: continue marks FTUE complete and requests gameplay",
           "[gamestate][ftue][issue882]") {
     auto reg = make_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Tutorial);
+    set_test_phase<GamePhaseTutorialTag>(reg);
 
     auto& settings = settings_state(reg);
     settings.ftue_run_count = 0;
@@ -358,15 +333,14 @@ TEST_CASE("tutorial: continue marks FTUE complete and requests gameplay",
     CHECK(settings::ftue_complete(settings));
     CHECK(persistence.dirty);
     CHECK(persistence.last_save.status == persistence::Status::PathUnavailable);
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::Playing);
+    CHECK(reg.ctx().contains<NextPhasePlayingTag>());
 }
 
 TEST_CASE("tutorial: menu confirm marks FTUE complete and requests gameplay",
           "[gamestate][ftue][input][issue882]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Tutorial);
+    set_test_phase<GamePhaseTutorialTag>(reg);
     gs.phase_timer = 0.5f;
 
     auto& settings = settings_state(reg);
@@ -384,14 +358,14 @@ TEST_CASE("tutorial: menu confirm marks FTUE complete and requests gameplay",
     CHECK(settings::ftue_complete(saved_settings));
     CHECK(saved_persistence.dirty);
     CHECK(saved_persistence.last_save.status == persistence::Status::PathUnavailable);
-    CHECK_FALSE(gs.transition_pending);
-    CHECK(gs.phase == GamePhase::Playing);
+    CHECK_FALSE(is_phase_transition_pending(reg));
+    CHECK(reg.ctx().contains<GamePhasePlayingTag>());
 }
 
 TEST_CASE("game_state: level select ignores confirmed during delay", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::LevelSelect);
+    set_test_phase<GamePhaseLevelSelectTag>(reg);
     gs.phase_timer = 0.1f;  // within 0.2s delay
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.confirmed = true;
@@ -399,46 +373,43 @@ TEST_CASE("game_state: level select ignores confirmed during delay", "[gamestate
     game_state_system(reg, 0.016f);
 
     // confirmed still true, no transition yet
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 TEST_CASE("game_state: game_over restart button triggers playing", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.5f;
     reg.ctx().emplace<EndChoiceRestart>();
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::Playing);
+    CHECK(reg.ctx().contains<NextPhasePlayingTag>());
 }
 
 TEST_CASE("game_state: game_over main_menu button triggers title", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.5f;
     reg.ctx().emplace<EndChoiceMainMenu>();
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::Title);
+    CHECK(reg.ctx().contains<NextPhaseTitleTag>());
 }
 
 TEST_CASE("game_state: game_over level_select button triggers level_select", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.5f;
     reg.ctx().emplace<EndChoiceLevelSelect>();
 
     game_state_system(reg, 0.016f);
 
-    CHECK(gs.transition_pending);
-    CHECK(gs.next_phase == GamePhase::LevelSelect);
+    CHECK(reg.ctx().contains<NextPhaseLevelSelectTag>());
     CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
     CHECK(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
     CHECK(reg.ctx().find<EndChoiceMainMenu>() == nullptr);
@@ -447,13 +418,13 @@ TEST_CASE("game_state: game_over level_select button triggers level_select", "[g
 TEST_CASE("game_state: game_over ignores choice at readiness boundary", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.4f;
     reg.ctx().emplace<EndChoiceRestart>();
 
     game_state_system(reg, 0.0f);
 
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
     // Tag persists across the input-delay window so the press is honored
     // once the delay elapses (pre-migration semantics).
     CHECK(reg.ctx().find<EndChoiceRestart>() != nullptr);
@@ -462,7 +433,7 @@ TEST_CASE("game_state: game_over ignores choice at readiness boundary", "[gamest
 TEST_CASE("game_state: game_over ignores missing end choice", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.5f;
     REQUIRE(reg.ctx().find<EndChoiceRestart>() == nullptr);
     REQUIRE(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
@@ -470,7 +441,7 @@ TEST_CASE("game_state: game_over ignores missing end choice", "[gamestate]") {
 
     game_state_system(reg, 0.016f);
 
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
     CHECK(reg.ctx().find<EndChoiceRestart>() == nullptr);
     CHECK(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
     CHECK(reg.ctx().find<EndChoiceMainMenu>() == nullptr);
@@ -479,7 +450,7 @@ TEST_CASE("game_state: game_over ignores missing end choice", "[gamestate]") {
 TEST_CASE("game_state: game_over restart enters fresh play session on next tick", "[gamestate][play_session]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::GameOver);
+    set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.5f;
     reg.ctx().emplace<EndChoiceRestart>();
 
@@ -489,13 +460,12 @@ TEST_CASE("game_state: game_over restart enters fresh play session on next tick"
     reg.ctx().get<ScoreState>().score = 3210;
 
     game_state_system(reg, 0.016f);
-    REQUIRE(gs.transition_pending);
-    REQUIRE(gs.next_phase == GamePhase::Playing);
+    REQUIRE(reg.ctx().contains<NextPhasePlayingTag>());
 
     game_state_system(reg, 0.016f);
 
-    CHECK_FALSE(gs.transition_pending);
-    CHECK(gs.phase == GamePhase::Playing);
+    CHECK_FALSE(is_phase_transition_pending(reg));
+    CHECK(reg.ctx().contains<GamePhasePlayingTag>());
     CHECK_FALSE(reg.valid(stale));
     CHECK_FALSE(reg.view<PlayerTag>().empty());
     CHECK(reg.ctx().get<ScoreState>().score == 0);
@@ -503,44 +473,40 @@ TEST_CASE("game_state: game_over restart enters fresh play session on next tick"
 
 TEST_CASE("game_state: title position tap triggers level_select", "[gamestate]") {
     auto reg = make_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Title);
+    set_test_phase<GamePhaseTitleTag>(reg);
     // Simulate a tap → Confirm menu button press (title screen has full-screen confirm)
     auto btn = make_menu_button(reg, MenuActionKind::Confirm);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
 
-    CHECK_FALSE(gs.transition_pending);
-    CHECK(gs.phase == GamePhase::LevelSelect);
+    CHECK_FALSE(is_phase_transition_pending(reg));
+    CHECK(reg.ctx().contains<GamePhaseLevelSelectTag>());
 }
 
 TEST_CASE("title settings navigation: pending Settings transition reaches Settings screen",
           "[gamestate][ui][settings][regression]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    set_test_phase(reg, GamePhase::Title);
+    set_test_phase<GamePhaseTitleTag>(reg);
     gs.phase_timer = 2.0f;
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::Settings;
+    request_phase_transition<NextPhaseSettingsTag>(reg);
 
     // Proxy for title gear click path: title_screen_controller sets
     // transition_pending + next_phase=Settings, then fixed-step consumes it.
     game_state_system(reg, 0.016f);
-    REQUIRE(gs.phase == GamePhase::Settings);
-    CHECK_FALSE(gs.transition_pending);
+    REQUIRE(reg.ctx().contains<GamePhaseSettingsTag>());
+    CHECK_FALSE(is_phase_transition_pending(reg));
     CHECK(gs.phase_timer == 0.0f);
 }
 
 TEST_CASE("game_state: transition_pending consumed on execution", "[gamestate]") {
     auto reg = make_registry();
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::Paused;
+    request_phase_transition<NextPhasePausedTag>(reg);
 
     game_state_system(reg, 0.016f);
 
-    CHECK_FALSE(gs.transition_pending);
+    CHECK_FALSE(is_phase_transition_pending(reg));
 }
 
 // ── song_complete: score retention after transition ───────────────────────────
@@ -556,13 +522,11 @@ TEST_CASE("song_complete: score.score is retained (not zeroed) after enter_song_
     score.score = 12345;
     current.value = 10000;
 
-    auto& gs = reg.ctx().get<GameState>();
-    gs.transition_pending = true;
-    gs.next_phase = GamePhase::SongComplete;
+    request_phase_transition<NextPhaseSongCompleteTag>(reg);
 
     game_state_system(reg, 0.016f);
 
     // score.score must NOT be zeroed — it is the final value rendered on the results screen
     CHECK(score.score == 12345);
-    CHECK(gs.phase == GamePhase::SongComplete);
+    CHECK(reg.ctx().contains<GamePhaseSongCompleteTag>());
 }
