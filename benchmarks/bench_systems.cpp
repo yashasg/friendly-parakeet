@@ -171,7 +171,7 @@ TEST_CASE("Bench: player_input + movement", "[!benchmark][bench]") {
         make_bench_player(reg);
 
         meter.measure([&] {
-            player_input_handle_press(reg, ButtonPressEvent{ButtonPressKind::Shape, Shape::Triangle});
+            player_input_handle_press_triangle(reg, ShapePressTriangleEvent{});
             player_input_handle_go(reg, GoEvent{Direction::Right});
             player_movement_system(reg, DT);
         });

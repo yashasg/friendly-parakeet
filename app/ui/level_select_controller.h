@@ -2,8 +2,8 @@
 
 #include <entt/entt.hpp>
 
-struct ButtonPressEvent;
 struct GoEvent;
+struct MenuPressEvent;
 
 void level_select_handle_go(entt::registry& reg, const GoEvent& evt);
-void level_select_handle_press(entt::registry& reg, const ButtonPressEvent& evt);
+void level_select_handle_press_menu(entt::registry& reg, const MenuPressEvent& evt);

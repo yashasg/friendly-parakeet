@@ -157,18 +157,17 @@ TEST_CASE("ecs: make_registry dispatcher is wired — GoEvent listeners register
     CHECK(lane.target == 2);   // listener wired: player_input_handle_go fired
 }
 
-TEST_CASE("ecs: make_registry dispatcher is wired — ButtonPressEvent listeners registered", "[ecs][dispatcher]") {
-    // Verifies ButtonPressEvent sink is wired: a press event on a valid button
-    // in Playing phase reaches player_input_handle_press.
+TEST_CASE("ecs: make_registry dispatcher is wired — ShapePress*Event listeners registered", "[ecs][dispatcher]") {
+    // Verifies the per-shape press sinks are wired: a press event on a valid
+    // button in Playing phase reaches player_input_handle_press_triangle.
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     REQUIRE(window_phase_is_idle(reg, player));
 
     auto btn = make_shape_button(reg, Shape::Triangle);
 
-    auto& disp = reg.ctx().get<entt::dispatcher>();
     press_button(reg, btn);
-    disp.update<ButtonPressEvent>();
+    update_press_events(reg);
 
     // If dispatcher listeners were NOT wired, sw.phase would stay Idle.
     CHECK(window_phase_is_morph_in(reg, player));  // listener wired: handle_press fired
@@ -178,7 +177,7 @@ TEST_CASE("ecs: make_registry dispatcher is wired — ButtonPressEvent listeners
 TEST_CASE("ecs: make_registry dispatcher ctx — second update is a no-op (no replay)", "[ecs][dispatcher]") {
     // Contract: after an authoritative drain, a subsequent update<T>() with no
     // new enqueues must not re-deliver the previously drained event.
-    // Applies to both GoEvent and ButtonPressEvent pools.
+    // Applies to both GoEvent and the per-shape ShapePress*Event pools.
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& lane  = reg.get<Lane>(player);
@@ -200,7 +199,7 @@ TEST_CASE("ecs: wire_input_dispatcher is idempotent", "[ecs][dispatcher]") {
 
     wire_input_dispatcher(reg);
     press_button(reg, btn);
-    reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
+    update_press_events(reg);
 
     CHECK(window_phase_is_morph_in(reg, player));
     CHECK(drain_sfx_events(reg).count == 1);
@@ -308,7 +307,7 @@ TEST_CASE("ecs: dispatcher rewire-after-unwire does not duplicate semantic deliv
     REQUIRE(window_phase_is_idle(reg, player));
 
     press_button(reg, button);
-    reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
+    update_press_events(reg);
 
     CHECK(window_phase_is_morph_in(reg, player));
     CHECK(reg.all_of<TargetShapeSquareTag>(player));
@@ -328,7 +327,7 @@ TEST_CASE("ecs: repeated unwire_input_dispatcher is idempotent before rewire",
     REQUIRE(window_phase_is_idle(reg, player));
 
     press_button(reg, button);
-    reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
+    update_press_events(reg);
 
     CHECK(window_phase_is_morph_in(reg, player));
     CHECK(reg.all_of<TargetShapeTriangleTag>(player));

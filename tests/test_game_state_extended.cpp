@@ -365,8 +365,8 @@ TEST_CASE("tutorial: menu confirm marks FTUE complete and requests gameplay",
     persistence.path.clear();
     persistence.dirty = false;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>({
-        ButtonPressKind::Menu, Shape::Circle, MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>({
+        MenuActionKind::Confirm, 0});
     game_state_system(reg, 0.016f);
 
     const auto& saved_settings = settings_state(reg);

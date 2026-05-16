@@ -64,9 +64,21 @@ struct GoCapture {
 };
 
 struct PressCapture {
-    ButtonPressEvent buf[8] = {};
-    int              count  = 0;
-    void capture(const ButtonPressEvent& e) { if (count < 8) buf[count++] = e; }
+    int circle = 0;
+    int square = 0;
+    int triangle = 0;
+    MenuPressEvent menu_buf[8] = {};
+    int menu_count = 0;
+
+    int shape_count() const { return circle + square + triangle; }
+    int count() const { return shape_count() + menu_count; }
+
+    void on_circle  (const ShapePressCircleEvent&)   { ++circle;   }
+    void on_square  (const ShapePressSquareEvent&)   { ++square;   }
+    void on_triangle(const ShapePressTriangleEvent&) { ++triangle; }
+    void on_menu(const MenuPressEvent& e) {
+        if (menu_count < 8) menu_buf[menu_count++] = e;
+    }
 };
 
 struct SfxCapture {
@@ -93,10 +105,30 @@ inline GoCapture drain_go_events(entt::registry& reg) {
 inline PressCapture drain_press_events(entt::registry& reg) {
     PressCapture cap;
     auto& disp = reg.ctx().get<entt::dispatcher>();
-    disp.sink<ButtonPressEvent>().connect<&PressCapture::capture>(cap);
-    disp.update<ButtonPressEvent>();
-    disp.sink<ButtonPressEvent>().disconnect<&PressCapture::capture>(cap);
+    disp.sink<ShapePressCircleEvent>().connect<&PressCapture::on_circle>(cap);
+    disp.sink<ShapePressSquareEvent>().connect<&PressCapture::on_square>(cap);
+    disp.sink<ShapePressTriangleEvent>().connect<&PressCapture::on_triangle>(cap);
+    disp.sink<MenuPressEvent>().connect<&PressCapture::on_menu>(cap);
+    disp.update<ShapePressCircleEvent>();
+    disp.update<ShapePressSquareEvent>();
+    disp.update<ShapePressTriangleEvent>();
+    disp.update<MenuPressEvent>();
+    disp.sink<ShapePressCircleEvent>().disconnect<&PressCapture::on_circle>(cap);
+    disp.sink<ShapePressSquareEvent>().disconnect<&PressCapture::on_square>(cap);
+    disp.sink<ShapePressTriangleEvent>().disconnect<&PressCapture::on_triangle>(cap);
+    disp.sink<MenuPressEvent>().disconnect<&PressCapture::on_menu>(cap);
     return cap;
+}
+
+// Drains all press-event queues (per-shape ShapePress* + MenuPressEvent) in
+// the same order game_state_system uses (issue #1202/#1204). Use in tests
+// that previously called `disp.update<ButtonPressEvent>()` directly.
+inline void update_press_events(entt::registry& reg) {
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    disp.update<ShapePressCircleEvent>();
+    disp.update<ShapePressSquareEvent>();
+    disp.update<ShapePressTriangleEvent>();
+    disp.update<MenuPressEvent>();
 }
 
 // Flush the dispatcher PlaySfxEvent queue and return all events that were pending.
@@ -148,19 +180,28 @@ struct TestMenuButtonData {
     uint8_t index = 0;
 };
 
-// ── Button-press injection helper (#273) ────────────────────────────────────
-// Enqueue a semantic ButtonPressEvent for a given entity, encoding the
-// payload at call time (no live entity handle stored in the event).
+// ── Button-press injection helper ──────────────────────────────────────────
+// Per #1202/#1204: enqueues the per-shape ShapePress*Event (or MenuPressEvent
+// for menu buttons) corresponding to the button's TestShapeButtonData /
+// TestMenuButtonData. The per-shape table mirrors the same function-pointer-
+// per-row mechanic used by `kEnqueueShapePress` in test_player_system.cpp.
 inline void press_button(entt::registry& reg, entt::entity btn) {
     auto& disp = reg.ctx().get<entt::dispatcher>();
     if (reg.all_of<TestShapeButtonData>(btn)) {
-        auto shape = reg.get<TestShapeButtonData>(btn).shape;
-        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, shape,
-                                       MenuActionKind::Confirm, 0});
+        const auto shape = reg.get<TestShapeButtonData>(btn).shape;
+        const int idx = shape_index(shape);
+        if (idx < 0) return;
+        using EnqueueFn = void (*)(entt::dispatcher&);
+        static constexpr EnqueueFn kEnqueueFns[kShapeCount] = {
+            [](entt::dispatcher& d){ d.enqueue<ShapePressCircleEvent>({});   },
+            [](entt::dispatcher& d){ d.enqueue<ShapePressSquareEvent>({});   },
+            [](entt::dispatcher& d){ d.enqueue<ShapePressTriangleEvent>({}); },
+            [](entt::dispatcher&){},  // Hexagon: never pressed; tests never set this
+        };
+        kEnqueueFns[idx](disp);
     } else if (reg.all_of<TestMenuButtonData>(btn)) {
-        auto& ma = reg.get<TestMenuButtonData>(btn);
-        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
-                                        ma.kind, ma.index});
+        const auto& ma = reg.get<TestMenuButtonData>(btn);
+        disp.enqueue<MenuPressEvent>({ma.kind, ma.index});
     }
 }
 

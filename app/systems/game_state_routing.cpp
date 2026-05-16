@@ -8,7 +8,7 @@
 #include "../constants.h"
 
 namespace {
-bool game_state_handle_end_screen_press(entt::registry& reg, const ButtonPressEvent& evt) {
+bool game_state_handle_end_screen_press(entt::registry& reg, const MenuPressEvent& evt) {
     auto& gs = reg.ctx().get<GameState>();
     if (gs.phase != GamePhase::GameOver && gs.phase != GamePhase::SongComplete) {
         return false;
@@ -22,8 +22,8 @@ bool game_state_handle_end_screen_press(entt::registry& reg, const ButtonPressEv
     }
 
     const MenuActionKind action =
-        (evt.menu_action == MenuActionKind::Confirm) ? MenuActionKind::Restart
-                                                      : evt.menu_action;
+        (evt.action == MenuActionKind::Confirm) ? MenuActionKind::Restart
+                                                : evt.action;
 
     if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
         disp->enqueue<PlayHapticEvent>({action == MenuActionKind::Restart
@@ -51,19 +51,18 @@ void game_state_handle_go(entt::registry& reg, const GoEvent& /*evt*/) {
     gs.next_phase = GamePhase::Playing;
 }
 
-void game_state_handle_press(entt::registry& reg, const ButtonPressEvent& evt) {
-    if (evt.kind != ButtonPressKind::Menu) return;  // ignore shape-button events
+void game_state_handle_press_menu(entt::registry& reg, const MenuPressEvent& evt) {
     auto& gs = reg.ctx().get<GameState>();
 
     if (gs.phase == GamePhase::Title) {
         if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
             disp->enqueue<PlayHapticEvent>({HapticEvent::UIButtonTap});
         }
-        if (evt.menu_action == MenuActionKind::Exit) {
+        if (evt.action == MenuActionKind::Exit) {
 #ifndef PLATFORM_WEB
             reg.ctx().get<InputState>().quit_requested = true;
 #endif
-        } else if (evt.menu_action == MenuActionKind::Confirm) {
+        } else if (evt.action == MenuActionKind::Confirm) {
             gs.transition_pending = true;
             gs.next_phase = GamePhase::LevelSelect;
         }
@@ -76,7 +75,7 @@ void game_state_handle_press(entt::registry& reg, const ButtonPressEvent& evt) {
 
     if (gs.phase == GamePhase::Tutorial) {
         if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
-        if (evt.menu_action != MenuActionKind::Confirm) return;
+        if (evt.action != MenuActionKind::Confirm) return;
         if (auto* settings_state = find_settings_state(reg)) {
             settings::mark_ftue_complete(*settings_state);
             if (auto* persistence = find_settings_persistence(reg)) {

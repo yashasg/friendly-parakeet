@@ -142,13 +142,7 @@ TEST_CASE("test_player: pro executes lane before shape for shape+lane actions", 
 
         auto go = drain_go_events(reg);
         auto press = drain_press_events(reg);
-        bool has_shape_press = false;
-        for (int j = 0; j < press.count; ++j) {
-            if (press.buf[j].kind == ButtonPressKind::Shape) {
-                has_shape_press = true;
-                break;
-            }
-        }
+        bool has_shape_press = press.shape_count() > 0;
 
         if (go.count > 0 || has_shape_press) {
             saw_go_first = (go.count > 0);
@@ -175,7 +169,7 @@ TEST_CASE("test_player: ignores visual obstacle leftovers without Obstacle paylo
     test_player_system(reg, 0.016f);
 
     CHECK_FALSE(reg.all_of<TestPlayerPlannedTag>(visual_leftover));
-    CHECK(drain_press_events(reg).count == 0);
+    CHECK(drain_press_events(reg).count() == 0);
     CHECK(drain_go_events(reg).count == 0);
 }
 
@@ -227,9 +221,8 @@ TEST_CASE("test_player: auto-starts from title screen", "[test_player]") {
     test_player_system(reg, 0.016f);
     bool has_confirm = false;
     auto cap = drain_press_events(reg);
-    for (int i = 0; i < cap.count; ++i) {
-        if (cap.buf[i].kind == ButtonPressKind::Menu &&
-            cap.buf[i].menu_action == MenuActionKind::Confirm) {
+    for (int i = 0; i < cap.menu_count; ++i) {
+        if (cap.menu_buf[i].action == MenuActionKind::Confirm) {
             has_confirm = true;
             break;
         }

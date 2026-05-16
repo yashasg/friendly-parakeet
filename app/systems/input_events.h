@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../components/player.h"  // Shape
 #include <cstdint>
 
 // ── Directions ──────────────────────────────────────────────────────────────
@@ -20,23 +19,30 @@ enum class MenuActionKind : uint8_t {
     SelectDiff    = 6,
 };
 
-// ── Semantic Events (produced by HUD controllers, test player, or keyboard) ────────
+// ── Semantic Press Events (produced by HUD controllers, test player, or keyboard) ──
 //
-// ButtonPressEvent carries semantic value data encoded at source (#273).
-// Consumers act on kind/shape/menu_action — never on a live entity handle,
-// which would be a lifetime hazard if the button entity were destroyed between
-// event production and consumption.
+// Per Fabian's existential processing (issues #1202/#1204), the former
+// `ButtonPressKind` discriminator and the union-like `ButtonPressEvent::shape`
+// column were eradicated. Each former (kind × shape) combination is now its
+// own event type. Listeners subscribe to the specific event they handle, so
+// there is no `switch (kind)` and no `if (evt.kind == Foo::Bar)` at any
+// consumer call site.
+//
+// Shape presses are zero-column tag-events: "which shape?" is identity-
+// encoded in the event type itself, no payload, no runtime discriminator.
+// Menu presses keep the two semantic columns (action + index); per-action
+// dispatch lives in the menu consumers, still keyed on the `MenuActionKind`
+// label (allowlisted as a Keep enum: input event label).
+//
+// Producers never store an entity handle in any event — that was the
+// pre-#273 lifetime hazard and stays out of the new design.
+struct ShapePressCircleEvent   {};
+struct ShapePressSquareEvent   {};
+struct ShapePressTriangleEvent {};
 
-enum class ButtonPressKind : uint8_t {
-    Shape,  // shape button pressed — use .shape
-    Menu,   // menu button pressed  — use .menu_action / .menu_index
-};
-
-struct ButtonPressEvent {
-    ButtonPressKind kind        = ButtonPressKind::Shape;
-    Shape           shape       = Shape::Circle;           // valid when kind == Shape
-    MenuActionKind  menu_action = MenuActionKind::Confirm; // valid when kind == Menu
-    uint8_t         menu_index  = 0;                       // valid when kind == Menu
+struct MenuPressEvent {
+    MenuActionKind action = MenuActionKind::Confirm;
+    uint8_t        index  = 0;
 };
 
 struct GoEvent {

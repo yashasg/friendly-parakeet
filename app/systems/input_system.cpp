@@ -2,7 +2,6 @@
 #include "camera_system.h"
 #include "input_system_private.h"
 #include "web_input_policy.h"
-#include "../util/keyboard_shape_mapping.h"
 #include "input.h"
 #include "input_events.h"
 #include "../components/player.h"
@@ -400,29 +399,20 @@ void input_system(entt::registry& reg, float raw_dt) {
     if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT))  { disp.enqueue<GoEvent>({Direction::Left}); }
     if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) { disp.enqueue<GoEvent>({Direction::Right}); }
 
-    // Keyboard shape-button presses: encode semantic payload directly — no
-    // entity lookup needed (#273).
+    // Keyboard shape-button presses: each key emits its own zero-column
+    // event type directly (#1202/#1204 — no discriminator field, identity
+    // is the event type). Z/X/C left-center-right ordering preserved.
     if (IsKeyPressed(KEY_ONE) || IsKeyPressed(KEY_Z)) {
-        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape,
-                                        shape_for_keyboard_slot(KeyboardShapeSlot::Left),
-                                        MenuActionKind::Confirm,
-                                        0});
+        disp.enqueue<ShapePressCircleEvent>({});
     }
     if (IsKeyPressed(KEY_TWO) || IsKeyPressed(KEY_X)) {
-        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape,
-                                        shape_for_keyboard_slot(KeyboardShapeSlot::Center),
-                                        MenuActionKind::Confirm,
-                                        0});
+        disp.enqueue<ShapePressSquareEvent>({});
     }
     if (IsKeyPressed(KEY_THREE) || IsKeyPressed(KEY_C)) {
-        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape,
-                                        shape_for_keyboard_slot(KeyboardShapeSlot::Right),
-                                        MenuActionKind::Confirm,
-                                        0});
+        disp.enqueue<ShapePressTriangleEvent>({});
     }
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
-        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
-                                       MenuActionKind::Confirm, 0});
+        disp.enqueue<MenuPressEvent>({MenuActionKind::Confirm, 0});
     }
 #endif
 

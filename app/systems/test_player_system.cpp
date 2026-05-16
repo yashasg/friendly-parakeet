@@ -50,6 +50,33 @@ static const char* shape_key_name(Shape s) {
     return kShapeKeyNames[static_cast<size_t>(idx)];
 }
 
+// Per-shape press-event enqueue table (issue #1202/#1204). Each row is the
+// function-pointer producer for the matching ShapePress*Event; the table is
+// indexed by `shape_index(shape)`. The Hexagon slot is a no-op — test player
+// callers gate via `test_player_needs_shape()` which never returns true for
+// Hexagon, so the slot is unreachable; it exists only to keep the table
+// dense (matches `kShapeFlatDrawFns` / `kEmplacePlayer` precedent).
+namespace {
+using ShapePressEnqueueFn = void (*)(entt::dispatcher&);
+inline void enqueue_press_circle  (entt::dispatcher& d) { d.enqueue<ShapePressCircleEvent>({});   }
+inline void enqueue_press_square  (entt::dispatcher& d) { d.enqueue<ShapePressSquareEvent>({});   }
+inline void enqueue_press_triangle(entt::dispatcher& d) { d.enqueue<ShapePressTriangleEvent>({}); }
+inline void enqueue_press_noop    (entt::dispatcher&  ) {}
+
+inline constexpr std::array<ShapePressEnqueueFn, kShapeCount> kEnqueueShapePress{
+    &enqueue_press_circle,
+    &enqueue_press_square,
+    &enqueue_press_triangle,
+    &enqueue_press_noop,
+};
+
+inline void enqueue_shape_press(entt::dispatcher& disp, Shape s) {
+    const int idx = shape_index(s);
+    if (idx < 0) return;
+    kEnqueueShapePress[static_cast<size_t>(idx)](disp);
+}
+}  // namespace
+
 static bool test_player_shape_done(const TestPlayerAction& action) {
     return action.shape_done;
 }
@@ -187,8 +214,7 @@ void test_player_system(entt::registry& reg, float dt) {
                                   gs.phase == GamePhase::SongComplete)
                                  ? MenuActionKind::Restart
                                  : MenuActionKind::Confirm;
-            disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
-                                           target_action, 0});
+            disp.enqueue<MenuPressEvent>({target_action, 0});
             if (log) {
                 const char* phase_name =
                     (gs.phase == GamePhase::Title) ? "Title" :
@@ -215,15 +241,13 @@ void test_player_system(entt::registry& reg, float dt) {
     }
 
     if (gs.phase == GamePhase::Paused) {
-        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
-                                       MenuActionKind::Confirm, 0});
+        disp.enqueue<MenuPressEvent>({MenuActionKind::Confirm, 0});
         return;
     }
 
     // Auto-confirm on LevelSelect (level/difficulty already set in main.cpp)
     if (gs.phase == GamePhase::LevelSelect && gs.phase_timer > constants::UI_ENTRY_DEBOUNCE) {
-        disp.enqueue<ButtonPressEvent>({ButtonPressKind::Menu, Shape::Circle,
-                                       MenuActionKind::Confirm, 0});
+        disp.enqueue<MenuPressEvent>({MenuActionKind::Confirm, 0});
         return;
     }
 
@@ -395,8 +419,7 @@ void test_player_system(entt::registry& reg, float dt) {
                                     song->song_time < action.shape_not_before_time);
         bool waiting_on_lane = test_player_needs_lane(action);
         if (test_player_needs_shape(action) && !waiting_on_lane && !too_early_for_shape) {
-            disp.enqueue<ButtonPressEvent>({ButtonPressKind::Shape, action.target_shape,
-                                           MenuActionKind::Confirm, 0});
+            enqueue_shape_press(disp, action.target_shape);
             test_player_mark_shape_done(action);
             key_injected = true;
 
