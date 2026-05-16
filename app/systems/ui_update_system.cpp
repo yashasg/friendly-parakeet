@@ -56,8 +56,34 @@ void resume_button_action(entt::registry& reg, entt::entity /*entity*/) {
     request_phase_transition<NextPhasePlayingTag>(reg);
 }
 
-void menu_button_action(entt::registry& reg, entt::entity /*entity*/) {
+// Menu button: dispatch depends on which screen the button belongs to.
+//
+// End screens (Song Complete, Game Over) latch a per-choice ctx tag that
+// the input-delay state machine in `game_state_end_screen_system` consumes
+// after each screen's per-phase debounce — preserving the "click during
+// the input-delay window persists until elapsed" semantic of the legacy
+// controllers. Paused (and any future screen that goes straight to title)
+// requests the phase transition directly. The branch is an existential
+// tag check on the button entity, not a switch on a discriminator —
+// Fabian Principle 1 still holds.
+void menu_button_action(entt::registry& reg, entt::entity entity) {
+    if (reg.all_of<SongCompleteScreenTag>(entity) ||
+        reg.all_of<GameOverScreenTag>(entity)) {
+        reg.ctx().insert_or_assign(EndChoiceMainMenu{});
+        return;
+    }
     request_phase_transition<NextPhaseTitleTag>(reg);
+}
+
+// End-screen actions (Song Complete migrated in #1292; Game Over follows in
+// #1293). Same per-choice ctx-tag mechanic as `menu_button_action` for the
+// end-screen branch.
+void restart_button_action(entt::registry& reg, entt::entity /*entity*/) {
+    reg.ctx().insert_or_assign(EndChoiceRestart{});
+}
+
+void level_select_button_action(entt::registry& reg, entt::entity /*entity*/) {
+    reg.ctx().insert_or_assign(EndChoiceLevelSelect{});
 }
 
 // Tutorial screen action (issue #1291). Calls the forward-declared
@@ -84,11 +110,11 @@ constexpr std::array<ActionHandler, 17> kActionHandlers = {
     /* DifficultyMedium     */ &noop_action_handler,
     /* ExitButton           */ &noop_action_handler,
     /* HapticsToggle        */ &noop_action_handler,
-    /* LevelSelectButton    */ &noop_action_handler,
+    /* LevelSelectButton    */ &level_select_button_action,
     /* MenuButton           */ &menu_button_action,
     /* PauseButton          */ &noop_action_handler,
     /* ReduceMotionToggle   */ &noop_action_handler,
-    /* RestartButton        */ &noop_action_handler,
+    /* RestartButton        */ &restart_button_action,
     /* ResumeButton         */ &resume_button_action,
     /* SettingsButton       */ &noop_action_handler,
 };
@@ -105,18 +131,49 @@ void dispatch_action(entt::registry& reg, ActionId action, entt::entity entity) 
     kActionHandlers[idx](reg, entity);
 }
 
+// ── Per-active-phase input-delay table ──────────────────────────────────
+//
+// Each migrated end-screen exposes its own debounce constant (Game Over
+// uses 0.4s, Song Complete uses 0.5s, plain UI screens use the shared
+// 0.2s `UI_ENTRY_DEBOUNCE`). Per Fabian Principle 1, the lookup is a
+// table indexed by active-phase tag, not a switch on a phase enum.
+// Adding a screen that needs a custom debounce: append one row.
+
+template <typename PhaseTag>
+bool phase_tag_present(const entt::registry& reg) noexcept {
+    return reg.ctx().contains<PhaseTag>();
+}
+
+struct PhaseDebounceRow {
+    bool (*phase_active)(const entt::registry&);
+    float seconds;
+};
+
+constexpr std::array<PhaseDebounceRow, 2> kPhaseDebounceRows = {{
+    {&phase_tag_present<GamePhaseGameOverTag>,     constants::GAME_OVER_INPUT_DELAY},
+    {&phase_tag_present<GamePhaseSongCompleteTag>, constants::SONG_COMPLETE_INPUT_DELAY},
+}};
+
+float effective_debounce(const entt::registry& reg) {
+    for (const auto& row : kPhaseDebounceRows) {
+        if (row.phase_active(reg)) return row.seconds;
+    }
+    return constants::UI_ENTRY_DEBOUNCE;
+}
+
 }  // namespace
 
 void ui_update_system(entt::registry& reg) {
     const auto& input = reg.ctx().get<InputState>();
     if (!(input.click || input.touch_up)) return;
 
-    // Debounce: ignore button presses inside the first UI_ENTRY_DEBOUNCE
-    // seconds of the active phase so a click that opened the phase does
-    // not also dismiss it (matches legacy controller behaviour, e.g.
-    // `paused_screen_controller.cpp`).
+    // Debounce: ignore button presses inside the active phase's input-delay
+    // window so a click that opened the phase does not also dismiss it,
+    // and so end-screen prompts honour their longer settling time before
+    // accepting input (matches legacy controller behaviour, e.g.
+    // `paused_screen_controller.cpp` and `song_complete_screen_controller.cpp`).
     const auto& gs = reg.ctx().get<GameState>();
-    if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
+    if (gs.phase_timer <= effective_debounce(reg)) return;
 
     const Vector2 pointer = {input.end_x, input.end_y};
 
