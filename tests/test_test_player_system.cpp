@@ -215,18 +215,11 @@ TEST_CASE("test_player: auto-starts from title screen", "[test_player]") {
     gs.phase_timer = 1.0f;
 
     // Create a Confirm menu button (as title screen would have)
-    make_menu_button(reg, MenuActionKind::Confirm);
+    make_menu_confirm_button(reg);
 
     test_player_system(reg, 0.016f);
-    bool has_confirm = false;
     auto cap = drain_press_events(reg);
-    for (int i = 0; i < cap.menu_count; ++i) {
-        if (cap.menu_buf[i].action == MenuActionKind::Confirm) {
-            has_confirm = true;
-            break;
-        }
-    }
-    CHECK(has_confirm);
+    CHECK(cap.confirm > 0);
 }
 
 // ── SWIPE COOLDOWN ───────────────────────────────────────────

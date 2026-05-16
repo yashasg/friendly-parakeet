@@ -72,8 +72,8 @@ void game_state_system(entt::registry& reg, float dt) {
     // ── Primary event drain ───────────────────────────────────────────────────
     // game_state_system runs first in tick_fixed_systems (game_loop.cpp) and
     // owns the authoritative drain for GoEvent and all press event queues
-    // (per-shape ShapePress* + MenuPressEvent — see input_events.h for the
-    // per-event-type split, issue #1202/#1204).
+    // (per-shape ShapePress* + per-action MenuConfirm/MenuRestart/...
+    // — see input_events.h for the per-event-type split, issue #1202/#1204/#1277).
     // Calling update<T>() here fires every registered listener in registration
     // order: game_state → level_select → player_input
     // (see wire_input_dispatcher in systems/input_dispatcher.cpp).
@@ -92,7 +92,12 @@ void game_state_system(entt::registry& reg, float dt) {
     disp.update<ShapePressCircleEvent>();
     disp.update<ShapePressSquareEvent>();
     disp.update<ShapePressTriangleEvent>();
-    disp.update<MenuPressEvent>();
+    disp.update<MenuConfirmEvent>();
+    disp.update<MenuRestartEvent>();
+    disp.update<MenuGoLevelSelectEvent>();
+    disp.update<MenuGoMainMenuEvent>();
+    disp.update<MenuSelectLevelEvent>();
+    disp.update<MenuSelectDiffEvent>();
     disp.update<GoEvent>();
 
     if (is_phase_transition_pending(reg)) {

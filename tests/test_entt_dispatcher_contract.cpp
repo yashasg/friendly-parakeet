@@ -1,7 +1,7 @@
 // tests/test_entt_dispatcher_contract.cpp
 //
 // Verifies entt::dispatcher semantics relied on by the semantic input pipeline
-// (GoEvent + per-shape ShapePress*Event + MenuPressEvent only).
+// (GoEvent + per-shape ShapePress*Event + per-action menu events only).
 
 #include <catch2/catch_test_macros.hpp>
 #include <entt/entt.hpp>
@@ -182,7 +182,12 @@ TEST_CASE("wire_input_dispatcher prewarms semantic event queues without pending 
     CHECK(dispatcher.size<ShapePressCircleEvent>()   == 0);
     CHECK(dispatcher.size<ShapePressSquareEvent>()   == 0);
     CHECK(dispatcher.size<ShapePressTriangleEvent>() == 0);
-    CHECK(dispatcher.size<MenuPressEvent>()          == 0);
+    CHECK(dispatcher.size<MenuConfirmEvent>()        == 0);
+    CHECK(dispatcher.size<MenuRestartEvent>()        == 0);
+    CHECK(dispatcher.size<MenuGoLevelSelectEvent>()  == 0);
+    CHECK(dispatcher.size<MenuGoMainMenuEvent>()     == 0);
+    CHECK(dispatcher.size<MenuSelectLevelEvent>()    == 0);
+    CHECK(dispatcher.size<MenuSelectDiffEvent>()     == 0);
 }
 
 TEST_CASE("runtime scratch queues are explicit registry context state",

@@ -48,39 +48,40 @@ TEST_CASE("dispatcher: ShapePress*Event enqueue/update", "[events]") {
     disp.sink<ShapePressCircleEvent>().connect<&PressCapture::on_circle>(cap);
     disp.sink<ShapePressSquareEvent>().connect<&PressCapture::on_square>(cap);
     disp.sink<ShapePressTriangleEvent>().connect<&PressCapture::on_triangle>(cap);
-    disp.sink<MenuPressEvent>().connect<&PressCapture::on_menu>(cap);
+    disp.sink<MenuRestartEvent>().connect<&PressCapture::on_restart>(cap);
 
     disp.enqueue<ShapePressSquareEvent>({});
-    disp.enqueue<MenuPressEvent>({MenuActionKind::Restart, 0});
+    disp.enqueue<MenuRestartEvent>({});
     disp.update<ShapePressCircleEvent>();
     disp.update<ShapePressSquareEvent>();
     disp.update<ShapePressTriangleEvent>();
-    disp.update<MenuPressEvent>();
+    disp.update<MenuRestartEvent>();
     disp.sink<ShapePressCircleEvent>().disconnect<&PressCapture::on_circle>(cap);
     disp.sink<ShapePressSquareEvent>().disconnect<&PressCapture::on_square>(cap);
     disp.sink<ShapePressTriangleEvent>().disconnect<&PressCapture::on_triangle>(cap);
-    disp.sink<MenuPressEvent>().disconnect<&PressCapture::on_menu>(cap);
+    disp.sink<MenuRestartEvent>().disconnect<&PressCapture::on_restart>(cap);
 
     REQUIRE(cap.shape_count() == 1);
     CHECK(cap.square == 1);
     CHECK(cap.circle == 0);
     CHECK(cap.triangle == 0);
-    REQUIRE(cap.menu_count == 1);
-    CHECK(cap.menu_buf[0].action == MenuActionKind::Restart);
+    REQUIRE(cap.menu_count() == 1);
+    CHECK(cap.restart == 1);
 }
 
 TEST_CASE("dispatcher: press events are pure value types — no entity field", "[events]") {
-    // Per #1202/#1204 (and the legacy #273 contract), no press event stores
-    // an entity handle. Constructing an event remains valid regardless of
-    // any entity lifecycle.
+    // Per #1202/#1204/#1277 (and the legacy #273 contract), no press event
+    // stores an entity handle. Constructing an event remains valid regardless
+    // of any entity lifecycle.
     entt::registry reg;
     auto btn_entity = reg.create();
     reg.destroy(btn_entity);  // entity is now invalid / recycled
 
     ShapePressTriangleEvent shape_evt{};
-    MenuPressEvent menu_evt{MenuActionKind::Confirm, 3};
+    MenuConfirmEvent        confirm_evt{};
+    MenuSelectLevelEvent    select_evt{3};
     (void)shape_evt;
-    CHECK(menu_evt.action == MenuActionKind::Confirm);
-    CHECK(menu_evt.index  == 3);
+    (void)confirm_evt;
+    CHECK(select_evt.index == 3);
     (void)btn_entity;
 }

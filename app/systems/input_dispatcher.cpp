@@ -21,9 +21,14 @@ namespace {
 struct InputDispatcherConnections {
     entt::dispatcher* owner = nullptr;
     entt::connection go_game_state;
-    entt::connection menu_press_game_state;
+    entt::connection menu_confirm_game_state;
+    entt::connection menu_restart_game_state;
+    entt::connection menu_go_level_select_game_state;
+    entt::connection menu_go_main_menu_game_state;
     entt::connection go_level_select;
-    entt::connection menu_press_level_select;
+    entt::connection menu_confirm_level_select;
+    entt::connection menu_select_level_level_select;
+    entt::connection menu_select_diff_level_select;
     entt::connection go_player_input;
     entt::connection shape_press_circle_player_input;
     entt::connection shape_press_square_player_input;
@@ -34,9 +39,14 @@ struct InputDispatcherConnections {
         shape_press_square_player_input.release();
         shape_press_circle_player_input.release();
         go_player_input.release();
-        menu_press_level_select.release();
+        menu_select_diff_level_select.release();
+        menu_select_level_level_select.release();
+        menu_confirm_level_select.release();
         go_level_select.release();
-        menu_press_game_state.release();
+        menu_go_main_menu_game_state.release();
+        menu_go_level_select_game_state.release();
+        menu_restart_game_state.release();
+        menu_confirm_game_state.release();
         go_game_state.release();
         owner = nullptr;
     }
@@ -48,18 +58,29 @@ void warm_dispatcher_event_queues(entt::dispatcher& disp) {
     disp.enqueue<ShapePressCircleEvent>(ShapePressCircleEvent{});
     disp.enqueue<ShapePressSquareEvent>(ShapePressSquareEvent{});
     disp.enqueue<ShapePressTriangleEvent>(ShapePressTriangleEvent{});
-    disp.enqueue<MenuPressEvent>(MenuPressEvent{});
+    disp.enqueue<MenuConfirmEvent>(MenuConfirmEvent{});
+    disp.enqueue<MenuRestartEvent>(MenuRestartEvent{});
+    disp.enqueue<MenuGoLevelSelectEvent>(MenuGoLevelSelectEvent{});
+    disp.enqueue<MenuGoMainMenuEvent>(MenuGoMainMenuEvent{});
+    disp.enqueue<MenuSelectLevelEvent>(MenuSelectLevelEvent{});
+    disp.enqueue<MenuSelectDiffEvent>(MenuSelectDiffEvent{});
     disp.clear<GoEvent>();
     disp.clear<ShapePressCircleEvent>();
     disp.clear<ShapePressSquareEvent>();
     disp.clear<ShapePressTriangleEvent>();
-    disp.clear<MenuPressEvent>();
+    disp.clear<MenuConfirmEvent>();
+    disp.clear<MenuRestartEvent>();
+    disp.clear<MenuGoLevelSelectEvent>();
+    disp.clear<MenuGoMainMenuEvent>();
+    disp.clear<MenuSelectLevelEvent>();
+    disp.clear<MenuSelectDiffEvent>();
 }
 }
 
 // game_state_system owns the fixed-step drain of GoEvent and the per-shape
-// + menu press event queues. EnTT sinks are last-connected first; connect in
-// reverse semantic order (player_input → level_select → game_state).
+// + per-action menu press event queues. EnTT sinks are last-connected first;
+// connect in reverse semantic order (player_input → level_select → game_state)
+// so game_state handlers fire first per the pre-#1277 contract.
 void wire_input_dispatcher(entt::registry& reg) {
     auto* disp = reg.ctx().find<entt::dispatcher>();
     if (!disp) {
@@ -81,7 +102,8 @@ void wire_input_dispatcher(entt::registry& reg) {
 
     // Fixed-step semantic order: game_state, level_select, player_input.
     // Shape presses route only to player_input (no menu listeners care about
-    // them). Menu presses route to both game_state and level_select.
+    // them). Menu confirm routes to both game_state and level_select; the
+    // remaining menu events route to a single consumer.
     state->go_player_input =
         disp->sink<GoEvent>().connect<&player_input_handle_go>(reg);
     state->shape_press_circle_player_input =
@@ -92,12 +114,22 @@ void wire_input_dispatcher(entt::registry& reg) {
         disp->sink<ShapePressTriangleEvent>().connect<&player_input_handle_press_triangle>(reg);
     state->go_level_select =
         disp->sink<GoEvent>().connect<&level_select_handle_go>(reg);
-    state->menu_press_level_select =
-        disp->sink<MenuPressEvent>().connect<&level_select_handle_press_menu>(reg);
+    state->menu_confirm_level_select =
+        disp->sink<MenuConfirmEvent>().connect<&level_select_handle_confirm>(reg);
+    state->menu_select_level_level_select =
+        disp->sink<MenuSelectLevelEvent>().connect<&level_select_handle_select_level>(reg);
+    state->menu_select_diff_level_select =
+        disp->sink<MenuSelectDiffEvent>().connect<&level_select_handle_select_diff>(reg);
     state->go_game_state =
         disp->sink<GoEvent>().connect<&game_state_handle_go>(reg);
-    state->menu_press_game_state =
-        disp->sink<MenuPressEvent>().connect<&game_state_handle_press_menu>(reg);
+    state->menu_confirm_game_state =
+        disp->sink<MenuConfirmEvent>().connect<&game_state_handle_confirm>(reg);
+    state->menu_restart_game_state =
+        disp->sink<MenuRestartEvent>().connect<&game_state_handle_restart>(reg);
+    state->menu_go_level_select_game_state =
+        disp->sink<MenuGoLevelSelectEvent>().connect<&game_state_handle_go_level_select>(reg);
+    state->menu_go_main_menu_game_state =
+        disp->sink<MenuGoMainMenuEvent>().connect<&game_state_handle_go_main_menu>(reg);
 
     warm_dispatcher_event_queues(*disp);
 }

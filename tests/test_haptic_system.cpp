@@ -123,7 +123,7 @@ TEST_CASE("game state haptic: RetryTap enqueued when Restart pressed on end scre
     set_test_phase<GamePhaseGameOverTag>(reg);
     reg.ctx().get<GameState>().phase_timer = 1.0f;
 
-    auto btn = make_menu_button(reg, MenuActionKind::Restart);
+    auto btn = make_menu_restart_button(reg);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
@@ -140,7 +140,7 @@ TEST_CASE("game state haptic: UIButtonTap enqueued for non-Restart end screen bu
     set_test_phase<GamePhaseGameOverTag>(reg);
     reg.ctx().get<GameState>().phase_timer = 1.0f;
 
-    auto btn = make_menu_button(reg, MenuActionKind::GoMainMenu);
+    auto btn = make_menu_go_main_menu_button(reg);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
@@ -159,7 +159,7 @@ TEST_CASE("game state haptic: haptic_system no-crash when haptics_enabled=false 
     set_test_phase<GamePhaseGameOverTag>(reg);
     reg.ctx().get<GameState>().phase_timer = 1.0f;
 
-    auto btn = make_menu_button(reg, MenuActionKind::Restart);
+    auto btn = make_menu_restart_button(reg);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);

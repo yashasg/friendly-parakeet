@@ -153,34 +153,28 @@ struct InputState {
 
 // ── Event types: semantic player intentions ──
 //
-// ButtonPressEvent carries semantic value data encoded at source (#273).
-// Consumers act on kind/shape/menu_action — never on a live entity handle,
-// which would be a lifetime hazard if the button entity were destroyed
-// between event production and consumption.
+// Per Fabian's existential processing (#1202/#1204/#1277), each former
+// `ButtonPressKind` × shape and each former `MenuActionKind` value is now
+// its own event type. Listeners subscribe to the specific event they
+// handle — the type IS the choice. Events carry concrete values (or
+// nothing) — never a live entity handle, which would be a lifetime hazard
+// if the button entity were destroyed between event production and
+// consumption.
 
 enum class Direction : uint8_t { Left, Right, Up, Down };  // defined in input.h
 
-enum class MenuActionKind : uint8_t {
-    Confirm       = 0,
-    Restart       = 1,
-    GoLevelSelect = 2,
-    GoMainMenu    = 3,
-    Exit          = 4,
-    SelectLevel   = 5,
-    SelectDiff    = 6,
-};
+// Shape presses are zero-column tag-events.
+struct ShapePressCircleEvent   {};
+struct ShapePressSquareEvent   {};
+struct ShapePressTriangleEvent {};
 
-enum class ButtonPressKind : uint8_t {
-    Shape,  // shape button pressed — use .shape
-    Menu,   // menu button pressed  — use .menu_action / .menu_index
-};
-
-struct ButtonPressEvent {
-    ButtonPressKind kind        = ButtonPressKind::Shape;
-    Shape           shape       = Shape::Circle;            // valid when kind == Shape
-    MenuActionKind  menu_action = MenuActionKind::Confirm;  // valid when kind == Menu
-    uint8_t         menu_index  = 0;                        // valid when kind == Menu
-};
+// Per-action menu events.
+struct MenuConfirmEvent       {};
+struct MenuRestartEvent       {};
+struct MenuGoLevelSelectEvent {};
+struct MenuGoMainMenuEvent    {};
+struct MenuSelectLevelEvent { uint8_t index = 0; };
+struct MenuSelectDiffEvent  { uint8_t index = 0; };
 
 struct GoEvent {
     Direction dir = Direction::Up;

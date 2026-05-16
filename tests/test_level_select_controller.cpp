@@ -11,9 +11,7 @@ TEST_CASE("level_select_controller: select difficulty press updates state", "[le
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.selected_difficulty = 0;
 
-    level_select_handle_press_menu(reg, MenuPressEvent{
-        MenuActionKind::SelectDiff, 2
-    });
+    level_select_handle_select_diff(reg, MenuSelectDiffEvent{2});
 
     CHECK(lss.selected_difficulty == 2);
 }
@@ -27,9 +25,7 @@ TEST_CASE("level_select_controller: select level press updates state", "[level_s
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.selected_level = 0;
 
-    level_select_handle_press_menu(reg, MenuPressEvent{
-        MenuActionKind::SelectLevel, 2
-    });
+    level_select_handle_select_level(reg, MenuSelectLevelEvent{2});
 
     CHECK(lss.selected_level == 2);
 }
@@ -45,12 +41,8 @@ TEST_CASE("level_select_controller: invalid semantic indices do not update selec
     lss.selected_level = 1;
     lss.selected_difficulty = 2;
 
-    level_select_handle_press_menu(reg, MenuPressEvent{
-        MenuActionKind::SelectLevel, 255
-    });
-    level_select_handle_press_menu(reg, MenuPressEvent{
-        MenuActionKind::SelectDiff, 255
-    });
+    level_select_handle_select_level(reg, MenuSelectLevelEvent{255});
+    level_select_handle_select_diff (reg, MenuSelectDiffEvent {255});
 
     CHECK(lss.selected_level == 1);
     CHECK(lss.selected_difficulty == 2);
@@ -65,9 +57,7 @@ TEST_CASE("level_select_controller: ignores menu presses during entry delay", "[
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.selected_difficulty = 1;
 
-    level_select_handle_press_menu(reg, MenuPressEvent{
-        MenuActionKind::SelectDiff, 0
-    });
+    level_select_handle_select_diff(reg, MenuSelectDiffEvent{0});
 
     CHECK(lss.selected_difficulty == 1);
 }

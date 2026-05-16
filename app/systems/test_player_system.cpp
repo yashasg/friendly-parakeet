@@ -221,11 +221,13 @@ void test_player_system(entt::registry& reg, float dt) {
     // ── AUTO-START ───────────────────────────────────────────
     if (title_phase || game_over_phase || song_complete_phase) {
         if (gs.phase_timer > constants::TEST_PLAYER_AUTO_START_DELAY) {
-            // On end screens, press Restart; on Title, press Confirm
-            auto target_action = (game_over_phase || song_complete_phase)
-                                 ? MenuActionKind::Restart
-                                 : MenuActionKind::Confirm;
-            disp.enqueue<MenuPressEvent>({target_action, 0});
+            // On end screens, press Restart; on Title, press Confirm.
+            // Per #1277: each action is its own event type — no enum.
+            if (game_over_phase || song_complete_phase) {
+                disp.enqueue<MenuRestartEvent>({});
+            } else {
+                disp.enqueue<MenuConfirmEvent>({});
+            }
             if (log) {
                 const char* phase_name =
                     title_phase         ? "Title" :
@@ -252,13 +254,13 @@ void test_player_system(entt::registry& reg, float dt) {
     }
 
     if (paused_phase) {
-        disp.enqueue<MenuPressEvent>({MenuActionKind::Confirm, 0});
+        disp.enqueue<MenuConfirmEvent>({});
         return;
     }
 
     // Auto-confirm on LevelSelect (level/difficulty already set in main.cpp)
     if (level_select_phase && gs.phase_timer > constants::UI_ENTRY_DEBOUNCE) {
-        disp.enqueue<MenuPressEvent>({MenuActionKind::Confirm, 0});
+        disp.enqueue<MenuConfirmEvent>({});
         return;
     }
 

@@ -345,8 +345,7 @@ TEST_CASE("tutorial: menu confirm marks FTUE complete and requests gameplay",
     persistence.path.clear();
     persistence.dirty = false;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>({
-        MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<MenuConfirmEvent>({});
     game_state_system(reg, 0.016f);
 
     const auto& saved_settings = settings_state(reg);
@@ -471,7 +470,7 @@ TEST_CASE("game_state: title position tap triggers level_select", "[gamestate]")
     auto reg = make_registry();
     set_test_phase<GamePhaseTitleTag>(reg);
     // Simulate a tap → Confirm menu button press (title screen has full-screen confirm)
-    auto btn = make_menu_button(reg, MenuActionKind::Confirm);
+    auto btn = make_menu_confirm_button(reg);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);

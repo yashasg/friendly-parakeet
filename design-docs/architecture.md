@@ -451,22 +451,27 @@ enum class Direction : uint8_t { Left, Right, Up, Down };
 /// Carry concrete values rather than entity handles so consumers stay safe if
 /// the producing UI entity is destroyed between enqueue and dispatch.
 
-enum class ButtonPressKind : uint8_t {
-    Shape,  // shape button pressed — read `.shape`
-    Menu,   // menu button pressed  — read `.menu_action` / `.menu_index`
-};
+/// Per Fabian's existential processing (#1202/#1204/#1277), each former
+/// (kind × shape) combination and each former MenuActionKind value is now
+/// its own event type. Listeners subscribe to the specific event they
+/// handle; the type IS the choice — no enum discriminator field, no
+/// `switch (kind)` / `switch (action)` at consumers. Events carry concrete
+/// values (or nothing) — never entity handles — so consumers stay safe if
+/// the producing UI entity is destroyed between enqueue and dispatch.
 
-enum class MenuActionKind : uint8_t {
-    Confirm = 0, Restart, GoLevelSelect, GoMainMenu, Exit,
-    SelectLevel, SelectDiff,
-};
+// Shape presses are zero-column tag-events.
+struct ShapePressCircleEvent   {};
+struct ShapePressSquareEvent   {};
+struct ShapePressTriangleEvent {};
 
-struct ButtonPressEvent {
-    ButtonPressKind kind        = ButtonPressKind::Shape;
-    Shape           shape       = Shape::Circle;            // valid when kind == Shape
-    MenuActionKind  menu_action = MenuActionKind::Confirm;  // valid when kind == Menu
-    uint8_t         menu_index  = 0;                        // valid when kind == Menu
-};
+// Per-action menu events — replace the former
+// `MenuPressEvent { MenuActionKind action; uint8_t index; }`.
+struct MenuConfirmEvent       {};
+struct MenuRestartEvent       {};
+struct MenuGoLevelSelectEvent {};
+struct MenuGoMainMenuEvent    {};
+struct MenuSelectLevelEvent { uint8_t index = 0; };
+struct MenuSelectDiffEvent  { uint8_t index = 0; };
 
 struct GoEvent {
     Direction dir = Direction::Up;
@@ -1605,7 +1610,8 @@ app/
 │   │                              OnsetMarkerTag) and requirements
 │   │                              (RequiredShape, RequiredLane, ShapeGateLane)
 │   ├── scoring.h                ← ScoreState, ScorePopup
-│   ├── input_events.h           ← Direction, ButtonPressEvent, GoEvent, MenuActionKind (in systems/)
+│   ├── input_events.h           ← Direction, GoEvent, per-shape ShapePress*Event,
+│   │                              per-action Menu*Event (in systems/, #1277)
 │   ├── game_state.h             ← GameState, GamePhase, LevelSelectState
 │   ├── rendering.h              ← DrawSize, ScreenPosition; back-compat shim
 │   │                              for the camera/mesh splits (issue #1194)
