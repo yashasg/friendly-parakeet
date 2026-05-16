@@ -18,6 +18,7 @@
 #include "entities/settings.h"
 #include "components/rhythm.h"
 #include "util/rhythm_math.h"
+#include "util/shape_tag.h"
 #include "components/high_score.h"
 #include "systems/gameplay_intents.h"
 #include "constants.h"
@@ -182,13 +183,17 @@ inline entt::registry make_rhythm_registry() {
     return reg;
 }
 
-// Creates a player entity in lane 1 (center) with default shape (Hexagon in rhythm mode)
+// Creates a player entity in lane 1 (center) with default shape (Circle)
 inline entt::entity make_player(entt::registry& reg) {
     auto player = reg.create();
     reg.emplace<PlayerTag>(player);
     reg.emplace<WorldTransform>(player, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<PlayerShape>(player);
+    // Default player shape is Circle (presence of `ShapeCircleTag`) — matches
+    // the legacy `PlayerShape::current` default (enum first value).
+    set_player_shape_tag(reg, player, Shape::Circle);
     reg.emplace<ShapeWindow>(player);
+    set_target_shape_tag(reg, player, Shape::Circle);
     reg.emplace<Lane>(player);
     // Grounded == absence of Jumping/Sliding (issue #1202/#1204).
     reg.emplace<Color>(player, Color{80, 180, 255, 255});
@@ -200,11 +205,9 @@ inline entt::entity make_player(entt::registry& reg) {
 // Creates a player entity for rhythm mode (starts as Hexagon)
 inline entt::entity make_rhythm_player(entt::registry& reg) {
     auto player = make_player(reg);
-    auto& ps = reg.get<PlayerShape>(player);
-    ps.current = Shape::Hexagon;
-    auto& sw = reg.get<ShapeWindow>(player);
-    sw.target_shape = Shape::Hexagon;
-    // Idle = absence of all ShapeWindow*Tag (#1202/#1204).
+    set_player_shape_tag(reg, player, Shape::Hexagon);
+    set_target_shape_tag(reg, player, Shape::Hexagon);
+    // Idle window phase = absence of all `ShapeWindow*Tag` (#1202/#1204).
     return player;
 }
 
@@ -264,7 +267,7 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
     reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_SHAPE_GATE});
-    reg.emplace<RequiredShape>(obs, shape);
+    set_required_shape_tag(reg, obs, shape);
     reg.emplace<ShapeGateLane>(obs, int8_t{1});
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<TagWorldPass>(obs);
@@ -281,7 +284,7 @@ inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lan
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
     reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_SPLIT_PATH});
-    reg.emplace<RequiredShape>(obs, shape);
+    set_required_shape_tag(reg, obs, shape);
     reg.emplace<RequiredLane>(obs, lane);
     reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
     reg.emplace<TagWorldPass>(obs);

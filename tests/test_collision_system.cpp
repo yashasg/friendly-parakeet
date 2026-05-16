@@ -197,7 +197,7 @@ TEST_CASE("collision: visual obstacle leftovers without Obstacle payload are ign
     auto visual_leftover = reg.create();
     reg.emplace<ObstacleTag>(visual_leftover);
     reg.emplace<WorldTransform>(visual_leftover, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
-    reg.emplace<RequiredShape>(visual_leftover, Shape::Triangle);
+    set_required_shape_tag(reg, visual_leftover, Shape::Triangle);
 
     collision_system(reg, 0.016f);
 
@@ -277,12 +277,11 @@ TEST_CASE("collision: BAD timing does not adjust window_start", "[collision][rhy
     // The window_start shortening path (scale < 1.0) only fires for Perfect and Good.
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
 
     // Put player in Active phase
-    ps.current = Shape::Circle;
+    set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
     sw.graded = false;
     sw.window_timer = 0.0f;
@@ -312,11 +311,10 @@ TEST_CASE("collision: Perfect timing shrinks window via window_start adjustment"
     // window_start backward to collapse the remaining Active window to 50%.
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
 
-    ps.current = Shape::Circle;
+    set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
     sw.graded = false;
     sw.window_timer = 0.0f;

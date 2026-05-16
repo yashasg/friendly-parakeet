@@ -238,9 +238,8 @@ OffsetGameplayResult run_calibrated_on_arrival_hit(int16_t audio_offset_ms) {
     settings.audio_offset_ms = audio_offset_ms;
 
     auto player = make_rhythm_player(reg);
-    auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
-    ps.current = Shape::Circle;
+    set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
     sw.graded = false;
 

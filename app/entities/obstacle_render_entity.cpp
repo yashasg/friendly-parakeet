@@ -4,13 +4,14 @@
 #include "../components/rendering.h"
 #include "../constants.h"
 #include "../util/shape_lane_mapping.h"
+#include "../util/shape_tag.h"
 #include <cstdint>
 #include <stdexcept>
 
 namespace {
 uint8_t checked_shape_mesh_index(Shape shape) {
     const int index = shape_index(shape);
-    if (index < 0) throw std::logic_error("Invalid RequiredShape shape");
+    if (index < 0) throw std::logic_error("Invalid required shape tag");
     return static_cast<uint8_t>(index);
 }
 
@@ -101,13 +102,13 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
     if (reg.all_of<ShapeGateTag>(logical)) {
         if (!wt_ptr) return;
         const auto& wt = *wt_ptr;
-        auto* req = reg.try_get<RequiredShape>(logical);
+        const bool has_req = has_required_shape_tag(reg, logical);
         uint8_t mesh_index = 0;
-        if (req) {
-            mesh_index = checked_shape_mesh_index(req->shape);
+        if (has_req) {
+            mesh_index = checked_shape_mesh_index(current_required_shape(reg, logical));
         }
         // Shape gates now render as shape-only prompts (no side walls/slabs).
-        if (req)
+        if (has_req)
             add_shape_child(reg, logical, mesh_index, wt.position.x, 0.0f,
                             40, col);
         return;
@@ -118,16 +119,16 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
         if (rlane) {
             lane_index = checked_lane_index(rlane->lane);
         }
-        auto* req = reg.try_get<RequiredShape>(logical);
+        const bool has_req = has_required_shape_tag(reg, logical);
         uint8_t mesh_index = 0;
-        if (req) {
-            mesh_index = checked_shape_mesh_index(req->shape);
+        if (has_req) {
+            mesh_index = checked_shape_mesh_index(current_required_shape(reg, logical));
         }
         for (int i = 0; i < constants::LANE_COUNT; ++i)
             if (!rlane || i != lane_index)
                 add_slab_child(reg, logical, constants::LANE_X[i]-120,
                                240.0f, dsz.h, constants::OBSTACLE_3D_HEIGHT, col);
-        if (req && rlane)
+        if (has_req && rlane)
             add_shape_child(reg, logical, mesh_index,
                             constants::LANE_X[lane_index],
                             0.0f, 30, {255, 255, 255, 180});

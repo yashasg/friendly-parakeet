@@ -51,9 +51,8 @@ TEST_CASE("components: rendering components are safely default constructible",
     }
 }
 
-TEST_CASE("components: PlayerShape defaults to Circle", "[components]") {
+TEST_CASE("components: PlayerShape defaults", "[components]") {
     PlayerShape ps{};
-    CHECK(ps.current == Shape::Circle);
     CHECK(ps.morph_t == 1.0f);
 }
 
@@ -163,7 +162,6 @@ TEST_CASE("ecs: make_registry dispatcher is wired — ButtonPressEvent listeners
     // in Playing phase reaches player_input_handle_press.
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& sw    = reg.get<ShapeWindow>(player);
     REQUIRE(window_phase_is_idle(reg, player));
 
     auto btn = make_shape_button(reg, Shape::Triangle);
@@ -174,7 +172,7 @@ TEST_CASE("ecs: make_registry dispatcher is wired — ButtonPressEvent listeners
 
     // If dispatcher listeners were NOT wired, sw.phase would stay Idle.
     CHECK(window_phase_is_morph_in(reg, player));  // listener wired: handle_press fired
-    CHECK(sw.target_shape == Shape::Triangle);
+    CHECK(reg.all_of<TargetShapeTriangleTag>(player));
 }
 
 TEST_CASE("ecs: make_registry dispatcher ctx — second update is a no-op (no replay)", "[ecs][dispatcher]") {
@@ -277,11 +275,11 @@ TEST_CASE("ecs: make_split_path creates proper entity", "[ecs]") {
 
     CHECK(reg.all_of<ObstacleTag>(obs));
     CHECK(reg.all_of<Obstacle>(obs));
-    CHECK(reg.all_of<RequiredShape>(obs));
+    CHECK(has_required_shape_tag(reg, obs));
     CHECK(reg.all_of<RequiredLane>(obs));
     CHECK(reg.all_of<SplitPathTag>(obs));
     CHECK(!reg.all_of<ShapeGateTag>(obs));
-    CHECK(reg.get<RequiredShape>(obs).shape == Shape::Triangle);
+    CHECK(current_required_shape(reg, obs) == Shape::Triangle);
     CHECK(reg.get<RequiredLane>(obs).lane == 2);
 }
 
@@ -307,14 +305,13 @@ TEST_CASE("ecs: dispatcher rewire-after-unwire does not duplicate semantic deliv
     unwire_input_dispatcher(reg);
     wire_input_dispatcher(reg);
 
-    auto& sw = reg.get<ShapeWindow>(player);
     REQUIRE(window_phase_is_idle(reg, player));
 
     press_button(reg, button);
     reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
 
     CHECK(window_phase_is_morph_in(reg, player));
-    CHECK(sw.target_shape == Shape::Square);
+    CHECK(reg.all_of<TargetShapeSquareTag>(player));
     CHECK(drain_sfx_events(reg).count == 1);
 }
 
@@ -328,14 +325,13 @@ TEST_CASE("ecs: repeated unwire_input_dispatcher is idempotent before rewire",
     unwire_input_dispatcher(reg);
     wire_input_dispatcher(reg);
 
-    auto& sw = reg.get<ShapeWindow>(player);
     REQUIRE(window_phase_is_idle(reg, player));
 
     press_button(reg, button);
     reg.ctx().get<entt::dispatcher>().update<ButtonPressEvent>();
 
     CHECK(window_phase_is_morph_in(reg, player));
-    CHECK(sw.target_shape == Shape::Triangle);
+    CHECK(reg.all_of<TargetShapeTriangleTag>(player));
     CHECK(drain_sfx_events(reg).count == 1);
 }
 

@@ -16,10 +16,10 @@ TEST_CASE("player_action: rhythm mode starts MorphIn on button press from Idle",
 
     run_semantic_input_tick(reg, 0.016f);
 
-    CHECK(sw.target_shape == Shape::Triangle);
+    CHECK(reg.all_of<TargetShapeTriangleTag>(player));
     CHECK(window_phase_is_morph_in(reg, player));
     CHECK(sw.window_timer == 0.0f);
-    CHECK(ps.current == Shape::Hexagon);
+    CHECK(reg.all_of<ShapeHexagonTag>(player));
     CHECK(ps.morph_t == 0.0f);
     CHECK(sw.window_start == 5.0f);
     CHECK(sw.graded == false);
@@ -27,7 +27,7 @@ TEST_CASE("player_action: rhythm mode starts MorphIn on button press from Idle",
     song.song_time += song.morph_duration + 0.01f;
     shape_window_system(reg, song.morph_duration + 0.01f);
     CHECK(window_phase_is_active(reg, player));
-    CHECK(ps.current == Shape::Triangle);
+    CHECK(reg.all_of<ShapeTriangleTag>(player));
     CHECK(ps.morph_t == 1.0f);
 
     // SFX should be pushed
@@ -49,7 +49,7 @@ TEST_CASE("player_action: post-song rhythm context still starts window for trail
 
     run_semantic_input_tick(reg, 0.016f);
 
-    CHECK(sw.target_shape == Shape::Square);
+    CHECK(reg.all_of<TargetShapeSquareTag>(player));
     CHECK(window_phase_is_morph_in(reg, player));
     CHECK(sw.window_start == song.song_time);
     CHECK(sw.press_time == song.song_time);
@@ -58,10 +58,9 @@ TEST_CASE("player_action: post-song rhythm context still starts window for trail
 TEST_CASE("player_action: rhythm mode treats same shape during Active as no-op", "[player_rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
     set_window_phase_active(reg, player);
-    ps.current = Shape::Square;
+    set_player_shape_tag(reg, player, Shape::Square);
     sw.window_timer = 0.1f;
     sw.window_start = 1.0f;
     sw.press_time = 1.0f;
@@ -91,7 +90,7 @@ TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 8.0f;
     set_window_phase_active(reg, player);
-    ps.current = Shape::Square;
+    set_player_shape_tag(reg, player, Shape::Square);
     sw.window_timer = 0.3f;
 
     auto btn = make_shape_button(reg, Shape::Triangle);
@@ -99,7 +98,7 @@ TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "
 
     run_semantic_input_tick(reg, 0.016f);
 
-    CHECK(sw.target_shape == Shape::Triangle);
+    CHECK(reg.all_of<TargetShapeTriangleTag>(player));
     CHECK(window_phase_is_morph_in(reg, player));
     CHECK(sw.window_timer == 0.0f);
     CHECK(ps.morph_t == 0.0f);
@@ -122,7 +121,7 @@ TEST_CASE("player_action: rhythm mode does not interrupt MorphIn phase", "[playe
     auto player = make_rhythm_player(reg);
     auto& sw = reg.get<ShapeWindow>(player);
     set_window_phase_morph_in(reg, player);
-    sw.target_shape = Shape::Circle;
+    set_target_shape_tag(reg, player, Shape::Circle);
     sw.window_timer = 0.05f;
 
     auto btn = make_shape_button(reg, Shape::Square);
@@ -132,7 +131,7 @@ TEST_CASE("player_action: rhythm mode does not interrupt MorphIn phase", "[playe
 
     // MorphIn should not be interrupted (only Active can be interrupted)
     CHECK(window_phase_is_morph_in(reg, player));
-    CHECK(sw.target_shape == Shape::Circle);
+    CHECK(reg.all_of<TargetShapeCircleTag>(player));
 }
 
 // Fixed by #209: MorphOut is now interruptible — player input is preserved.
@@ -144,7 +143,7 @@ TEST_CASE("player_action: rhythm mode ACCEPTS button press during MorphOut (#209
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 15.0f;
     set_window_phase_morph_out(reg, player);
-    ps.current = Shape::Circle;
+    set_player_shape_tag(reg, player, Shape::Circle);
     sw.window_timer = 0.05f;
     sw.window_start = 14.9f;
 
@@ -154,7 +153,7 @@ TEST_CASE("player_action: rhythm mode ACCEPTS button press during MorphOut (#209
     run_semantic_input_tick(reg, 0.016f);
 
     // MorphOut interrupted: new MorphIn window started for Triangle
-    CHECK(sw.target_shape == Shape::Triangle);
+    CHECK(reg.all_of<TargetShapeTriangleTag>(player));
     CHECK(window_phase_is_morph_in(reg, player));
     CHECK(sw.window_timer == 0.0f);
     CHECK(ps.morph_t == 0.0f);
@@ -175,7 +174,7 @@ TEST_CASE("player_action: legacy mode instant shape change", "[player_legacy]") 
     run_semantic_input_tick(reg, 0.016f);
 
     auto& ps = reg.get<PlayerShape>(player);
-    CHECK(ps.current == Shape::Triangle);
+    CHECK(reg.all_of<ShapeTriangleTag>(player));
     CHECK(ps.morph_t == 1.0f);
     CHECK(drain_sfx_events(reg).count > 0);
 }
@@ -189,8 +188,7 @@ TEST_CASE("player_action: legacy mode no change for same shape", "[player_legacy
 
     run_semantic_input_tick(reg, 0.016f);
 
-    auto& ps = reg.get<PlayerShape>(player);
-    CHECK(ps.current == Shape::Circle);
+    CHECK(reg.all_of<ShapeCircleTag>(player));
     CHECK(drain_sfx_events(reg).count == 0);
 }
 

@@ -3,6 +3,7 @@
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../constants.h"
+#include "../util/shape_tag.h"
 #include <stdexcept>
 
 entt::entity create_player_entity(entt::registry& reg) {
@@ -14,17 +15,13 @@ entt::entity create_player_entity(entt::registry& reg) {
     auto player = reg.create();
     reg.emplace<PlayerTag>(player);
     reg.emplace<WorldTransform>(player, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
-    {
-        PlayerShape ps;
-        ps.current  = Shape::Hexagon;
-        reg.emplace<PlayerShape>(player, ps);
-    }
-    {
-        ShapeWindow sw;
-        sw.target_shape = Shape::Hexagon;
-        reg.emplace<ShapeWindow>(player, sw);
-        // Idle phase = absence of all ShapeWindow*Tag (per #1202/#1204).
-    }
+    reg.emplace<PlayerShape>(player);
+    // Player starts as Hexagon: presence of `ShapeHexagonTag` IS the data
+    // (issue #1202/#1204 — see `app/util/shape_tag.h`).
+    set_player_shape_tag(reg, player, Shape::Hexagon);
+    reg.emplace<ShapeWindow>(player);
+    set_target_shape_tag(reg, player, Shape::Hexagon);
+    // Idle phase = absence of all ShapeWindow*Tag (per #1202/#1204).
     reg.emplace<Lane>(player);
     // Vertical motion is grounded by default — no Jumping/Sliding component
     // is emplaced (Grounded == absence of both per #1202/#1204).

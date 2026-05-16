@@ -196,10 +196,8 @@ TEST_CASE("make_rhythm_registry: SongState is configured", "[helpers]") {
 TEST_CASE("make_rhythm_player: starts as Hexagon", "[helpers]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& ps = reg.get<PlayerShape>(player);
-    CHECK(ps.current == Shape::Hexagon);
-    auto& sw = reg.get<ShapeWindow>(player);
-    CHECK(sw.target_shape == Shape::Hexagon);
+    CHECK(reg.all_of<ShapeHexagonTag>(player));
+    CHECK(reg.all_of<TargetShapeHexagonTag>(player));
     CHECK(window_phase_is_idle(reg, player));
 }
 

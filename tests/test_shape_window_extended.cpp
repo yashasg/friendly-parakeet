@@ -13,7 +13,7 @@ TEST_CASE("shape_window: MorphIn advances morph_t toward 1.0", "[shape_window][r
     auto& song = reg.ctx().get<SongState>();
 
     set_window_phase_morph_in(reg, player);
-    sw.target_shape = Shape::Circle;
+    set_target_shape_tag(reg, player, Shape::Circle);
     sw.window_start = song.song_time;
     ps.morph_t = 0.0f;
 
@@ -34,7 +34,7 @@ TEST_CASE("shape_window: MorphIn transitions to Active", "[shape_window][rhythm]
     auto& song = reg.ctx().get<SongState>();
 
     set_window_phase_morph_in(reg, player);
-    sw.target_shape = Shape::Circle;
+    set_target_shape_tag(reg, player, Shape::Circle);
     sw.window_start = song.song_time;
     ps.morph_t = 0.0f;
 
@@ -43,7 +43,7 @@ TEST_CASE("shape_window: MorphIn transitions to Active", "[shape_window][rhythm]
     shape_window_system(reg, 0.016f);
 
     CHECK(ps.morph_t == 1.0f);
-    CHECK(ps.current == Shape::Circle);
+    CHECK(reg.all_of<ShapeCircleTag>(player));
     CHECK(window_phase_is_active(reg, player));
 }
 
@@ -54,7 +54,7 @@ TEST_CASE("shape_window: Active phase expires into MorphOut", "[shape_window][rh
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
 
-    ps.current = Shape::Circle;
+    set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
     sw.window_start = song.song_time;
 
@@ -73,7 +73,7 @@ TEST_CASE("shape_window: MorphOut returns to Idle with Hexagon", "[shape_window]
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
 
-    ps.current = Shape::Circle;
+    set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_morph_out(reg, player);
     sw.window_start = song.song_time;
     sw.press_time = song.song_time - 0.25f;
@@ -84,8 +84,8 @@ TEST_CASE("shape_window: MorphOut returns to Idle with Hexagon", "[shape_window]
     shape_window_system(reg, 0.016f);
 
     CHECK(window_phase_is_idle(reg, player));
-    CHECK(ps.current == Shape::Hexagon);
-    CHECK(sw.target_shape == Shape::Hexagon);
+    CHECK(reg.all_of<ShapeHexagonTag>(player));
+    CHECK(reg.all_of<TargetShapeHexagonTag>(player));
     CHECK(sw.press_time == -1.0f);
     CHECK_FALSE(sw.graded);
 }
@@ -93,26 +93,24 @@ TEST_CASE("shape_window: MorphOut returns to Idle with Hexagon", "[shape_window]
 TEST_CASE("shape_window: Idle phase does nothing", "[shape_window][rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& ps = reg.get<PlayerShape>(player);
     auto& song = reg.ctx().get<SongState>();
 
     set_window_phase_idle(reg, player);
-    Shape original_shape = ps.current;
+    Shape original_shape = current_player_shape(reg, player);
 
     song.song_time += 1.0f;
     shape_window_system(reg, 0.016f);
 
-    CHECK(ps.current == original_shape);
+    CHECK(current_player_shape(reg, player) == original_shape);
 }
 
 TEST_CASE("shape_window: Active duration is driven by song window duration", "[shape_window][rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
 
-    ps.current = Shape::Circle;
+    set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
     sw.window_start = song.song_time;
 
@@ -150,7 +148,7 @@ TEST_CASE("shape_window: color updates on Active transition", "[shape_window][rh
     auto& song = reg.ctx().get<SongState>();
 
     set_window_phase_morph_in(reg, player);
-    sw.target_shape = Shape::Square;  // Red
+    set_target_shape_tag(reg, player, Shape::Square);  // Red
     sw.window_start = song.song_time;
     ps.morph_t = 0.0f;
 
@@ -172,7 +170,7 @@ TEST_CASE("shape_window: full lifecycle MorphIn→Active→MorphOut→Idle", "[s
 
     // Start MorphIn
     set_window_phase_morph_in(reg, player);
-    sw.target_shape = Shape::Triangle;
+    set_target_shape_tag(reg, player, Shape::Triangle);
     sw.window_start = song.song_time;
     ps.morph_t = 0.0f;
 
@@ -180,7 +178,7 @@ TEST_CASE("shape_window: full lifecycle MorphIn→Active→MorphOut→Idle", "[s
     song.song_time += song.morph_duration + 0.01f;
     shape_window_system(reg, 0.016f);
     CHECK(window_phase_is_active(reg, player));
-    CHECK(ps.current == Shape::Triangle);
+    CHECK(reg.all_of<ShapeTriangleTag>(player));
 
     // Phase 2: Active → MorphOut
     song.song_time += song.window_duration + 0.01f;
@@ -191,7 +189,7 @@ TEST_CASE("shape_window: full lifecycle MorphIn→Active→MorphOut→Idle", "[s
     song.song_time += song.morph_duration + 0.01f;
     shape_window_system(reg, 0.016f);
     CHECK(window_phase_is_idle(reg, player));
-    CHECK(ps.current == Shape::Hexagon);
+    CHECK(reg.all_of<ShapeHexagonTag>(player));
 }
 
 // ── Regression tests for issue #223 (window_scale inversion) ────────────────
