@@ -33,47 +33,44 @@ static bool lane_centers_overlap(float lhs_x, float rhs_x) {
     return CheckCollisionRecs(lane_overlap_rect(lhs_x), lane_overlap_rect(rhs_x));
 }
 
-// Per-shape key-name lookup (issue #1202/#1204). The former
-// `switch (s)` is replaced by a constexpr string column indexed by
-// `shape_index(s)`; Hexagon's slot doubles as the invalid-shape fallback
-// since the player never directly presses a Hexagon key.
-static constexpr std::array<const char*, kShapeCount> kShapeKeyNames{
-    "key_1(Circle)",
-    "key_2(Square)",
-    "key_3(Triangle)",
-    "key_?(?)",
+// ── Per-shape press dispatch table (issue #1202 PR C3) ─────────
+// One row per shape that the test player can actually press; identity
+// is encoded by `&kShapePressCircle` / `&kShapePressSquare` /
+// `&kShapePressTriangle`. `TestPlayerAction::shape_press == nullptr`
+// means "no shape required" (replaces the former
+// `target_shape == Shape::Hexagon` sentinel compare). Per Fabian's
+// existential-processing canon, the pointer's value IS the choice —
+// consumers never branch on a Shape value to dispatch.
+struct ShapePressSpec {
+    void           (*enqueue)(entt::dispatcher&);
+    const char*      key_name;   // EXECUTE log: e.g. "key_1(Circle)"
+    std::string_view label;      // PERCEIVE/PLAN log: e.g. "Circle"
 };
 
-static const char* shape_key_name(Shape s) {
-    const int idx = shape_index(s);
-    if (idx < 0 || idx >= kShapeCount) return "key_?(?)";
-    return kShapeKeyNames[static_cast<size_t>(idx)];
-}
-
-// Per-shape press-event enqueue table (issue #1202/#1204). Each row is the
-// function-pointer producer for the matching ShapePress*Event; the table is
-// indexed by `shape_index(shape)`. The Hexagon slot is a no-op — test player
-// callers gate via `test_player_needs_shape()` which never returns true for
-// Hexagon, so the slot is unreachable; it exists only to keep the table
-// dense (matches `kShapeFlatDrawFns` / `kEmplacePlayer` precedent).
 namespace {
-using ShapePressEnqueueFn = void (*)(entt::dispatcher&);
 inline void enqueue_press_circle  (entt::dispatcher& d) { d.enqueue<ShapePressCircleEvent>({});   }
 inline void enqueue_press_square  (entt::dispatcher& d) { d.enqueue<ShapePressSquareEvent>({});   }
 inline void enqueue_press_triangle(entt::dispatcher& d) { d.enqueue<ShapePressTriangleEvent>({}); }
-inline void enqueue_press_noop    (entt::dispatcher&  ) {}
 
-inline constexpr std::array<ShapePressEnqueueFn, kShapeCount> kEnqueueShapePress{
-    &enqueue_press_circle,
-    &enqueue_press_square,
-    &enqueue_press_triangle,
-    &enqueue_press_noop,
+inline constexpr ShapePressSpec kShapePressCircle  {&enqueue_press_circle,   "key_1(Circle)",   "Circle"};
+inline constexpr ShapePressSpec kShapePressSquare  {&enqueue_press_square,   "key_2(Square)",   "Square"};
+inline constexpr ShapePressSpec kShapePressTriangle{&enqueue_press_triangle, "key_3(Triangle)", "Triangle"};
+
+// Index-aligned with `shape_index(Shape)`. Hexagon's slot is `nullptr`
+// because Hexagon is never a required-shape value — `current_required_shape`
+// only returns Hexagon as the no-tag sentinel, which `determine_action`
+// gates out via `has_required_shape_tag` before calling `shape_press_for`.
+inline constexpr std::array<const ShapePressSpec*, kShapeCount> kShapePressByIndex{
+    &kShapePressCircle,
+    &kShapePressSquare,
+    &kShapePressTriangle,
+    nullptr,
 };
 
-inline void enqueue_shape_press(entt::dispatcher& disp, Shape s) {
+inline const ShapePressSpec* shape_press_for(Shape s) noexcept {
     const int idx = shape_index(s);
-    if (idx < 0) return;
-    kEnqueueShapePress[static_cast<size_t>(idx)](disp);
+    if (idx < 0 || idx >= kShapeCount) return nullptr;
+    return kShapePressByIndex[static_cast<size_t>(idx)];
 }
 }  // namespace
 
@@ -102,7 +99,7 @@ static void test_player_mark_vertical_done(TestPlayerAction& action) {
 }
 
 static bool test_player_needs_shape(const TestPlayerAction& action) {
-    return action.target_shape != Shape::Hexagon && !test_player_shape_done(action);
+    return action.shape_press != nullptr && !test_player_shape_done(action);
 }
 
 static bool test_player_needs_lane(const TestPlayerAction& action) {
@@ -118,7 +115,7 @@ static bool test_player_needs_vertical(const TestPlayerAction& action) {
 }
 
 static bool test_player_action_done(const TestPlayerAction& action) {
-    const bool shape_done = (action.target_shape == Shape::Hexagon) ||
+    const bool shape_done = (action.shape_press == nullptr) ||
                             test_player_shape_done(action);
     const bool lane_done = !lane_utils::is_valid(action.target_lane) ||
                            test_player_lane_done(action);
@@ -168,7 +165,7 @@ static TestPlayerAction determine_action(
 
     // Shape requirement
     if (has_required_shape_tag(reg, entity)) {
-        action.target_shape = current_required_shape(reg, entity);
+        action.shape_press = shape_press_for(current_required_shape(reg, entity));
 
         // ShapeGate: player must also be in the lane where the shape hole is.
         // The hole is at obs_pos.x — find which lane that corresponds to.
@@ -303,7 +300,7 @@ void test_player_system(entt::registry& reg, float dt) {
 
         // Pro player aims for Perfect timing on SHAPE PRESSES.
         // Lane dodges and vertical-only actions react ASAP — no delay.
-        bool has_shape = (action.target_shape != Shape::Hexagon);
+        bool has_shape = (action.shape_press != nullptr);
         bool has_lane_or_vertical = (lane_utils::is_valid(action.target_lane) ||
                                      action.wants_jump || action.wants_slide);
 
@@ -331,7 +328,10 @@ void test_player_system(entt::registry& reg, float dt) {
             auto* beat_info = reg.try_get<BeatInfo>(entity);
             int beat_num = beat_info ? beat_info->beat_index : -1;
             const std::string_view kind_name = obstacle_kind_label(reg, entity);
-            const std::string_view shape_name = enum_name_or_unknown(action.target_shape);
+            // Preserve the legacy PERCEIVE log format: when no shape is
+            // required, the field reads "Hexagon" (the former sentinel).
+            const std::string_view shape_name =
+                action.shape_press ? action.shape_press->label : std::string_view{"Hexagon"};
 
             session_log_write(*log, song_time, "PLAYER",
                 "PERCEIVE obstacle=%u beat=%d kind=%.*s shape=%.*s lane=%d dist=%.0fpx",
@@ -342,7 +342,7 @@ void test_player_system(entt::registry& reg, float dt) {
                 action.target_lane, dist);
 
             const std::string_view action_shape_name =
-                action.target_shape != Shape::Hexagon ? shape_name : std::string_view{""};
+                action.shape_press ? action.shape_press->label : std::string_view{""};
             session_log_write(*log, song_time, "PLAYER",
                 "PLAN action=%.*s%s%s react=%.3fs arrival=%.3fs",
                 static_cast<int>(action_shape_name.size()), action_shape_name.data(),
@@ -377,7 +377,7 @@ void test_player_system(entt::registry& reg, float dt) {
         auto& a = state->actions[i];
         // Shape press fired but obstacle hasn't been scored yet.
         // scoring_system removes Obstacle component after processing.
-        if (a.target_shape != Shape::Hexagon && test_player_shape_done(a)
+        if (a.shape_press != nullptr && test_player_shape_done(a)
             && reg.valid(a.obstacle) && reg.all_of<Obstacle>(a.obstacle)
             && !reg.all_of<ScoredTag>(a.obstacle)) {
             pending_shape_obstacle = a.obstacle;
@@ -419,14 +419,14 @@ void test_player_system(entt::registry& reg, float dt) {
                                     song->song_time < action.shape_not_before_time);
         bool waiting_on_lane = test_player_needs_lane(action);
         if (test_player_needs_shape(action) && !waiting_on_lane && !too_early_for_shape) {
-            enqueue_shape_press(disp, action.target_shape);
+            action.shape_press->enqueue(disp);
             test_player_mark_shape_done(action);
             key_injected = true;
 
             if (log) {
                 session_log_write(*log, song_time, "PLAYER",
                     "EXECUTE %s for obstacle=%u beat=%d",
-                    shape_key_name(action.target_shape),
+                    action.shape_press->key_name,
                     static_cast<unsigned>(entt::to_integral(action.obstacle)),
                     act_beat);
             }

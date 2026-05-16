@@ -37,10 +37,15 @@ ImpactStyle        # playback ID
 SFX                # playback ID
 Status             # persistence return code (Fabian "collision response" exemplar)
 FontSize           # UI layout label
+Shape              # lookup key — perfect-hash index into per-shape function-pointer
+                   # tables (kShapeFlatDrawFns, kShapePressByIndex, kEnqueueShape*).
+                   # Per #1202 PR C3 (TestPlayerAction sentinel migration), no switch
+                   # / `==` / `!=` discriminator on Shape remains in app/; all uses
+                   # are lookup-key passthroughs (function args, return values,
+                   # per-shape literal iteration) — exactly Fabian's Keep category.
 
 # --- Pending eradication per #1202 / #1204 (set must shrink, never grow) ----
 # Each row below is a control-flow enum awaiting migration to per-case tags
 # or component tables. Removing a row here = the migration landed.
 # Adding a row here would be drift; eradicate instead.
-Shape                 # #1202: per-shape tags; player identity, 4 cases
 GamePhase             # #1202: per-phase tag/struct mix; blocked on game_state.h split
