@@ -40,27 +40,27 @@ static const char* shape_key_name(Shape s) {
 }
 
 static bool test_player_shape_done(const TestPlayerAction& action) {
-    return !!(action.done_flags & ActionDoneBit::Shape);
+    return action.shape_done;
 }
 
 static bool test_player_lane_done(const TestPlayerAction& action) {
-    return !!(action.done_flags & ActionDoneBit::Lane);
+    return action.lane_done;
 }
 
 static bool test_player_vertical_done(const TestPlayerAction& action) {
-    return !!(action.done_flags & ActionDoneBit::Vertical);
+    return action.vertical_done;
 }
 
 static void test_player_mark_shape_done(TestPlayerAction& action) {
-    action.done_flags |= ActionDoneBit::Shape;
+    action.shape_done = true;
 }
 
 static void test_player_mark_lane_done(TestPlayerAction& action) {
-    action.done_flags |= ActionDoneBit::Lane;
+    action.lane_done = true;
 }
 
 static void test_player_mark_vertical_done(TestPlayerAction& action) {
-    action.done_flags |= ActionDoneBit::Vertical;
+    action.vertical_done = true;
 }
 
 static bool test_player_needs_shape(const TestPlayerAction& action) {
