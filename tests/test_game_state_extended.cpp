@@ -2,6 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "systems/game_phase_transition.h"
 #include "systems/game_state_system.h"
+#include "tags/tags.h"
 #include "test_helpers.h"
 #include "ui/screen_controllers/tutorial_screen_controller.h"
 
@@ -322,12 +323,13 @@ TEST_CASE("tutorial: continue marks FTUE complete and requests gameplay",
     settings.ftue_run_count = 0;
     auto& persistence = settings_persistence(reg);
     persistence.path.clear();
-    persistence.dirty = false;
+    const auto settings_entity = *reg.view<SettingsTag>().begin();
+    reg.remove<SettingsDirtyTag>(settings_entity);
 
     tutorial_screen_continue(reg);
 
     CHECK(settings::ftue_complete(settings));
-    CHECK(persistence.dirty);
+    CHECK(reg.all_of<SettingsDirtyTag>(settings_entity));
     CHECK(persistence.last_save.status == persistence::Status::PathUnavailable);
     CHECK(reg.ctx().contains<NextPhasePlayingTag>());
 }
@@ -343,15 +345,17 @@ TEST_CASE("tutorial: menu confirm marks FTUE complete and requests gameplay",
     settings.ftue_run_count = 0;
     auto& persistence = settings_persistence(reg);
     persistence.path.clear();
-    persistence.dirty = false;
+    const auto settings_entity = *reg.view<SettingsTag>().begin();
+    reg.remove<SettingsDirtyTag>(settings_entity);
 
     reg.ctx().get<entt::dispatcher>().enqueue<MenuConfirmEvent>({});
     game_state_system(reg, 0.016f);
 
     const auto& saved_settings = settings_state(reg);
     const auto& saved_persistence = settings_persistence(reg);
+    const auto current_settings_entity = *reg.view<SettingsTag>().begin();
     CHECK(settings::ftue_complete(saved_settings));
-    CHECK(saved_persistence.dirty);
+    CHECK(reg.all_of<SettingsDirtyTag>(current_settings_entity));
     CHECK(saved_persistence.last_save.status == persistence::Status::PathUnavailable);
     CHECK_FALSE(is_phase_transition_pending(reg));
     CHECK(reg.ctx().contains<GamePhasePlayingTag>());

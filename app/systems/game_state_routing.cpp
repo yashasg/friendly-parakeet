@@ -83,9 +83,7 @@ void game_state_handle_confirm(entt::registry& reg, const MenuConfirmEvent&) {
         if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
         if (auto* settings_state = find_settings_state(reg)) {
             settings::mark_ftue_complete(*settings_state);
-            if (auto* persistence = find_settings_persistence(reg)) {
-                settings::mark_dirty_and_save(*persistence, *settings_state);
-            }
+            settings::mark_dirty_and_save(reg, *settings_state);
         }
         request_phase_transition<NextPhasePlayingTag>(reg);
         return;

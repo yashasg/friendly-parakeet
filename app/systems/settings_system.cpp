@@ -231,8 +231,16 @@ persistence::Result save_settings(const SettingsState& state, const std::filesys
     return persistence::flush_persistence_writes(path);
 }
 
-void mark_dirty_and_save(SettingsPersistence& persistence_state, const SettingsState& state) {
-    persistence_state.dirty = true;
+void mark_dirty_and_save(entt::registry& reg, const SettingsState& state) {
+    auto view = reg.view<SettingsTag, SettingsPersistence>();
+    auto it = view.begin();
+    if (it == view.end()) {
+        return;
+    }
+    const auto entity = *it;
+    auto& persistence_state = view.get<SettingsPersistence>(entity);
+
+    reg.emplace_or_replace<SettingsDirtyTag>(entity);
     if (persistence_state.path.empty()) {
         persistence_state.last_save = persistence::Result{persistence::Status::PathUnavailable, {}};
         return;
@@ -240,7 +248,7 @@ void mark_dirty_and_save(SettingsPersistence& persistence_state, const SettingsS
 
     persistence_state.last_save = save_settings(state, persistence_state.path);
     if (persistence_state.last_save.ok()) {
-        persistence_state.dirty = false;
+        reg.remove<SettingsDirtyTag>(entity);
     }
 }
 

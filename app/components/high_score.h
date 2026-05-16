@@ -35,9 +35,17 @@ struct HighScoreSession {
     entt::hashed_string::hash_type key_hash{0};
 };
 
+// Persistence I/O bookkeeping for the high-score file (path + last load/save
+// results). Lives as a ctx singleton; mutated by the terminal-phase
+// transition system.
+//
+// The former `bool dirty` column was eradicated per Fabian relational
+// normalization (issue #1203): "needs save" is now expressed as the
+// presence of `HighScoreDirtyTag` on `registry.ctx()` (see
+// app/tags/tags.h). The terminal-phase system is the canonical writer;
+// tests can emplace / erase the tag via `reg.ctx()` directly.
 struct HighScorePersistence {
     std::string path;
     persistence::Result last_load{};
     persistence::Result last_save{};
-    bool dirty{false};
 };

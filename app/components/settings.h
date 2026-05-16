@@ -33,11 +33,16 @@ struct SettingsState {
 };
 
 // Persistence I/O bookkeeping for the settings file (path + last load/save
-// results + dirty bit). Lives on the singleton settings entity alongside
-// SettingsState; mutated by systems/settings_system.
+// results). Lives on the singleton settings entity alongside SettingsState;
+// mutated by systems/settings_system.
+//
+// The former `bool dirty` column was eradicated per Fabian relational
+// normalization (issue #1203): "needs save" is now expressed as the
+// presence of `SettingsDirtyTag` on the same SettingsTag entity (see
+// app/tags/tags.h). `settings::mark_dirty_and_save()` is the canonical
+// writer; tests can emplace / remove the tag directly via the registry.
 struct SettingsPersistence {
     std::string path;
     persistence::Result last_load{};
     persistence::Result last_save{};
-    bool dirty{false};
 };
