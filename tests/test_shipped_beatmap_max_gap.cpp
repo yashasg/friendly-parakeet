@@ -61,35 +61,53 @@ TEST_CASE("shipped beatmaps: authored beats are strictly increasing",
             // only on hard I/O / JSON failures.
             if (!load_beat_map(path, map, load_errors, diff)) continue;
 
-            if (map.beats.empty()) {
-                FAIL_CHECK("beat order integrity: " << path << " [" << diff << "] has no authored beats");
-                continue;
-            }
-
             // Issue #396 — subdivision-aware snap can place two distinct
             // obstacles at the same beat_index (e.g. downbeat + eighth or
             // cross-layer onsets within 50ms).  Strict beat-index uniqueness
             // is intentionally no longer required; obstacles must instead
             // stay strictly ordered in onset time and never go backwards in
             // beat index.
-            for (size_t i = 1; i < map.beats.size(); ++i) {
-                if (map.beats[i].beat_index < map.beats[i - 1].beat_index) {
+            //
+            // Per #1202/#1204 the chart is normalized: each former
+            // `ObstacleKind` lives in its own vector. To check the cross-kind
+            // ordering invariant we merge the three vectors into one flat
+            // sorted view (by beat_index, then time_sec).
+            std::vector<BeatEntry> merged;
+            merged.reserve(map.shape_gate_beats.size() +
+                           map.split_path_beats.size() +
+                           map.onset_marker_beats.size());
+            merged.insert(merged.end(), map.shape_gate_beats.begin(),   map.shape_gate_beats.end());
+            merged.insert(merged.end(), map.split_path_beats.begin(),   map.split_path_beats.end());
+            merged.insert(merged.end(), map.onset_marker_beats.begin(), map.onset_marker_beats.end());
+            std::stable_sort(merged.begin(), merged.end(),
+                             [](const BeatEntry& a, const BeatEntry& b) {
+                                 if (a.beat_index != b.beat_index) return a.beat_index < b.beat_index;
+                                 return a.time_sec < b.time_sec;
+                             });
+
+            if (merged.empty()) {
+                FAIL_CHECK("beat order integrity: " << path << " [" << diff << "] has no authored beats");
+                continue;
+            }
+
+            for (size_t i = 1; i < merged.size(); ++i) {
+                if (merged[i].beat_index < merged[i - 1].beat_index) {
                     FAIL_CHECK("beat order integrity: " << path
                                << " [" << diff << "] has decreasing beat index pair "
-                               << map.beats[i - 1].beat_index << " -> " << map.beats[i].beat_index);
+                               << merged[i - 1].beat_index << " -> " << merged[i].beat_index);
                 }
                 // Same-beat ties are allowed: cross-layer onsets within the
                 // 50 ms protected window remain distinct events anchored to a
                 // shared beat/subdivision.  We only flag a regression if a
                 // later beat has both equal beat_index AND strictly smaller
                 // time_sec (out-of-order within the same beat).
-                if (map.beats[i].beat_index > map.beats[i - 1].beat_index &&
-                    map.beats[i].time_sec < map.beats[i - 1].time_sec) {
+                if (merged[i].beat_index > merged[i - 1].beat_index &&
+                    merged[i].time_sec < merged[i - 1].time_sec) {
                     FAIL_CHECK("beat order integrity: " << path
                                << " [" << diff << "] has decreasing time_sec across beats "
-                               << map.beats[i - 1].beat_index << " (" << map.beats[i - 1].time_sec
-                               << ") -> " << map.beats[i].beat_index << " ("
-                               << map.beats[i].time_sec << ")");
+                               << merged[i - 1].beat_index << " (" << merged[i - 1].time_sec
+                               << ") -> " << merged[i].beat_index << " ("
+                               << merged[i].time_sec << ")");
                 }
             }
         }

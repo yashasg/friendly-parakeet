@@ -58,14 +58,23 @@ TEST_CASE("first collision: every shipped difficulty has a valid first beat",
             BeatMap map;
             std::vector<BeatMapError> load_errors;
             if (!load_beat_map(path, map, load_errors, diff)) continue;
-            if (map.beats.empty()) continue;
 
-            // Find the smallest beat_index — entries are non-decreasing but
-            // we don't rely on it.
-            int first_beat = map.beats.front().beat_index;
-            for (const auto& b : map.beats) {
-                if (b.beat_index < first_beat) first_beat = b.beat_index;
-            }
+            // Per #1202/#1204 the chart is split into 3 per-kind vectors.
+            // Walk all of them to find the smallest authored beat_index.
+            bool any = false;
+            int first_beat = 0;
+            auto consider = [&](const std::vector<BeatEntry>& v) {
+                for (const auto& b : v) {
+                    if (!any || b.beat_index < first_beat) {
+                        first_beat = b.beat_index;
+                        any = true;
+                    }
+                }
+            };
+            consider(map.shape_gate_beats);
+            consider(map.split_path_beats);
+            consider(map.onset_marker_beats);
+            if (!any) continue;
 
             if (first_beat < 0) {
                 FAIL_CHECK("first-collision integrity violation: " << path

@@ -11,6 +11,122 @@
 
 #include <cmath>
 
+namespace {
+
+// Per-kind schedule context shared across the 3 spawn transforms.
+struct ScheduleContext {
+    entt::registry& reg;
+    SongState&      song;
+    const BeatMap&  map;
+    float           audio_offset_sec;
+};
+
+// Resolve the calibrated arrival time for a beat. Mirrors the prior
+// single-loop logic; called once per entry. Returns true if the spawn
+// should proceed; populates `effective_spawn_time`, `start_y`, and
+// `calibrated_arrival_time` for the caller.
+bool resolve_spawn_timing(const ScheduleContext& ctx,
+                          const BeatEntry& entry,
+                          float& calibrated_arrival_time,
+                          float& effective_spawn_time,
+                          float& start_y) {
+    float beat_time = ctx.song.offset + entry.beat_index * ctx.song.beat_period;
+    if (!entry.has_time_sec &&
+        !ctx.map.beat_times.empty() &&
+        entry.beat_index >= 0 &&
+        static_cast<size_t>(entry.beat_index) < ctx.map.beat_times.size()) {
+        beat_time = ctx.map.beat_times[static_cast<size_t>(entry.beat_index)];
+    }
+    if (entry.has_time_sec) {
+        beat_time = entry.time_sec;
+    }
+
+    calibrated_arrival_time = beat_time + ctx.audio_offset_sec;
+    float spawn_time = calibrated_arrival_time - ctx.song.lead_time;
+    if (ctx.song.song_time < spawn_time) return false;
+
+    float overshoot = ctx.song.song_time - spawn_time;
+    start_y = constants::SPAWN_Y + overshoot * ctx.song.scroll_speed;
+    const float max_start_y = constants::PLAYER_Y;
+    effective_spawn_time = spawn_time;
+    if (start_y > max_start_y) {
+        start_y = max_start_y;
+        effective_spawn_time = ctx.song.song_time
+            - (max_start_y - constants::SPAWN_Y) / ctx.song.scroll_speed;
+    }
+    return true;
+}
+
+void warn_invalid_lane_once(int lane) {
+    if (!lane_utils::is_valid(lane)) {
+        TraceLog(LOG_WARNING, "Invalid beatmap lane %d; defaulting to center lane", lane);
+    }
+}
+
+// Per-kind transforms: one while-loop per kind cursor. Replaces the
+// former single switch-on-discriminator loop (issue #1202/#1204).
+
+void schedule_shape_gates(ScheduleContext& ctx) {
+    while (ctx.song.next_shape_gate_idx < ctx.map.shape_gate_beats.size()) {
+        const auto& entry = ctx.map.shape_gate_beats[ctx.song.next_shape_gate_idx];
+        float calibrated_arrival_time = 0.0f;
+        float effective_spawn_time    = 0.0f;
+        float start_y                 = 0.0f;
+        if (!resolve_spawn_timing(ctx, entry, calibrated_arrival_time,
+                                  effective_spawn_time, start_y)) break;
+
+        const int8_t spawn_lane = lane_utils::valid_or_default(entry.lane);
+        const float x_pos = constants::LANE_X[static_cast<int>(spawn_lane)];
+        warn_invalid_lane_once(static_cast<int>(entry.lane));
+
+        const BeatInfo bi{entry.beat_index, calibrated_arrival_time, effective_spawn_time};
+        spawn_shape_gate_rhythm(ctx.reg, {x_pos, start_y, entry.shape,
+                                          ctx.song.scroll_speed}, bi);
+        ctx.song.next_shape_gate_idx++;
+    }
+}
+
+void schedule_split_paths(ScheduleContext& ctx) {
+    while (ctx.song.next_split_path_idx < ctx.map.split_path_beats.size()) {
+        const auto& entry = ctx.map.split_path_beats[ctx.song.next_split_path_idx];
+        float calibrated_arrival_time = 0.0f;
+        float effective_spawn_time    = 0.0f;
+        float start_y                 = 0.0f;
+        if (!resolve_spawn_timing(ctx, entry, calibrated_arrival_time,
+                                  effective_spawn_time, start_y)) break;
+
+        const int8_t spawn_lane = lane_utils::valid_or_default(entry.lane);
+        const float x_pos = constants::LANE_X[static_cast<int>(spawn_lane)];
+        warn_invalid_lane_once(static_cast<int>(entry.lane));
+
+        const BeatInfo bi{entry.beat_index, calibrated_arrival_time, effective_spawn_time};
+        spawn_split_path_rhythm(ctx.reg, {x_pos, start_y, entry.shape,
+                                          spawn_lane, ctx.song.scroll_speed}, bi);
+        ctx.song.next_split_path_idx++;
+    }
+}
+
+void schedule_onset_markers(ScheduleContext& ctx) {
+    while (ctx.song.next_onset_marker_idx < ctx.map.onset_marker_beats.size()) {
+        const auto& entry = ctx.map.onset_marker_beats[ctx.song.next_onset_marker_idx];
+        float calibrated_arrival_time = 0.0f;
+        float effective_spawn_time    = 0.0f;
+        float start_y                 = 0.0f;
+        if (!resolve_spawn_timing(ctx, entry, calibrated_arrival_time,
+                                  effective_spawn_time, start_y)) break;
+
+        const int8_t spawn_lane = lane_utils::valid_or_default(entry.lane);
+        const float x_pos = constants::LANE_X[static_cast<int>(spawn_lane)];
+        warn_invalid_lane_once(static_cast<int>(entry.lane));
+
+        const BeatInfo bi{entry.beat_index, calibrated_arrival_time, effective_spawn_time};
+        spawn_onset_marker_rhythm(ctx.reg, {x_pos, start_y, ctx.song.scroll_speed}, bi);
+        ctx.song.next_onset_marker_idx++;
+    }
+}
+
+} // namespace
+
 void beat_scheduler_system(entt::registry& reg, [[maybe_unused]] float dt) {
     auto* song = reg.ctx().find<SongState>();
     auto* map  = find_beat_map(reg);
@@ -27,71 +143,8 @@ void beat_scheduler_system(entt::registry& reg, [[maybe_unused]] float dt) {
     const auto* settings = find_settings_state(reg);
     const float audio_offset_sec = settings ? settings::audio_offset_seconds(*settings) : 0.0f;
 
-    while (song->next_spawn_idx < map->beats.size()) {
-        const auto& entry = map->beats[song->next_spawn_idx];
-        if (!obstacle_kind_is_active_beatmap_spawnable(entry.kind)) {
-            TraceLog(LOG_WARNING, "Skipping unsupported active beatmap obstacle kind %d",
-                     static_cast<int>(entry.kind));
-            song->next_spawn_idx++;
-            continue;
-        }
-
-        float beat_time = song->offset + entry.beat_index * song->beat_period;
-        if (!entry.has_time_sec &&
-            !map->beat_times.empty() &&
-            entry.beat_index >= 0 &&
-            static_cast<size_t>(entry.beat_index) < map->beat_times.size()) {
-            beat_time = map->beat_times[static_cast<size_t>(entry.beat_index)];
-        }
-        if (entry.has_time_sec) {
-            beat_time = entry.time_sec;
-        }
-        // Beat line is the collision point: calibrated_arrival_time maps to
-        // crossing PLAYER_Y, including player audio calibration.
-        const float calibrated_arrival_time = beat_time + audio_offset_sec;
-        float spawn_time = calibrated_arrival_time - song->lead_time;
-
-        if (song->song_time < spawn_time) break;
-
-        // Compensate for late spawn: if song_time overshot spawn_time,
-        // place the obstacle below SPAWN_Y by the overshoot distance
-        // so it arrives at the player at exactly calibrated_arrival_time.
-        // Clamp the spawn position so a large overshoot cannot place the
-        // obstacle below the beat line, where it may never be scored before
-        // scrolling off-screen.
-        float overshoot = song->song_time - spawn_time;
-        float start_y = constants::SPAWN_Y + overshoot * song->scroll_speed;
-        float max_start_y = constants::PLAYER_Y;
-        float effective_spawn_time = spawn_time;
-        if (start_y > max_start_y) {
-            start_y = max_start_y;
-            // Store an adjusted spawn_time so scroll_system reproduces
-            // the clamped initial position via its song-time formula
-            // (pos.y = SPAWN_Y + (song_time - spawn_time) * scroll_speed),
-            // instead of snapping past the clamp on the first frame.
-            effective_spawn_time = song->song_time
-                - (max_start_y - constants::SPAWN_Y) / song->scroll_speed;
-        }
-
-        // Lane-bound obstacles use a normalized lane so visual position and
-        // lane requirements cannot diverge on invalid beatmap data.
-        const int8_t spawn_lane = lane_utils::valid_or_default(entry.lane);
-        float x_pos = constants::LANE_X[static_cast<int>(spawn_lane)];
-        const int lane = static_cast<int>(entry.lane);
-        if (!lane_utils::is_valid(lane)) {
-            TraceLog(LOG_WARNING, "Invalid beatmap lane %d; defaulting to center lane", lane);
-        }
-
-        const BeatInfo bi{entry.beat_index, calibrated_arrival_time, effective_spawn_time};
-        spawn_rhythm_obstacle(reg, {
-            entry.kind,
-            x_pos,
-            start_y,
-            entry.shape,
-            spawn_lane,
-            song->scroll_speed
-        }, bi);
-
-        song->next_spawn_idx++;
-    }
+    ScheduleContext ctx{reg, *song, *map, audio_offset_sec};
+    schedule_shape_gates(ctx);
+    schedule_split_paths(ctx);
+    schedule_onset_markers(ctx);
 }

@@ -39,8 +39,14 @@ struct SongState {
     bool   restart_music = false;  // set true by setup_play_session; consumed/cleared
                                    //   on the next tick by song_playback_system
 
-    // ── Beat-schedule cursor (per-frame, reset at session init) ─────────────
-    size_t next_spawn_idx = 0;     // advanced each frame by beat_scheduler_system
+    // ── Beat-schedule cursors (per-kind, reset at session init) ─────────────
+    // Replaces the former `next_spawn_idx` single cursor (issue #1202/#1204).
+    // beat_scheduler_system runs one per-kind transform per cursor; each
+    // cursor advances independently over its own per-kind vector in
+    // BeatMap.
+    size_t next_shape_gate_idx    = 0;
+    size_t next_split_path_idx    = 0;
+    size_t next_onset_marker_idx  = 0;
 };
 
 // ── Song Results (singleton, accumulates during play) ─

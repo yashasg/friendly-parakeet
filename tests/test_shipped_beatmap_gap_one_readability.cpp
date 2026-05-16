@@ -43,18 +43,35 @@ TEST_CASE("gap=1 readability: adjacent authored beats remain shape gates",
     const auto beatmaps = find_shipped_beatmaps();
     REQUIRE_FALSE(beatmaps.empty());
 
+    // Required (non-OnsetMarker) entries with their kind tag, merged across
+    // shape_gate_beats and split_path_beats by beat_index (sorted independently
+    // by parser). Per #1202/#1204, kind is identified by which vector the row
+    // came from rather than a discriminator field.
+    enum class RequiredKind { ShapeGate, SplitPath };
+    struct RequiredEntry {
+        RequiredKind kind;
+        int beat_index;
+    };
+
     for (const auto& path : beatmaps) {
         for (const char* difficulty : kDifficulties) {
             BeatMap map;
             std::vector<BeatMapError> errors;
             if (!load_beat_map(path, map, errors, difficulty)) continue;
 
-            std::vector<BeatEntry> required_beats;
-            for (const auto& beat : map.beats) {
-                if (beat.kind != ObstacleKind::OnsetMarker) {
-                    required_beats.push_back(beat);
-                }
+            std::vector<RequiredEntry> required_beats;
+            required_beats.reserve(map.shape_gate_beats.size() +
+                                   map.split_path_beats.size());
+            for (const auto& b : map.shape_gate_beats) {
+                required_beats.push_back({RequiredKind::ShapeGate, b.beat_index});
             }
+            for (const auto& b : map.split_path_beats) {
+                required_beats.push_back({RequiredKind::SplitPath, b.beat_index});
+            }
+            std::stable_sort(required_beats.begin(), required_beats.end(),
+                             [](const RequiredEntry& a, const RequiredEntry& b) {
+                                 return a.beat_index < b.beat_index;
+                             });
             if (required_beats.size() <= 1) continue;
 
             for (size_t index = 1; index < required_beats.size(); ++index) {
@@ -63,7 +80,7 @@ TEST_CASE("gap=1 readability: adjacent authored beats remain shape gates",
                 const int gap = right.beat_index - left.beat_index;
 
                 if (gap != 1) continue;
-                if (left.kind != ObstacleKind::ShapeGate || right.kind != ObstacleKind::ShapeGate) {
+                if (left.kind != RequiredKind::ShapeGate || right.kind != RequiredKind::ShapeGate) {
                     FAIL_CHECK(path << " [" << difficulty
                                << "] gap=1 contains non-shape-gate obstacle at beat "
                                << left.beat_index);

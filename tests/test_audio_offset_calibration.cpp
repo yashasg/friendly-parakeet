@@ -48,7 +48,7 @@ ScheduleResult schedule_one(int16_t audio_offset_ms,
     song.song_time = song_time_when_scheduling;
 
     auto& map = beat_map(reg);
-    map.beats.push_back({beat_index, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({beat_index, Shape::Circle, 1, 0, false});
 
     beat_scheduler_system(reg, 0.016f);
 
@@ -162,10 +162,10 @@ TEST_CASE("beat_scheduler: audio_offset gates spawn before calibrated spawn time
     auto& song = reg.ctx().get<SongState>();
     song.lead_time = 0.0f;
     song.song_time = 0.1f;
-    song.next_spawn_idx = 0;
+    song.next_shape_gate_idx = 0;
 
     auto& map = beat_map(reg);
-    map.beats.push_back({0, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({0, Shape::Circle, 1, 0, false});
 
     beat_scheduler_system(reg, 0.016f);
     CHECK(count_obstacles(reg) == 0);
@@ -197,21 +197,21 @@ TEST_CASE("audio_offset: zero setting matches absent SettingsState",
     auto scheduler_with_zero = make_rhythm_registry();
     auto& zero_schedule_song = scheduler_with_zero.ctx().get<SongState>();
     zero_schedule_song.song_time = 1.0f;
-    zero_schedule_song.next_spawn_idx = 0;
-    beat_map(scheduler_with_zero).beats.push_back(
-        {2, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    zero_schedule_song.next_shape_gate_idx = 0;
+    beat_map(scheduler_with_zero).shape_gate_beats.push_back(
+        {2, Shape::Circle, 1, 0, false});
     beat_scheduler_system(scheduler_with_zero, 0.016f);
 
     auto scheduler_without_settings = make_rhythm_registry();
     destroy_settings_entity(scheduler_without_settings);
     auto& absent_schedule_song = scheduler_without_settings.ctx().get<SongState>();
     absent_schedule_song.song_time = 1.0f;
-    absent_schedule_song.next_spawn_idx = 0;
-    beat_map(scheduler_without_settings).beats.push_back(
-        {2, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    absent_schedule_song.next_shape_gate_idx = 0;
+    beat_map(scheduler_without_settings).shape_gate_beats.push_back(
+        {2, Shape::Circle, 1, 0, false});
     beat_scheduler_system(scheduler_without_settings, 0.016f);
 
-    CHECK(absent_schedule_song.next_spawn_idx == zero_schedule_song.next_spawn_idx);
+    CHECK(absent_schedule_song.next_shape_gate_idx == zero_schedule_song.next_shape_gate_idx);
     CHECK(count_obstacles(scheduler_without_settings) == count_obstacles(scheduler_with_zero));
 }
 
@@ -251,7 +251,7 @@ OffsetGameplayResult run_calibrated_on_arrival_hit(int16_t audio_offset_ms) {
 
     constexpr int kBeatIndex = 4;
     auto& map = beat_map(reg);
-    map.beats.push_back({kBeatIndex, ObstacleKind::ShapeGate, Shape::Circle, 1, 0});
+    map.shape_gate_beats.push_back({kBeatIndex, Shape::Circle, 1, 0, false});
 
     const float beat_time = song.offset + static_cast<float>(kBeatIndex) * song.beat_period;
     const float spawn_time = beat_time - song.lead_time + settings::audio_offset_seconds(settings);

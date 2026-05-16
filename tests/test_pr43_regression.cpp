@@ -87,8 +87,7 @@ TEST_CASE("MeshChild: depth field stores DrawSize.h (scroll-axis) for OnsetMarke
     using Catch::Matchers::WithinAbs;
 
     auto reg = make_registry();
-    auto obs = spawn_obstacle(reg, {ObstacleKind::OnsetMarker, constants::LANE_X[1], 500.0f,
-                                    Shape::Circle, int8_t{1}, 100.0f});
+    auto obs = spawn_onset_marker_obstacle(reg, {constants::LANE_X[1], 500.0f, 100.0f});
 
     const float expected_depth  = reg.get<DrawSize>(obs).h;
     const float expected_height = constants::OBSTACLE_3D_HEIGHT;
@@ -112,8 +111,7 @@ TEST_CASE("MeshChild: depth/height fields are distinct values (non-trivially int
     // constants are different so the slab_matrix arg-swap produces a visible
     // change and our field-contract test is meaningful.
     auto reg = make_registry();
-    auto obs = spawn_obstacle(reg, {ObstacleKind::OnsetMarker, constants::LANE_X[1], 500.0f,
-                                    Shape::Circle, int8_t{1}, 100.0f});
+    auto obs = spawn_onset_marker_obstacle(reg, {constants::LANE_X[1], 500.0f, 100.0f});
 
     const float dsz_h = reg.get<DrawSize>(obs).h;
     // DrawSize.h for an onset-marker (80) must differ from OBSTACLE_3D_HEIGHT (20).

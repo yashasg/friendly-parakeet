@@ -35,13 +35,11 @@ bool is_runtime_allowed_validation_error(const BeatMapError& error) {
 }
 
 int count_result_notes(const BeatMap& beatmap) {
-    int total = 0;
-    for (const BeatEntry& beat : beatmap.beats) {
-        if (beat.kind != ObstacleKind::OnsetMarker) {
-            ++total;
-        }
-    }
-    return total;
+    // Per-kind tables (#1202/#1204): result-counted notes are the
+    // scoring-eligible kinds — ShapeGate + SplitPath. OnsetMarker
+    // entries are non-scorable cues and don't contribute.
+    return static_cast<int>(beatmap.shape_gate_beats.size() +
+                            beatmap.split_path_beats.size());
 }
 
 bool load_runtime_beat_map(const char* path,
@@ -146,8 +144,11 @@ void setup_play_session(entt::registry& reg) {
     for (const char* path : paths) {
         load_errors.clear();
         if (load_runtime_beat_map(path, beatmap, load_errors, difficulty_key)) {
+            const size_t total_beats = beatmap.shape_gate_beats.size() +
+                                       beatmap.split_path_beats.size() +
+                                       beatmap.onset_marker_beats.size();
             TraceLog(LOG_INFO, "Loaded beatmap: %s (%zu beats, difficulty=%s)",
-                     path, beatmap.beats.size(), beatmap.difficulty.c_str());
+                     path, total_beats, beatmap.difficulty.c_str());
             loaded = true;
             break;
         }
@@ -182,7 +183,9 @@ void setup_play_session(entt::registry& reg) {
         return;
     }
     runtime_system_scratch_init(reg);
-    runtime_system_scratch_reserve(reg, beatmap.beats.size());
+    runtime_system_scratch_reserve(reg, beatmap.shape_gate_beats.size() +
+                                        beatmap.split_path_beats.size() +
+                                        beatmap.onset_marker_beats.size());
 
     assign_or_emplace_ctx(reg, ScoreState{});
     assign_or_emplace_ctx(reg, ScoreDisplay{});
@@ -209,7 +212,10 @@ void setup_play_session(entt::registry& reg) {
 
     // Init song state
     auto& song = assign_or_emplace_ctx(reg, SongState{});
-    if (!beatmap.beats.empty()) {
+    const bool any_beats = !beatmap.shape_gate_beats.empty() ||
+                           !beatmap.split_path_beats.empty() ||
+                           !beatmap.onset_marker_beats.empty();
+    if (any_beats) {
         init_song_state(song, beatmap);
     } else {
         song.bpm = 120.0f;

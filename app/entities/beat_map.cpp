@@ -24,17 +24,7 @@ std::string constants_path_for_app_dir(const std::string& app_dir) {
     return app_dir + "/" + kValidationConstantsPath;
 }
 
-bool kind_requires_shape(const ObstacleKind kind) {
-    return kind == ObstacleKind::ShapeGate || kind == ObstacleKind::SplitPath;
-}
 
-bool kind_requires_lane(const ObstacleKind kind) {
-    return kind == ObstacleKind::ShapeGate || kind == ObstacleKind::SplitPath;
-}
-
-bool is_supported_beatmap_kind(const ObstacleKind kind) {
-    return obstacle_kind_is_active_runtime_spawnable(kind);
-}
 
 std::string type_error_message(const char* field, const char* expected, const json& value) {
     return std::string("'") + field + "' must be " + expected + " (got " + value.type_name() + ")";
@@ -265,18 +255,29 @@ ValidationConstants load_validation_constants(const std::string& app_dir) {
     return vc;
 }
 
-static std::optional<ObstacleKind> parse_kind(const std::string& s) {
-    if (s == "shape_gate")       return ObstacleKind::ShapeGate;
-    if (s == "split_path")       return ObstacleKind::SplitPath;
-    if (s == "onset_marker")     return ObstacleKind::OnsetMarker;
-    return std::nullopt;
-}
-
 static std::optional<Shape> parse_shape(const std::string& s) {
     if (s == "circle")   return Shape::Circle;
     if (s == "square")   return Shape::Square;
     if (s == "triangle") return Shape::Triangle;
     return std::nullopt;
+}
+
+// ── Per-kind beat-entry sinks (issue #1202/#1204) ───────────
+// Parsing dispatches into per-kind vectors directly by the JSON `kind`
+// string. No discriminator enum is reintroduced — see `parse_beat_map`
+// below where each known kind string has its own dispatch branch.
+bool kind_string_requires_shape(std::string_view kind_str) {
+    return kind_str == "shape_gate" || kind_str == "split_path";
+}
+
+bool kind_string_requires_lane(std::string_view kind_str) {
+    return kind_str == "shape_gate" || kind_str == "split_path";
+}
+
+bool kind_string_is_supported(std::string_view kind_str) {
+    return kind_str == "shape_gate" ||
+           kind_str == "split_path" ||
+           kind_str == "onset_marker";
 }
 
 bool parse_beat_map(const std::string& json_str, BeatMap& out,
@@ -296,7 +297,9 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
     }
 
     // ── Metadata ─────────────────────────────────────────────
-    out.beats.clear();  // reset before every parse to prevent stale entries on reuse
+    out.shape_gate_beats.clear();
+    out.split_path_beats.clear();
+    out.onset_marker_beats.clear();
     out.beat_times.clear();
     out.song_id.clear();
     out.title.clear();
@@ -447,14 +450,12 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             parse_ok = false;
             continue;
         }
-        auto kind_opt = parse_kind(kind_str);
-        if (!kind_opt) {
+        if (!kind_string_is_supported(kind_str)) {
             errors.push_back({entry.beat_index,
                 "Unknown obstacle kind '" + kind_str + "' at beat " + std::to_string(entry.beat_index)});
             parse_ok = false;
             continue;
         }
-        entry.kind = *kind_opt;
 
         if (b.contains("shape")) {
             std::string shape_str;
@@ -470,7 +471,7 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
                 continue;
             }
             entry.shape = *shape_opt;
-        } else if (kind_requires_shape(entry.kind)) {
+        } else if (kind_string_requires_shape(kind_str)) {
             errors.push_back({entry.beat_index,
                 "Missing required shape for obstacle kind '" + kind_str + "' at beat "
                     + std::to_string(entry.beat_index)});
@@ -483,7 +484,7 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             parse_ok = false;
             continue;
         }
-        if (!b.contains("lane") && kind_requires_lane(entry.kind)) {
+        if (!b.contains("lane") && kind_string_requires_lane(kind_str)) {
             errors.push_back({entry.beat_index,
                 "Missing required lane for obstacle kind '" + kind_str + "' at beat "
                     + std::to_string(entry.beat_index)});
@@ -542,27 +543,42 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             continue;
         }
 
-        out.beats.push_back(entry);
+        // Per-kind dispatch into the appropriate vector (issue #1202/#1204).
+        // No discriminator enum survives in the data model — the row lives
+        // in exactly one of three per-kind tables.
+        if (kind_str == "shape_gate") {
+            out.shape_gate_beats.push_back(entry);
+        } else if (kind_str == "split_path") {
+            out.split_path_beats.push_back(entry);
+        } else {
+            out.onset_marker_beats.push_back(entry);
+        }
     }
 
     if (!parse_ok) return false;
 
-    // Sort beats by beat_index; for ties, sort by resolved time_sec so
-    // authored timing within the same beat stays schedulable in-order.
-    // Stable sort preserves authored order when keys are identical.
-    std::stable_sort(out.beats.begin(), out.beats.end(),
-                     [](const BeatEntry& a, const BeatEntry& b) {
-                         if (a.beat_index != b.beat_index) {
-                             return a.beat_index < b.beat_index;
-                         }
-                         if (a.time_sec != b.time_sec) {
-                             return a.time_sec < b.time_sec;
-                         }
-                         return false;
-                     });
+    // Sort each per-kind vector by beat_index; for ties, sort by resolved
+    // time_sec so authored timing within the same beat stays schedulable
+    // in-order. Stable sort preserves authored order when keys are identical.
+    auto by_beat = [](const BeatEntry& a, const BeatEntry& b) {
+        if (a.beat_index != b.beat_index) {
+            return a.beat_index < b.beat_index;
+        }
+        if (a.time_sec != b.time_sec) {
+            return a.time_sec < b.time_sec;
+        }
+        return false;
+    };
+    std::stable_sort(out.shape_gate_beats.begin(),   out.shape_gate_beats.end(),   by_beat);
+    std::stable_sort(out.split_path_beats.begin(),   out.split_path_beats.end(),   by_beat);
+    std::stable_sort(out.onset_marker_beats.begin(), out.onset_marker_beats.end(), by_beat);
 
-    if (out.beat_times.empty() && !out.beats.empty()) {
-        const int max_beat = out.beats.back().beat_index;
+    if (out.beat_times.empty()) {
+        int max_beat = -1;
+        if (!out.shape_gate_beats.empty())   max_beat = std::max(max_beat, out.shape_gate_beats.back().beat_index);
+        if (!out.split_path_beats.empty())   max_beat = std::max(max_beat, out.split_path_beats.back().beat_index);
+        if (!out.onset_marker_beats.empty()) max_beat = std::max(max_beat, out.onset_marker_beats.back().beat_index);
+
         if (max_beat >= 0) {
             const auto max_derived_beat = max_derived_beat_for_metadata(out.bpm, out.duration);
             if (!max_derived_beat || max_beat > *max_derived_beat) {
@@ -660,8 +676,11 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
         valid = false;
     }
 
-    // Rule 10: at least 1 beat entry
-    if (map.beats.empty()) {
+    // Rule 10: at least 1 beat entry across all per-kind tables
+    const bool any_beats = !map.shape_gate_beats.empty() ||
+                           !map.split_path_beats.empty() ||
+                           !map.onset_marker_beats.empty();
+    if (!any_beats) {
         errors.push_back({-1, "Beat map must have at least 1 beat entry"});
         valid = false;
     }
@@ -693,6 +712,67 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
         }
     }
 
+    // Per-row rules: walk each per-kind vector once. Cross-kind ordering
+    // rules (Rule 1 — monotonic beat indices, intra-beat resolved-time
+    // monotonicity, time_sec monotonicity) are evaluated by walking a
+    // beat-index merge over the three vectors below.
+    //
+    // Kind-specific rule references:
+    //   has_shape       — true for shape_gate_beats and split_path_beats
+    //   requires_lane   — same set (onset_marker_beats default lane is
+    //                     not validated against [0,2] semantics)
+    auto validate_per_entry = [&](const BeatEntry& entry,
+                                  bool has_shape, bool requires_lane) {
+        // Rule 2: beat index must be within the playable song range
+        if (entry.beat_index < 0) {
+            errors.push_back({entry.beat_index, "Beat index must be non-negative"});
+            valid = false;
+        }
+        if (max_beat && entry.beat_index > *max_beat) {
+            errors.push_back({entry.beat_index, "Beat index exceeds song duration"});
+            valid = false;
+        }
+
+        // Rule 2b: beat_index must reference a loaded timestamp when beat_times are present
+        if (!map.beat_times.empty() &&
+            (entry.beat_index < 0 || static_cast<size_t>(entry.beat_index) >= map.beat_times.size())) {
+            errors.push_back({entry.beat_index, "Beat index is out of range for beat_times array"});
+            valid = false;
+        }
+
+        // Rule 5: lane-bound obstacles must have lane 0-2
+        if (requires_lane && (entry.lane < 0 || entry.lane > 2)) {
+            errors.push_back({entry.beat_index, "Lane must be 0-2"});
+            valid = false;
+        }
+
+        if (entry.has_time_sec) {
+            if (!std::isfinite(entry.time_sec)) {
+                errors.push_back({entry.beat_index, "time_sec must be finite when provided"});
+                valid = false;
+            } else {
+                if (entry.time_sec < 0.0f) {
+                    errors.push_back({entry.beat_index, "time_sec must be >= 0 when provided"});
+                    valid = false;
+                }
+                if (std::isfinite(map.duration) && entry.time_sec > map.duration) {
+                    errors.push_back({entry.beat_index, "time_sec must be <= duration_sec when provided"});
+                    valid = false;
+                }
+            }
+        }
+        (void)has_shape;
+    };
+
+    for (const auto& entry : map.shape_gate_beats)   validate_per_entry(entry, true,  true);
+    for (const auto& entry : map.split_path_beats)   validate_per_entry(entry, true,  true);
+    for (const auto& entry : map.onset_marker_beats) validate_per_entry(entry, false, false);
+
+    // Cross-kind ordering: walk the three sorted vectors in beat-index
+    // merge order so Rule 1 (monotonic), the intra-beat resolved-time
+    // rule, and Rule 6 (different-shape gates) see the same total order
+    // the parser produced.
+    size_t i_sg = 0, i_sp = 0, i_om = 0;
     int prev_beat = -1;
     int prev_shape_beat = -1;
     Shape prev_shape = Shape::Circle;
@@ -702,8 +782,7 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
     bool has_prev_resolved_time_for_beat = false;
     float prev_resolved_time_for_beat = 0.0f;
 
-    for (size_t i = 0; i < map.beats.size(); ++i) {
-        const auto& entry = map.beats[i];
+    auto resolve_time = [&](const BeatEntry& entry) {
         float resolved_time = 0.0f;
         if (timing_metadata_valid) {
             resolved_time = map.offset + static_cast<float>(entry.beat_index) * beat_period;
@@ -715,6 +794,39 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
                    static_cast<size_t>(entry.beat_index) < map.beat_times.size()) {
             resolved_time = map.beat_times[static_cast<size_t>(entry.beat_index)];
         }
+        return resolved_time;
+    };
+
+    // Pick the next-smallest entry by (beat_index, time_sec) across the
+    // three sorted vectors. Each kind tag's vector advances its own cursor.
+    auto step_merge = [&](bool& has_shape_out) -> const BeatEntry* {
+        const BeatEntry* sg = (i_sg < map.shape_gate_beats.size())   ? &map.shape_gate_beats[i_sg]   : nullptr;
+        const BeatEntry* sp = (i_sp < map.split_path_beats.size())   ? &map.split_path_beats[i_sp]   : nullptr;
+        const BeatEntry* om = (i_om < map.onset_marker_beats.size()) ? &map.onset_marker_beats[i_om] : nullptr;
+        const BeatEntry* best = nullptr;
+        size_t* best_cursor = nullptr;
+        has_shape_out = false;
+        auto consider = [&](const BeatEntry* cand, size_t* cursor, bool cand_has_shape) {
+            if (!cand) return;
+            if (!best) { best = cand; best_cursor = cursor; has_shape_out = cand_has_shape; return; }
+            if (cand->beat_index < best->beat_index ||
+                (cand->beat_index == best->beat_index && cand->time_sec < best->time_sec)) {
+                best = cand;
+                best_cursor = cursor;
+                has_shape_out = cand_has_shape;
+            }
+        };
+        consider(sg, &i_sg, true);
+        consider(sp, &i_sp, true);
+        consider(om, &i_om, false);
+        if (best_cursor) (*best_cursor)++;
+        return best;
+    };
+
+    bool entry_has_shape = false;
+    while (const auto* entry_ptr = step_merge(entry_has_shape)) {
+        const auto& entry = *entry_ptr;
+        const float resolved_time = resolve_time(entry);
 
         // Rule 1: beat indices monotonically non-decreasing
         if (entry.beat_index < prev_beat && prev_beat >= 0) {
@@ -736,67 +848,25 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
             has_prev_resolved_time_for_beat = true;
         }
 
-        // Rule 2: beat index must be within the playable song range
-        if (entry.beat_index < 0) {
-            errors.push_back({entry.beat_index, "Beat index must be non-negative"});
-            valid = false;
-        }
-        if (max_beat && entry.beat_index > *max_beat) {
-            errors.push_back({entry.beat_index, "Beat index exceeds song duration"});
-            valid = false;
-        }
-
-        // Rule 2b: beat_index must reference a loaded timestamp when beat_times are present
-        if (!map.beat_times.empty() &&
-            (entry.beat_index < 0 || static_cast<size_t>(entry.beat_index) >= map.beat_times.size())) {
-            errors.push_back({entry.beat_index, "Beat index is out of range for beat_times array"});
-            valid = false;
-        }
-
-        if (!is_supported_beatmap_kind(entry.kind)) {
-            errors.push_back({entry.beat_index, "Unsupported active beatmap obstacle kind"});
-            valid = false;
-        }
-
-        // Rule 5: lane-bound obstacles must have lane 0-2
-        if (kind_requires_lane(entry.kind) && (entry.lane < 0 || entry.lane > 2)) {
-            errors.push_back({entry.beat_index, "Lane must be 0-2"});
-            valid = false;
-        }
-
-        if (entry.has_time_sec) {
-            if (!std::isfinite(entry.time_sec)) {
-                errors.push_back({entry.beat_index, "time_sec must be finite when provided"});
+        if (entry.has_time_sec && std::isfinite(entry.time_sec)) {
+            if (has_prev_authored_time && entry.time_sec < prev_authored_time) {
+                errors.push_back({entry.beat_index,
+                    "time_sec must be non-decreasing across authored beat entries"});
                 valid = false;
-            } else {
-                if (entry.time_sec < 0.0f) {
-                    errors.push_back({entry.beat_index, "time_sec must be >= 0 when provided"});
-                    valid = false;
-                }
-                if (std::isfinite(map.duration) && entry.time_sec > map.duration) {
-                    errors.push_back({entry.beat_index, "time_sec must be <= duration_sec when provided"});
-                    valid = false;
-                }
-                if (has_prev_authored_time && entry.time_sec < prev_authored_time) {
-                    errors.push_back({entry.beat_index,
-                        "time_sec must be non-decreasing across authored beat entries"});
-                    valid = false;
-                }
-                prev_authored_time = entry.time_sec;
-                has_prev_authored_time = true;
             }
+            prev_authored_time = entry.time_sec;
+            has_prev_authored_time = true;
         }
 
         // Rule 6: different-shape gates must be >= min_shape_change_gap beats apart
-        bool has_shape = kind_requires_shape(entry.kind);
-        if (has_shape && prev_had_shape &&
+        if (entry_has_shape && prev_had_shape &&
             entry.shape != prev_shape &&
             (entry.beat_index - prev_shape_beat) < vc.min_shape_change_gap) {
             errors.push_back({entry.beat_index,
                 "Different-shape gates must be >= " + std::to_string(vc.min_shape_change_gap) + " beats apart"});
             valid = false;
         }
-        if (has_shape) {
+        if (entry_has_shape) {
             prev_shape_beat = entry.beat_index;
             prev_shape = entry.shape;
             prev_had_shape = true;
@@ -815,6 +885,8 @@ void init_song_state(SongState& state, const BeatMap& map) {
     state.current_beat = -1;
     state.playing      = false;
     state.finished     = false;
-    state.next_spawn_idx = 0;
+    state.next_shape_gate_idx   = 0;
+    state.next_split_path_idx   = 0;
+    state.next_onset_marker_idx = 0;
     song_state_compute_derived(state);
 }

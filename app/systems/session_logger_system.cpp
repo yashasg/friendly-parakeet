@@ -95,6 +95,13 @@ void session_log_begin_frame(SessionLog& log) {
     ++log.frame;
 }
 
+std::string_view obstacle_kind_label(const entt::registry& reg, entt::entity entity) {
+    if (reg.all_of<ShapeGateTag>(entity))   return "ShapeGate";
+    if (reg.all_of<SplitPathTag>(entity))   return "SplitPath";
+    if (reg.all_of<OnsetMarkerTag>(entity)) return "OnsetMarker";
+    return "???";
+}
+
 // ── EnTT signal: obstacle spawned ────────────────────────────
 
 void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
@@ -116,12 +123,7 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
     if (rlane) lane = rlane->lane;
 
     float arrival = beat ? beat->arrival_time : 0.0f;
-    const ObstacleKind kind = reg.all_of<OnsetMarkerTag>(entity)
-        ? ObstacleKind::OnsetMarker
-        : obstacle_kind_from_components(
-            reg.all_of<RequiredShape>(entity),
-            reg.all_of<RequiredLane>(entity));
-    const std::string_view kind_name = enum_name_or_unknown(kind);
+    const std::string_view kind_name = obstacle_kind_label(reg, entity);
     const std::string_view shape_name = req ? enum_name_or_unknown(req->shape) : std::string_view{"-"};
 
     session_log_write(*log, t, "GAME",
@@ -149,10 +151,7 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
     int beat_num = beat ? beat->beat_index : -1;
     float expected_t = beat ? beat->arrival_time : 0.0f;
     float drift = beat ? (t - beat->arrival_time) : 0.0f;
-    const ObstacleKind kind = obstacle_kind_from_components(
-        reg.all_of<RequiredShape>(entity),
-        reg.all_of<RequiredLane>(entity));
-    const std::string_view kind_name = enum_name_or_unknown(kind);
+    const std::string_view kind_name = obstacle_kind_label(reg, entity);
 
     // Per-tier tag → label. Replaces enum_name(grade->tier) lookup; the tier
     // discriminator is now a per-tier tag on the entity (issue #1202/#1204).

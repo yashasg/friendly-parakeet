@@ -94,52 +94,49 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
     const auto* wt_ptr = reg.try_get<WorldTransform>(logical);
     auto& col = reg.get<Color>(logical);
     auto& dsz = reg.get<DrawSize>(logical);
-    const ObstacleKind kind = reg.all_of<OnsetMarkerTag>(logical)
-        ? ObstacleKind::OnsetMarker
-        : obstacle_kind_from_components(
-            reg.all_of<RequiredShape>(logical),
-            reg.all_of<RequiredLane>(logical));
 
-    switch (kind) {
-        case ObstacleKind::ShapeGate: {
-            if (!wt_ptr) break;
-            const auto& wt = *wt_ptr;
-            auto* req = reg.try_get<RequiredShape>(logical);
-            uint8_t mesh_index = 0;
-            if (req) {
-                mesh_index = checked_shape_mesh_index(req->shape);
-            }
-            // Shape gates now render as shape-only prompts (no side walls/slabs).
-            if (req)
-                add_shape_child(reg, logical, mesh_index, wt.position.x, 0.0f,
-                                40, col);
-            break;
+    // Per-kind transforms (issue #1202/#1204). Each obstacle entity
+    // carries exactly one kind tag (ShapeGateTag/SplitPathTag/OnsetMarkerTag);
+    // each branch below operates on that tag's filtered view of one row.
+    if (reg.all_of<ShapeGateTag>(logical)) {
+        if (!wt_ptr) return;
+        const auto& wt = *wt_ptr;
+        auto* req = reg.try_get<RequiredShape>(logical);
+        uint8_t mesh_index = 0;
+        if (req) {
+            mesh_index = checked_shape_mesh_index(req->shape);
         }
-        case ObstacleKind::SplitPath: {
-            auto* rlane = reg.try_get<RequiredLane>(logical);
-            int lane_index = 0;
-            if (rlane) {
-                lane_index = checked_lane_index(rlane->lane);
-            }
-            auto* req = reg.try_get<RequiredShape>(logical);
-            uint8_t mesh_index = 0;
-            if (req) {
-                mesh_index = checked_shape_mesh_index(req->shape);
-            }
-            for (int i = 0; i < constants::LANE_COUNT; ++i)
-                if (!rlane || i != lane_index)
-                    add_slab_child(reg, logical, constants::LANE_X[i]-120,
-                                   240.0f, dsz.h, constants::OBSTACLE_3D_HEIGHT, col);
-            if (req && rlane)
-                add_shape_child(reg, logical, mesh_index,
-                                constants::LANE_X[lane_index],
-                                0.0f, 30, {255, 255, 255, 180});
-            break;
+        // Shape gates now render as shape-only prompts (no side walls/slabs).
+        if (req)
+            add_shape_child(reg, logical, mesh_index, wt.position.x, 0.0f,
+                            40, col);
+        return;
+    }
+    if (reg.all_of<SplitPathTag>(logical)) {
+        auto* rlane = reg.try_get<RequiredLane>(logical);
+        int lane_index = 0;
+        if (rlane) {
+            lane_index = checked_lane_index(rlane->lane);
         }
-        case ObstacleKind::OnsetMarker:
-            add_slab_child(reg, logical, 0.0f, dsz.w, dsz.h,
-                           constants::OBSTACLE_3D_HEIGHT, col);
-            break;
+        auto* req = reg.try_get<RequiredShape>(logical);
+        uint8_t mesh_index = 0;
+        if (req) {
+            mesh_index = checked_shape_mesh_index(req->shape);
+        }
+        for (int i = 0; i < constants::LANE_COUNT; ++i)
+            if (!rlane || i != lane_index)
+                add_slab_child(reg, logical, constants::LANE_X[i]-120,
+                               240.0f, dsz.h, constants::OBSTACLE_3D_HEIGHT, col);
+        if (req && rlane)
+            add_shape_child(reg, logical, mesh_index,
+                            constants::LANE_X[lane_index],
+                            0.0f, 30, {255, 255, 255, 180});
+        return;
+    }
+    if (reg.all_of<OnsetMarkerTag>(logical)) {
+        add_slab_child(reg, logical, 0.0f, dsz.w, dsz.h,
+                       constants::OBSTACLE_3D_HEIGHT, col);
+        return;
     }
 }
 

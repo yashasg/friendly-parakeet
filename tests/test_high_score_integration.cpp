@@ -39,13 +39,8 @@ struct TempBeatMapFile {
 };
 
 int count_result_notes(const BeatMap& beatmap) {
-    int total = 0;
-    for (const BeatEntry& beat : beatmap.beats) {
-        if (beat.kind != ObstacleKind::OnsetMarker) {
-            ++total;
-        }
-    }
-    return total;
+    return static_cast<int>(beatmap.shape_gate_beats.size() +
+                            beatmap.split_path_beats.size());
 }
 
 int count_mesh_children(entt::registry& reg) {
@@ -97,7 +92,7 @@ TEST_CASE("Play session: invalid level-select indices fall back before content l
 TEST_CASE("Play session: restart clears obstacle mesh children without stale listener state",
           "[play_session][issue957]") {
     auto reg = make_registry();
-    auto obstacle = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
+    auto obstacle = spawn_shape_gate_obstacle(reg, {360.0f, -120.0f, Shape::Circle});
     REQUIRE(reg.all_of<ObstacleChildren>(obstacle));
     const auto children = reg.get<ObstacleChildren>(obstacle);
     REQUIRE(children.count > 0);
@@ -110,7 +105,7 @@ TEST_CASE("Play session: restart clears obstacle mesh children without stale lis
     CHECK_FALSE(reg.valid(first_child));
     CHECK(count_mesh_children(reg) == 0);
 
-    auto next_obstacle = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Square});
+    auto next_obstacle = spawn_shape_gate_obstacle(reg, {360.0f, -120.0f, Shape::Square});
     REQUIRE(count_mesh_children(reg) > 0);
 
     destroy_obstacle_with_children(reg, next_obstacle);
@@ -136,7 +131,12 @@ TEST_CASE("Play session: missing selected beatmap returns to level select withou
 
     CHECK(gs.phase == GamePhase::LevelSelect);
     CHECK_FALSE(lss.confirmed);
-    CHECK(beat_map(reg).beats.empty());
+    {
+        const auto& bm = beat_map(reg);
+        CHECK(bm.shape_gate_beats.empty());
+        CHECK(bm.split_path_beats.empty());
+        CHECK(bm.onset_marker_beats.empty());
+    }
     CHECK(reg.view<PlayerTag>().empty());
     CHECK(reg.ctx().find<ScoreState>() == nullptr);
     CHECK(session.key_hash == 0);
@@ -200,9 +200,11 @@ TEST_CASE("Play session: SongResults total_notes excludes onset marker metadata"
             setup_play_session(reg);
 
             const auto& beatmap = beat_map(reg);
-            REQUIRE_FALSE(beatmap.beats.empty());
-            saw_onset_marker = saw_onset_marker || (count_result_notes(beatmap)
-                != static_cast<int>(beatmap.beats.size()));
+            const size_t total_beats = beatmap.shape_gate_beats.size() +
+                                       beatmap.split_path_beats.size() +
+                                       beatmap.onset_marker_beats.size();
+            REQUIRE(total_beats > 0);
+            saw_onset_marker = saw_onset_marker || !beatmap.onset_marker_beats.empty();
 
             CAPTURE(content_config::LEVELS[level].title);
             CAPTURE(content_config::DIFFICULTY_KEYS[difficulty]);

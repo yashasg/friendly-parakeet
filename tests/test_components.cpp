@@ -279,8 +279,8 @@ TEST_CASE("ecs: make_split_path creates proper entity", "[ecs]") {
     CHECK(reg.all_of<Obstacle>(obs));
     CHECK(reg.all_of<RequiredShape>(obs));
     CHECK(reg.all_of<RequiredLane>(obs));
-    CHECK(obstacle_kind_from_components(reg.all_of<RequiredShape>(obs),
-                                        reg.all_of<RequiredLane>(obs)) == ObstacleKind::SplitPath);
+    CHECK(reg.all_of<SplitPathTag>(obs));
+    CHECK(!reg.all_of<ShapeGateTag>(obs));
     CHECK(reg.get<RequiredShape>(obs).shape == Shape::Triangle);
     CHECK(reg.get<RequiredLane>(obs).lane == 2);
 }
@@ -361,7 +361,7 @@ TEST_CASE("ecs: obstacle mesh lifecycle explicit cleanup is idempotent",
           "[ecs][obstacle][lifecycle]") {
     entt::registry reg;
 
-    auto parent = spawn_obstacle(reg, {ObstacleKind::ShapeGate, 360.0f, -120.0f, Shape::Circle});
+    auto parent = spawn_shape_gate_obstacle(reg, {360.0f, -120.0f, Shape::Circle});
     REQUIRE(mesh_child_count(reg) > 0);
 
     destroy_obstacle_with_children(reg, parent);

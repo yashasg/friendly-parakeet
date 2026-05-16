@@ -54,10 +54,10 @@ TEST_CASE("medium balance: shipped beatmaps keep motif lane mapping",
         std::vector<BeatMapError> errors;
         if (!load_beat_map(path, map, errors, "medium")) continue;
 
+        // Per #1202/#1204: shape-gate entries live in their own per-kind vector.
         int total_shape_gates = 0;
 
-        for (const auto& beat : map.beats) {
-            if (beat.kind != ObstacleKind::ShapeGate) continue;
+        for (const auto& beat : map.shape_gate_beats) {
             ++total_shape_gates;
             const int expected_lane = expected_lane_for_shape(beat.shape);
             if (expected_lane < 0) {

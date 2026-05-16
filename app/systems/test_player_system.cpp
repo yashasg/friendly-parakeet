@@ -296,10 +296,7 @@ void test_player_system(entt::registry& reg, float dt) {
         if (log) {
             auto* beat_info = reg.try_get<BeatInfo>(entity);
             int beat_num = beat_info ? beat_info->beat_index : -1;
-            const ObstacleKind kind = obstacle_kind_from_components(
-                reg.all_of<RequiredShape>(entity),
-                reg.all_of<RequiredLane>(entity));
-            const std::string_view kind_name = enum_name_or_unknown(kind);
+            const std::string_view kind_name = obstacle_kind_label(reg, entity);
             const std::string_view shape_name = enum_name_or_unknown(action.target_shape);
 
             session_log_write(*log, song_time, "PLAYER",
