@@ -26,7 +26,8 @@ entt::entity create_player_entity(entt::registry& reg) {
         // Idle phase = absence of all ShapeWindow*Tag (per #1202/#1204).
     }
     reg.emplace<Lane>(player);
-    reg.emplace<VerticalState>(player);
+    // Vertical motion is grounded by default — no Jumping/Sliding component
+    // is emplaced (Grounded == absence of both per #1202/#1204).
     reg.emplace<Color>(player, Color{80, 180, 255, 255});
     reg.emplace<DrawSize>(player, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
     reg.emplace<TagWorldPass>(player);

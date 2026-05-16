@@ -215,7 +215,7 @@ TEST_CASE("player_action: jump works in rhythm mode", "[player_rhythm]") {
 
     run_semantic_input_tick(reg, 0.016f);
 
-    CHECK(reg.get<VerticalState>(player).mode == VMode::Jumping);
+    CHECK(reg.all_of<Jumping>(player));
 }
 
 // ── #213: GoEvents consumed exactly once per frame ────────────────

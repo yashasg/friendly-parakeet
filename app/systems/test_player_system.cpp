@@ -76,7 +76,7 @@ static bool valid_scroll_speed(float scroll_speed) {
 }
 
 static bool test_player_needs_vertical(const TestPlayerAction& action) {
-    return action.target_vertical != VMode::Grounded && !test_player_vertical_done(action);
+    return (action.wants_jump || action.wants_slide) && !test_player_vertical_done(action);
 }
 
 static bool test_player_action_done(const TestPlayerAction& action) {
@@ -84,7 +84,7 @@ static bool test_player_action_done(const TestPlayerAction& action) {
                             test_player_shape_done(action);
     const bool lane_done = !lane_utils::is_valid(action.target_lane) ||
                            test_player_lane_done(action);
-    const bool vertical_done = (action.target_vertical == VMode::Grounded) ||
+    const bool vertical_done = !(action.wants_jump || action.wants_slide) ||
                                test_player_vertical_done(action);
     return shape_done && lane_done && vertical_done;
 }
@@ -255,13 +255,18 @@ void test_player_system(entt::registry& reg, float dt) {
     const auto& cfg = test_player_config(*state);
 
     // ── Find player ──────────────────────────────────────────
-    auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>();
+    auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, ShapeWindow, Lane>();
     if (player_view.begin() == player_view.end()) return;
 
     auto player_entity = *player_view.begin();
-    auto [p_transform, p_shape, p_window, p_lane, p_vstate] =
-        player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
+    auto [p_transform, p_shape, p_window, p_lane] =
+        player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane>(player_entity);
     lane_utils::normalize(p_lane, &p_transform);
+
+    // Per-frame constant: player's vertical offset (Grounded/Sliding → 0,
+    // Jumping → parabolic arc) used in collision-zone math below.
+    const auto* p_jump = reg.try_get<Jumping>(player_entity);
+    const float player_y_offset = p_jump ? p_jump->y_offset : 0.0f;
 
     // ── PERCEIVE: scan obstacles in vision range ─────────────
     // Compute the "effective lane" — where the player will be after
@@ -292,7 +297,7 @@ void test_player_system(entt::registry& reg, float dt) {
         // Lane dodges and vertical-only actions react ASAP — no delay.
         bool has_shape = (action.target_shape != Shape::Hexagon);
         bool has_lane_or_vertical = (lane_utils::is_valid(action.target_lane) ||
-                                     action.target_vertical != VMode::Grounded);
+                                     action.wants_jump || action.wants_slide);
 
         if (cfg.aim_perfect && has_shape) {
             float ideal_press = action.arrival_time - kProPressLeadSeconds;
@@ -338,8 +343,8 @@ void test_player_system(entt::registry& reg, float dt) {
                 "PLAN action=%.*s%s%s react=%.3fs arrival=%.3fs",
                 static_cast<int>(action_shape_name.size()), action_shape_name.data(),
                 lane_utils::is_valid(action.target_lane) ? "+lane" : "",
-                action.target_vertical != VMode::Grounded ?
-                    (action.target_vertical == VMode::Jumping ? "+jump" : "+slide") : "",
+                action.wants_jump  ? "+jump"  :
+                action.wants_slide ? "+slide" : "",
                 action.timer, action.arrival_time);
         }
     }
@@ -439,7 +444,7 @@ void test_player_system(entt::registry& reg, float dt) {
             for (auto [ze, obstacle, zwt] : zone_view.each()) {
                 (void)obstacle;
                 if (ze == action.obstacle) continue; // don't self-block
-                float zdist = p_transform.position.y - zwt.position.y + p_vstate.y_offset;
+                float zdist = p_transform.position.y - zwt.position.y + player_y_offset;
                 if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
                     zone_blocked = true;
                     break;
@@ -461,7 +466,7 @@ void test_player_system(entt::registry& reg, float dt) {
             for (auto [oe, obstacle, owt] : closer_view.each()) {
                 (void)obstacle;
                 if (oe == action.obstacle) continue;
-                float odist = p_transform.position.y - owt.position.y + p_vstate.y_offset;
+                float odist = p_transform.position.y - owt.position.y + player_y_offset;
                 if (odist <= 0.0f) continue;
 
                 auto* obeat = reg.try_get<BeatInfo>(oe);
@@ -527,23 +532,23 @@ void test_player_system(entt::registry& reg, float dt) {
             for (auto [ze, obstacle, zwt] : zone_view.each()) {
                 (void)obstacle;
                 if (ze == action.obstacle) continue;
-                float zdist = p_transform.position.y - zwt.position.y + p_vstate.y_offset;
+                float zdist = p_transform.position.y - zwt.position.y + player_y_offset;
                 if (zdist >= -constants::COLLISION_MARGIN && zdist <= constants::COLLISION_MARGIN * 3.0f) {
                     vert_zone_blocked = true;
                     break;
                 }
             }
         }
-        if (test_player_needs_vertical(action) && p_vstate.mode == VMode::Grounded
+        if (test_player_needs_vertical(action) && !reg.any_of<Jumping, Sliding>(player_entity)
             && !vert_zone_blocked && !vert_blocked_by_shape) {
-            if (action.target_vertical == VMode::Jumping) {
+            if (action.wants_jump) {
                 disp.enqueue<GoEvent>({Direction::Up});
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",
                         "EXECUTE Go(Up) for obstacle=%u beat=%d",
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
-            } else if (action.target_vertical == VMode::Sliding) {
+            } else if (action.wants_slide) {
                 disp.enqueue<GoEvent>({Direction::Down});
                 if (log) {
                     session_log_write(*log, song_time, "PLAYER",

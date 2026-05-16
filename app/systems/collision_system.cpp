@@ -53,12 +53,12 @@ bool shape_gate_lane_match(int8_t obstacle_lane, int player_lane) {
 }  // namespace
 
 void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
-    auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>();
+    auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, ShapeWindow, Lane>();
     if (player_view.begin() == player_view.end()) return;
 
     auto player_entity = *player_view.begin();
-    auto [p_transform, p_shape, p_window, p_lane, p_vstate] =
-        player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane, VerticalState>(player_entity);
+    auto [p_transform, p_shape, p_window, p_lane] =
+        player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane>(player_entity);
     lane_utils::normalize(p_lane, &p_transform);
 
     auto& song = reg.ctx().get<SongState>();
@@ -67,7 +67,10 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     // Frame-constant precomputes — both values are invariant across all obstacle
     // loops since player transform and vertical state don't change mid-frame.
     // Precomputing here avoids redundant addition + Vector2 construction per obstacle.
-    const float player_timing_y = p_transform.position.y + p_vstate.y_offset;
+    // Only Jumping carries a y_offset; Sliding and Grounded leave it at 0.
+    const auto* p_jump = reg.try_get<Jumping>(player_entity);
+    const float player_y_offset = p_jump ? p_jump->y_offset : 0.0f;
+    const float player_timing_y = p_transform.position.y + player_y_offset;
     const int player_lane       = lane_utils::nearest_lane_for_x(p_transform.position.x);
 
     // resolve: tag entity as scored (cleared) or missed.

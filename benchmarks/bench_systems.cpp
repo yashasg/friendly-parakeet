@@ -42,7 +42,7 @@ static entt::entity make_bench_player(entt::registry& reg) {
     reg.emplace<PlayerShape>(p);
     reg.emplace<ShapeWindow>(p);
     reg.emplace<Lane>(p);
-    reg.emplace<VerticalState>(p);
+    // Grounded = absence of Jumping/Sliding (#1202/#1204).
     reg.emplace<Color>(p, Color{80, 180, 255, 255});
     reg.emplace<DrawSize>(p, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
     return p;

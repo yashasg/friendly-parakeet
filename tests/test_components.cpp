@@ -64,11 +64,14 @@ TEST_CASE("components: Lane defaults to center", "[components]") {
     CHECK(l.lerp_t == 1.0f);
 }
 
-TEST_CASE("components: VerticalState defaults to grounded", "[components]") {
-    VerticalState vs{};
-    CHECK(vs.mode == VMode::Grounded);
-    CHECK(vs.timer == 0.0f);
-    CHECK(vs.y_offset == 0.0f);
+TEST_CASE("components: player defaults to grounded (no Jumping/Sliding)", "[components]") {
+    // Per #1202/#1204: Grounded == absence of Jumping and Sliding tables.
+    // Confirm the structs default to a no-op state (timer 0).
+    Jumping j{};
+    CHECK(j.timer == 0.0f);
+    CHECK(j.y_offset == 0.0f);
+    Sliding s{};
+    CHECK(s.timer == 0.0f);
 }
 
 TEST_CASE("components: InputState stores transient input flags", "[components]") {
@@ -231,7 +234,8 @@ TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
     CHECK(reg.all_of<PlayerShape>(p));
     CHECK(reg.all_of<ShapeWindow>(p));
     CHECK(reg.all_of<Lane>(p));
-    CHECK(reg.all_of<VerticalState>(p));
+    // Grounded = no Jumping or Sliding component (#1202/#1204).
+    CHECK_FALSE(reg.any_of<Jumping, Sliding>(p));
     CHECK(reg.all_of<Color>(p));
     CHECK(reg.all_of<DrawSize>(p));
     CHECK(reg.all_of<TagWorldPass>(p));

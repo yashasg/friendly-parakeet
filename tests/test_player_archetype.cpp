@@ -17,7 +17,8 @@ TEST_CASE("player_entity: canonical component set present", "[archetype][player]
     CHECK(reg.all_of<PlayerShape>(p));
     CHECK(reg.all_of<ShapeWindow>(p));
     CHECK(reg.all_of<Lane>(p));
-    CHECK(reg.all_of<VerticalState>(p));
+    // Grounded = absence of Jumping/Sliding (#1202/#1204).
+    CHECK_FALSE(reg.any_of<Jumping, Sliding>(p));
     CHECK(reg.all_of<Color>(p));
     CHECK(reg.all_of<DrawSize>(p));
     CHECK(reg.all_of<TagWorldPass>(p));
@@ -62,8 +63,9 @@ TEST_CASE("player_entity: Lane defaults to center (1), Grounded vertical", "[arc
     auto reg = make_registry();
     auto p = create_player_entity(reg);
 
-    CHECK(reg.get<Lane>(p).current        == int8_t{1});
-    CHECK(reg.get<VerticalState>(p).mode  == VMode::Grounded);
+    CHECK(reg.get<Lane>(p).current == int8_t{1});
+    // Grounded = absence of Jumping/Sliding (#1202/#1204).
+    CHECK_FALSE(reg.any_of<Jumping, Sliding>(p));
 }
 
 TEST_CASE("player_entity: rejects duplicate canonical players", "[archetype][player]") {

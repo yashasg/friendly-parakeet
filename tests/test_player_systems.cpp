@@ -138,9 +138,8 @@ TEST_CASE("player_action: swipe up starts jump", "[player]") {
 
     run_semantic_input_tick(reg, 0.016f);
 
-    auto& vs = reg.get<VerticalState>(player);
-    CHECK(vs.mode == VMode::Jumping);
-    CHECK(vs.timer == constants::JUMP_DURATION);
+    REQUIRE(reg.all_of<Jumping>(player));
+    CHECK(reg.get<Jumping>(player).timer == constants::JUMP_DURATION);
 }
 
 TEST_CASE("player_action: swipe down starts slide", "[player]") {
@@ -151,23 +150,21 @@ TEST_CASE("player_action: swipe down starts slide", "[player]") {
 
     run_semantic_input_tick(reg, 0.016f);
 
-    auto& vs = reg.get<VerticalState>(player);
-    CHECK(vs.mode == VMode::Sliding);
-    CHECK(vs.timer == constants::SLIDE_DURATION);
+    REQUIRE(reg.all_of<Sliding>(player));
+    CHECK(reg.get<Sliding>(player).timer == constants::SLIDE_DURATION);
 }
 
 TEST_CASE("player_action: cannot jump while already jumping", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode  = VMode::Jumping;
-    reg.get<VerticalState>(p).timer = 0.2f;
+    reg.emplace<Jumping>(p, Jumping{0.2f, 0.0f});
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
 
     run_semantic_input_tick(reg, 0.016f);
 
     // Timer should not reset
-    CHECK(reg.get<VerticalState>(p).timer == 0.2f);
+    CHECK(reg.get<Jumping>(p).timer == 0.2f);
 }
 
 // ── player_movement_system ───────────────────────────────────
@@ -267,42 +264,40 @@ TEST_CASE("player_movement: normalizes invalid target lane", "[player][issue900]
 TEST_CASE("player_movement: jump creates negative y_offset", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode  = VMode::Jumping;
-    reg.get<VerticalState>(p).timer = constants::JUMP_DURATION;
+    reg.emplace<Jumping>(p, Jumping{constants::JUMP_DURATION, 0.0f});
 
     // Advance halfway through jump
     float half_jump = constants::JUMP_DURATION / 2.0f;
     player_movement_system(reg, half_jump);
 
-    CHECK(reg.get<VerticalState>(p).y_offset < 0.0f);
+    REQUIRE(reg.all_of<Jumping>(p));
+    CHECK(reg.get<Jumping>(p).y_offset < 0.0f);
 }
 
 TEST_CASE("player_movement: jump returns to grounded", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode  = VMode::Jumping;
-    reg.get<VerticalState>(p).timer = constants::JUMP_DURATION;
+    reg.emplace<Jumping>(p, Jumping{constants::JUMP_DURATION, 0.0f});
 
     // Advance past jump duration
     for (int i = 0; i < 60; ++i) {
         player_movement_system(reg, 0.016f);
     }
 
-    CHECK(reg.get<VerticalState>(p).mode == VMode::Grounded);
-    CHECK(reg.get<VerticalState>(p).y_offset == 0.0f);
+    // Grounded = no Jumping/Sliding components.
+    CHECK_FALSE(reg.any_of<Jumping, Sliding>(p));
 }
 
 TEST_CASE("player_movement: slide returns to grounded", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode  = VMode::Sliding;
-    reg.get<VerticalState>(p).timer = constants::SLIDE_DURATION;
+    reg.emplace<Sliding>(p, Sliding{constants::SLIDE_DURATION});
 
     for (int i = 0; i < 60; ++i) {
         player_movement_system(reg, 0.016f);
     }
 
-    CHECK(reg.get<VerticalState>(p).mode == VMode::Grounded);
+    CHECK_FALSE(reg.any_of<Jumping, Sliding>(p));
 }
 
 TEST_CASE("player_action: not in Playing phase skips processing", "[player]") {
@@ -314,9 +309,9 @@ TEST_CASE("player_action: not in Playing phase skips processing", "[player]") {
 
     run_semantic_input_tick(reg, 0.016f);
 
-    auto view = reg.view<PlayerTag, VerticalState>();
-    for (auto [e, vs] : view.each()) {
-        CHECK(vs.mode == VMode::Grounded);
+    auto view = reg.view<PlayerTag>();
+    for (auto p : view) {
+        CHECK_FALSE(reg.any_of<Jumping, Sliding>(p));
     }
 }
 
@@ -334,43 +329,42 @@ TEST_CASE("player_movement: not in Playing phase skips processing", "[player]") 
 TEST_CASE("player_action: cannot slide while already sliding", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode  = VMode::Sliding;
-    reg.get<VerticalState>(p).timer = 0.3f;
+    reg.emplace<Sliding>(p, Sliding{0.3f});
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Down});
 
     run_semantic_input_tick(reg, 0.016f);
 
     // Timer should not reset
-    CHECK(reg.get<VerticalState>(p).timer == 0.3f);
+    CHECK(reg.get<Sliding>(p).timer == 0.3f);
 }
 
 TEST_CASE("player_action: cannot slide while jumping", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode  = VMode::Jumping;
-    reg.get<VerticalState>(p).timer = 0.2f;
+    reg.emplace<Jumping>(p, Jumping{0.2f, 0.0f});
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Down});
 
     run_semantic_input_tick(reg, 0.016f);
 
-    CHECK(reg.get<VerticalState>(p).mode == VMode::Jumping);
-    CHECK(reg.get<VerticalState>(p).timer == 0.2f);
+    REQUIRE(reg.all_of<Jumping>(p));
+    CHECK_FALSE(reg.all_of<Sliding>(p));
+    CHECK(reg.get<Jumping>(p).timer == 0.2f);
 }
 
 TEST_CASE("player_action: cannot jump while sliding", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode  = VMode::Sliding;
-    reg.get<VerticalState>(p).timer = 0.3f;
+    reg.emplace<Sliding>(p, Sliding{0.3f});
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoEvent>({Direction::Up});
 
     run_semantic_input_tick(reg, 0.016f);
 
-    CHECK(reg.get<VerticalState>(p).mode == VMode::Sliding);
-    CHECK(reg.get<VerticalState>(p).timer == 0.3f);
+    REQUIRE(reg.all_of<Sliding>(p));
+    CHECK_FALSE(reg.all_of<Jumping>(p));
+    CHECK(reg.get<Sliding>(p).timer == 0.3f);
 }
 
 TEST_CASE("player_movement: morph_t clamps at 1.0", "[player]") {
@@ -387,38 +381,39 @@ TEST_CASE("player_movement: morph_t clamps at 1.0", "[player]") {
 TEST_CASE("player_movement: slide keeps y_offset at 0", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode  = VMode::Sliding;
-    reg.get<VerticalState>(p).timer = constants::SLIDE_DURATION;
+    reg.emplace<Sliding>(p, Sliding{constants::SLIDE_DURATION});
 
     player_movement_system(reg, 0.1f);
 
-    CHECK(reg.get<VerticalState>(p).y_offset == 0.0f);
+    // Slide has no y_offset field — semantic check: player still on ground.
+    REQUIRE(reg.all_of<Sliding>(p));
+    CHECK_FALSE(reg.all_of<Jumping>(p));
 }
 
 TEST_CASE("player_movement: grounded state has no timer change", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
-    // Default is Grounded
-    CHECK(reg.get<VerticalState>(p).mode == VMode::Grounded);
+    // Default = no Jumping/Sliding tags = grounded.
+    REQUIRE_FALSE(reg.any_of<Jumping, Sliding>(p));
 
     player_movement_system(reg, 0.016f);
 
-    CHECK(reg.get<VerticalState>(p).timer == 0.0f);
-    CHECK(reg.get<VerticalState>(p).y_offset == 0.0f);
+    // Grounded entities don't gain any vertical-motion tags.
+    CHECK_FALSE(reg.any_of<Jumping, Sliding>(p));
 }
 
 TEST_CASE("player_movement: jump arc peaks at half duration", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
-    reg.get<VerticalState>(p).mode  = VMode::Jumping;
-    reg.get<VerticalState>(p).timer = constants::JUMP_DURATION;
+    reg.emplace<Jumping>(p, Jumping{constants::JUMP_DURATION, 0.0f});
 
     // Advance exactly to the peak (half duration)
     float half = constants::JUMP_DURATION / 2.0f;
     player_movement_system(reg, half);
 
     // At peak, y_offset should be at max negative (JUMP_HEIGHT)
-    float y_off = reg.get<VerticalState>(p).y_offset;
+    REQUIRE(reg.all_of<Jumping>(p));
+    float y_off = reg.get<Jumping>(p).y_offset;
     CHECK(y_off < 0.0f);
     CHECK_THAT(y_off, Catch::Matchers::WithinAbs(-constants::JUMP_HEIGHT, 1.0f));
 }

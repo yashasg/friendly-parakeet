@@ -189,7 +189,7 @@ inline entt::entity make_player(entt::registry& reg) {
     reg.emplace<PlayerShape>(player);
     reg.emplace<ShapeWindow>(player);
     reg.emplace<Lane>(player);
-    reg.emplace<VerticalState>(player);
+    // Grounded == absence of Jumping/Sliding (issue #1202/#1204).
     reg.emplace<Color>(player, Color{80, 180, 255, 255});
     reg.emplace<DrawSize>(player, constants::PLAYER_SIZE, constants::PLAYER_SIZE);
     reg.emplace<TagWorldPass>(player);

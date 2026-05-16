@@ -24,16 +24,17 @@ inline constexpr SkillConfig SKILL_TABLE[] = {
 
 // ── Queued action (value type, NOT a component) ──────────────
 // Sentinel values encode "no action needed":
-//   target_shape  = Hexagon   → no shape change
-//   target_lane   = -1        → no lane change
-//   target_vertical = Grounded → no jump/slide
+//   target_shape  = Hexagon         → no shape change
+//   target_lane   = -1              → no lane change
+//   !wants_jump && !wants_slide     → no vertical action
 //
 // Per-sub-action completion is tracked as three independent boolean
 // columns (formerly an `ActionDoneBit` bitmask). Per Fabian's existential-
 // processing canon (.squad/decisions.md § DoD source-text grounding,
 // Principle 4), control-flow discriminators — including bitmask
-// discriminators — become per-case tables. For a value type, that's
-// per-case columns on the same row.
+// discriminators and the former `VMode target_vertical` enum — become
+// per-case tables. For a value type, that's per-case columns on the
+// same row.
 struct TestPlayerAction {
     entt::entity obstacle       = entt::null;
     float        timer          = 0.0f;
@@ -42,7 +43,8 @@ struct TestPlayerAction {
 
     Shape  target_shape         = Shape::Hexagon;
     int8_t target_lane          = -1;
-    VMode  target_vertical      = VMode::Grounded;
+    bool   wants_jump           = false;
+    bool   wants_slide          = false;
 
     bool shape_done    = false;
     bool lane_done     = false;

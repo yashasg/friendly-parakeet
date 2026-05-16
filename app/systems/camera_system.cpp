@@ -295,11 +295,12 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
 
     // 3. Player shape transform
     {
-        auto view = reg.view<PlayerTag, WorldTransform, PlayerShape, VerticalState, Color>();
-        for (auto [entity, transform, pshape, vstate, col] : view.each()) {
-            float y_3d = -vstate.y_offset;
+        auto view = reg.view<PlayerTag, WorldTransform, PlayerShape, Color>();
+        for (auto [entity, transform, pshape, col] : view.each()) {
+            const auto* jump = reg.try_get<Jumping>(entity);
+            float y_3d = jump ? -jump->y_offset : 0.0f;
             float sz = constants::PLAYER_SIZE;
-            if (vstate.mode == VMode::Sliding) sz *= 0.5f;
+            if (reg.all_of<Sliding>(entity)) sz *= 0.5f;
             const int shape_idx = shape_index(pshape.current);
             if (shape_idx < 0) {
                 TraceLog(LOG_WARNING, "game_camera_system skipped invalid PlayerShape %d",

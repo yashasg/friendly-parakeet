@@ -94,7 +94,7 @@ void spawn_aligned_player(entt::registry& reg, float y) {
     // Idle phase = absence of all ShapeWindow*Tag (#1202/#1204).
     Lane lane{}; lane.current = 1; lane.target = -1;
     reg.emplace<Lane>(p, lane);
-    reg.emplace<VerticalState>(p);
+    // Grounded = absence of Jumping/Sliding (#1202/#1204).
 }
 
 entt::entity spawn_obstacle(entt::registry& reg, float y) {

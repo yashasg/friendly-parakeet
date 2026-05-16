@@ -2,7 +2,7 @@
 
 #include <entt/entt.hpp>
 #include "../components/obstacle.h"
-#include "../components/player.h"  // Shape, VMode
+#include "../components/player.h"  // Shape
 #include "../components/rhythm.h"  // BeatInfo
 
 // Full construction parameters for an obstacle entity.
