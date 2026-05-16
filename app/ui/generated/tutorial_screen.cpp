@@ -83,24 +83,14 @@ void spawn_tutorial_screen(entt::registry& reg) {
         ui_label_set(label, "2. DODGE LANES");
     }
     {
-        // DodgeHintDesktop (label)
+        // DodgeHint (label)
         auto e = reg.create();
         reg.emplace<TutorialScreenTag>(e);
         reg.emplace<UiLabelTag>(e);
         reg.emplace<UiPosition>(e, 110.0f, 710.0f);
         reg.emplace<UiBounds>(e, 500.0f, 32.0f);
         auto& label = reg.emplace<UiLabel>(e);
-        ui_label_set(label, "DODGE: A/D OR ARROWS");
-    }
-    {
-        // DodgeHintWeb (label)
-        auto e = reg.create();
-        reg.emplace<TutorialScreenTag>(e);
-        reg.emplace<UiLabelTag>(e);
-        reg.emplace<UiPosition>(e, 110.0f, 710.0f);
-        reg.emplace<UiBounds>(e, 500.0f, 32.0f);
-        auto& label = reg.emplace<UiLabel>(e);
-        ui_label_set(label, "SWIPE LEFT OR RIGHT");
+        (void)label;  // dynamic-text slot; bound by render system
     }
     {
         // SectionEnergy (label)
