@@ -204,7 +204,7 @@ TEST_CASE("shape_window: full cycle MorphIn -> Active -> MorphOut -> Idle", "[sh
 
 TEST_CASE("shape_window: no processing when not Playing", "[shape_window]") {
     auto reg = make_rhythm_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::Paused;
+    set_test_phase(reg, GamePhase::Paused);
     auto player = make_rhythm_player(reg);
     auto& sw = reg.get<ShapeWindow>(player);
     set_window_phase_morph_in(reg, player);

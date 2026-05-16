@@ -7,11 +7,11 @@
 #include <raylib.h>
 
 void song_playback_system(entt::registry& reg, float dt) {
-    const auto& gs = reg.ctx().get<GameState>();
+    auto& ctx = reg.ctx();
 
-    auto* song  = reg.ctx().find<SongState>();
+    auto* song  = ctx.find<SongState>();
     auto* map   = find_beat_map(reg);
-    auto* music = reg.ctx().find<MusicContext>();
+    auto* music = ctx.find<MusicContext>();
     const bool music_loaded = music && music->loaded;
 
     // Must pump the stream buffer every frame to prevent audio underruns,
@@ -32,7 +32,17 @@ void song_playback_system(entt::registry& reg, float dt) {
     }
 
     // ── Music lifecycle: start / pause / resume / stop ────────
-    if (music_loaded && gs.phase == GamePhase::Playing && song && song->playing) {
+    // Per Fabian's existential processing (issue #1202/#1204, PR F), each
+    // former `gs.phase == GamePhase::X` branch dispatches on the per-phase
+    // ctx-tag mirror. The mirror invariant (`tests/test_game_phase_tags.cpp`)
+    // guarantees exactly one `GamePhase*Tag` is present at a time, so these
+    // branches stay mutually exclusive without an `else` chain.
+    const bool playing_phase       = ctx.contains<GamePhasePlayingTag>();
+    const bool paused_phase        = ctx.contains<GamePhasePausedTag>();
+    const bool game_over_phase     = ctx.contains<GamePhaseGameOverTag>();
+    const bool song_complete_phase = ctx.contains<GamePhaseSongCompleteTag>();
+
+    if (music_loaded && playing_phase && song && song->playing) {
         if (!music->started) {
             PlayMusicStream(music->stream);
             music->started = true;
@@ -41,13 +51,13 @@ void song_playback_system(entt::registry& reg, float dt) {
             ResumeMusicStream(music->stream);
             music->paused = false;
         }
-    } else if (music_loaded && gs.phase == GamePhase::Paused && music->started) {
+    } else if (music_loaded && paused_phase && music->started) {
         if (!music->paused) {
             PauseMusicStream(music->stream);
             music->paused = true;
         }
     } else if (music_loaded &&
-               (gs.phase == GamePhase::GameOver || gs.phase == GamePhase::SongComplete) &&
+               (game_over_phase || song_complete_phase) &&
                music->started) {
         StopMusicStream(music->stream);
         music->started = false;
@@ -55,7 +65,7 @@ void song_playback_system(entt::registry& reg, float dt) {
     }
 
     // ── Song time / beat advancement (Playing phase only) ─────
-    if (gs.phase != GamePhase::Playing) return;
+    if (!playing_phase) return;
     if (!song) return;
 
     if (song->finished) {

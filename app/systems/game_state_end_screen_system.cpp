@@ -4,11 +4,18 @@
 
 namespace {
 
-bool end_screen_input_ready(const GameState& gs) {
+// Per Fabian's existential processing (issue #1202/#1204, PR F): the former
+// `gs.phase == GamePhase::X` checks dispatch on tag presence in `reg.ctx()`.
+// `phase_timer` stays an enum-free scalar, so end_screen_input_ready takes
+// both — the tag from ctx and the timer from `GameState`. The tag mirror
+// invariant pinned by `tests/test_game_phase_tags.cpp` keeps the two in
+// lockstep until PR G deletes `GameState::phase` outright.
+bool end_screen_input_ready(entt::registry& reg, const GameState& gs) {
+    const auto& ctx = reg.ctx();
     const bool game_over_ready =
-        gs.phase == GamePhase::GameOver && gs.phase_timer > constants::GAME_OVER_INPUT_DELAY;
+        ctx.contains<GamePhaseGameOverTag>() && gs.phase_timer > constants::GAME_OVER_INPUT_DELAY;
     const bool song_complete_ready =
-        gs.phase == GamePhase::SongComplete && gs.phase_timer > constants::SONG_COMPLETE_INPUT_DELAY;
+        ctx.contains<GamePhaseSongCompleteTag>() && gs.phase_timer > constants::SONG_COMPLETE_INPUT_DELAY;
     return game_over_ready || song_complete_ready;
 }
 
@@ -27,7 +34,7 @@ void erase_end_choice_tags(entt::registry& reg) {
 void apply_end_choice_restart(entt::registry& reg) {
     if (!reg.ctx().find<EndChoiceRestart>()) return;
     auto& gs = reg.ctx().get<GameState>();
-    if (!end_screen_input_ready(gs)) return;
+    if (!end_screen_input_ready(reg, gs)) return;
     gs.transition_pending = true;
     gs.next_phase = GamePhase::Playing;
     erase_end_choice_tags(reg);
@@ -36,7 +43,7 @@ void apply_end_choice_restart(entt::registry& reg) {
 void apply_end_choice_level_select(entt::registry& reg) {
     if (!reg.ctx().find<EndChoiceLevelSelect>()) return;
     auto& gs = reg.ctx().get<GameState>();
-    if (!end_screen_input_ready(gs)) return;
+    if (!end_screen_input_ready(reg, gs)) return;
     gs.transition_pending = true;
     gs.next_phase = GamePhase::LevelSelect;
     erase_end_choice_tags(reg);
@@ -45,7 +52,7 @@ void apply_end_choice_level_select(entt::registry& reg) {
 void apply_end_choice_main_menu(entt::registry& reg) {
     if (!reg.ctx().find<EndChoiceMainMenu>()) return;
     auto& gs = reg.ctx().get<GameState>();
-    if (!end_screen_input_ready(gs)) return;
+    if (!end_screen_input_ready(reg, gs)) return;
     gs.transition_pending = true;
     gs.next_phase = GamePhase::Title;
     erase_end_choice_tags(reg);

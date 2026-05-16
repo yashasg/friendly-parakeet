@@ -385,8 +385,7 @@ void gameplay_hud_apply_button_presses(entt::registry& reg,
                                        bool circle_pressed,
                                        bool square_pressed,
                                        bool triangle_pressed) {
-    auto& gs = reg.ctx().get<GameState>();
-    if (gs.phase != GamePhase::Playing) return;
+    if (!reg.ctx().contains<GamePhasePlayingTag>()) return;
 
     auto& disp = reg.ctx().get<entt::dispatcher>();
     if (circle_pressed) {
@@ -400,6 +399,7 @@ void gameplay_hud_apply_button_presses(entt::registry& reg,
     }
 
     if (pause_pressed) {
+        auto& gs = reg.ctx().get<GameState>();
         gs.transition_pending = true;
         gs.next_phase = GamePhase::Paused;
     }

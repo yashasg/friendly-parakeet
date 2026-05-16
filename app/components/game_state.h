@@ -29,10 +29,13 @@ struct GameState {
 // the initial GameState ctx emplace; the enum-typed field is retained
 // during the staged migration so existing consumers continue to compile.
 //
-// Subsequent PRs migrate each consumer (switch sites, `if (gs.phase == X)`
-// branches) onto these tags via `reg.ctx().find<GamePhase*Tag>()`. When
-// every consumer has been migrated the field — and the enum itself — can
-// be deleted, leaving these tags as the sole authority.
+// PR F (issue #1202) finished migrating every `if (gs.phase == X)` consumer
+// in `app/` onto `reg.ctx().contains<GamePhase*Tag>()`. The only remaining
+// `gs.phase` reads in `app/` are the two helper switches inside
+// `game_phase_transition.cpp` that translate the enum into the tag mirror
+// and the `GamePhase phase` function parameter on
+// `game_state_enter_terminal_phase()`; all three die with the enum itself
+// in PR G, alongside `GameState::phase` and `GameState::next_phase`.
 //
 // Maintenance invariant: exactly one `GamePhase*Tag` ctx slot is present
 // after any `enter_phase()` call. The current entry helper erases all

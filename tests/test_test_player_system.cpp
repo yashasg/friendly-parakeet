@@ -212,7 +212,7 @@ TEST_CASE("test_player: auto-starts from title screen", "[test_player]") {
     auto reg = make_test_player_registry();
     make_rhythm_player(reg);
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Title;
+    set_test_phase(reg, GamePhase::Title);
     gs.phase_timer = 1.0f;
 
     // Create a Confirm menu button (as title screen would have)

@@ -102,7 +102,7 @@ TEST_CASE("cleanup: non-obstacle entities are untouched", "[cleanup]") {
 
 TEST_CASE("game_state: title to level select on touch", "[gamestate]") {
     auto reg = make_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::Title;
+    set_test_phase(reg, GamePhase::Title);
     auto btn = make_menu_button(reg, MenuActionKind::Confirm);
     press_button(reg, btn);
 
@@ -116,7 +116,7 @@ TEST_CASE("game_state: title to level select on touch", "[gamestate]") {
 TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
     gs.phase_timer = 0.5f;
     auto btn = make_menu_button(reg, MenuActionKind::GoLevelSelect);
     press_button(reg, btn);
@@ -131,7 +131,7 @@ TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
 TEST_CASE("game_state: game over keyboard confirm routes to restart", "[gamestate][input][regression]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
     gs.phase_timer = 0.5f;
 
     reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
@@ -146,7 +146,7 @@ TEST_CASE("game_state: game over keyboard confirm routes to restart", "[gamestat
 TEST_CASE("game_state: song complete keyboard confirm routes to restart", "[gamestate][input][regression]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::SongComplete;
+    set_test_phase(reg, GamePhase::SongComplete);
     gs.phase_timer = constants::SONG_COMPLETE_INPUT_DELAY + 0.1f;
 
     reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
@@ -162,7 +162,7 @@ TEST_CASE("game_state: song complete keyboard confirm waits for button debounce"
           "[gamestate][input][regression]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::SongComplete;
+    set_test_phase(reg, GamePhase::SongComplete);
     gs.phase_timer = 0.45f;
 
     reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
@@ -179,7 +179,7 @@ TEST_CASE("game_state: song complete keyboard confirm waits for button debounce"
 TEST_CASE("game_state: game over ignores touch during delay", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
     gs.phase_timer = 0.2f;  // within GAME_OVER_INPUT_DELAY
     auto btn = make_menu_button(reg, MenuActionKind::Confirm);
     press_button(reg, btn);
@@ -192,7 +192,7 @@ TEST_CASE("game_state: game over ignores touch during delay", "[gamestate]") {
 TEST_CASE("game_state: paused menu input waits for entry debounce", "[gamestate][input]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Paused;
+    set_test_phase(reg, GamePhase::Paused);
     gs.phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.1f;
     gs.phase_timer = 0.1f;
 
@@ -207,7 +207,7 @@ TEST_CASE("game_state: paused menu input waits for entry debounce", "[gamestate]
 TEST_CASE("game_state: paused menu input resumes after entry debounce", "[gamestate][input]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Paused;
+    set_test_phase(reg, GamePhase::Paused);
     gs.phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.1f;
 
     reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
@@ -313,7 +313,7 @@ TEST_CASE("game_state: enter_game_over preserves high score if lower", "[gamesta
 TEST_CASE("game_state: paused to playing on touch", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Paused;
+    set_test_phase(reg, GamePhase::Paused);
     gs.phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.1f;
     auto btn = make_menu_button(reg, MenuActionKind::Confirm);
     press_button(reg, btn);
@@ -327,7 +327,7 @@ TEST_CASE("game_state: paused to playing on touch", "[gamestate]") {
 TEST_CASE("game_state: paused resume preserves active play session state", "[gamestate][regression]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Paused;
+    set_test_phase(reg, GamePhase::Paused);
     gs.phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.1f;
 
     auto player = make_player(reg);
@@ -374,7 +374,7 @@ TEST_CASE("game_state: paused resume preserves active play session state", "[gam
 TEST_CASE("game_state: title stays title without touch", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Title;
+    set_test_phase(reg, GamePhase::Title);
     // No press event in queue — no actions
 
     game_state_system(reg, 0.5f);
@@ -386,7 +386,7 @@ TEST_CASE("game_state: title stays title without touch", "[gamestate]") {
 TEST_CASE("game_state: transition to Paused sets phase", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Playing;
+    set_test_phase(reg, GamePhase::Playing);
     gs.transition_pending = true;
     gs.next_phase = GamePhase::Paused;
 
@@ -400,7 +400,7 @@ TEST_CASE("game_state: transition to Paused sets phase", "[gamestate]") {
 TEST_CASE("game_state: transition to Settings sets phase", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Title;
+    set_test_phase(reg, GamePhase::Title);
     gs.transition_pending = true;
     gs.next_phase = GamePhase::Settings;
 
@@ -428,7 +428,7 @@ TEST_CASE("game_state: enter_playing resets score", "[gamestate]") {
 
 TEST_CASE("scroll: no movement when not in Playing phase", "[scroll]") {
     auto reg = make_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::Title;
+    set_test_phase(reg, GamePhase::Title);
     auto e = reg.create();
     reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
     reg.emplace<Vector2>(e, Vector2{10.0f, 20.0f});
@@ -441,7 +441,7 @@ TEST_CASE("scroll: no movement when not in Playing phase", "[scroll]") {
 
 TEST_CASE("motion: no movement when not in Playing phase", "[motion]") {
     auto reg = make_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::Title;
+    set_test_phase(reg, GamePhase::Title);
     auto e = reg.create();
     reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
     reg.emplace<Vector2>(e, Vector2{10.0f, 20.0f});

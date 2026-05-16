@@ -10,7 +10,7 @@
 TEST_CASE("game_state: song complete when song finished and no obstacles", "[gamestate]") {
     auto reg = make_rhythm_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Playing;
+    set_test_phase(reg, GamePhase::Playing);
     auto& song = reg.ctx().get<SongState>();
     song.finished = true;
     song.playing = false;
@@ -26,7 +26,7 @@ TEST_CASE("game_state: energy depletion beats song complete after playback finis
           "[gamestate][issue755]") {
     auto reg = make_rhythm_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Playing;
+    set_test_phase(reg, GamePhase::Playing);
     auto& song = reg.ctx().get<SongState>();
     song.finished = true;
     song.playing = false;
@@ -43,7 +43,7 @@ TEST_CASE("game_state: energy depletion beats song complete after playback finis
 TEST_CASE("game_state: song complete waits for obstacles to clear", "[gamestate]") {
     auto reg = make_rhythm_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Playing;
+    set_test_phase(reg, GamePhase::Playing);
     auto& song = reg.ctx().get<SongState>();
     song.finished = true;
     song.playing = false;
@@ -61,7 +61,7 @@ TEST_CASE("game_state: song complete waits for obstacles to clear", "[gamestate]
 TEST_CASE("game_state: song complete proceeds when scored obstacle is destroyed", "[gamestate]") {
     auto reg = make_rhythm_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Playing;
+    set_test_phase(reg, GamePhase::Playing);
     auto& song = reg.ctx().get<SongState>();
     song.finished = true;
     song.playing = false;
@@ -81,7 +81,7 @@ TEST_CASE("game_state: song complete proceeds when scored obstacle is destroyed"
 TEST_CASE("game_state: song complete waits for scored obstacle to be destroyed", "[gamestate]") {
     auto reg = make_rhythm_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Playing;
+    set_test_phase(reg, GamePhase::Playing);
     auto& song = reg.ctx().get<SongState>();
     song.finished = true;
     song.playing = false;
@@ -136,7 +136,7 @@ TEST_CASE("game_state: enter_song_complete preserves higher high_score", "[games
 TEST_CASE("game_state: song_complete button choice restart", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::SongComplete;
+    set_test_phase(reg, GamePhase::SongComplete);
     gs.phase_timer = 1.0f;
     reg.ctx().emplace<EndChoiceRestart>();
 
@@ -152,7 +152,7 @@ TEST_CASE("game_state: song_complete button choice restart", "[gamestate]") {
 TEST_CASE("game_state: song_complete button choice level_select", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::SongComplete;
+    set_test_phase(reg, GamePhase::SongComplete);
     gs.phase_timer = 1.0f;
     reg.ctx().emplace<EndChoiceLevelSelect>();
 
@@ -168,7 +168,7 @@ TEST_CASE("game_state: song_complete button choice level_select", "[gamestate]")
 TEST_CASE("game_state: song_complete button choice main_menu", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::SongComplete;
+    set_test_phase(reg, GamePhase::SongComplete);
     gs.phase_timer = 1.0f;
     reg.ctx().emplace<EndChoiceMainMenu>();
 
@@ -181,7 +181,7 @@ TEST_CASE("game_state: song_complete button choice main_menu", "[gamestate]") {
 TEST_CASE("game_state: song_complete ignores choice during delay", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::SongComplete;
+    set_test_phase(reg, GamePhase::SongComplete);
     gs.phase_timer = 0.2f;  // < 0.5s delay
     reg.ctx().emplace<EndChoiceRestart>();
 
@@ -216,7 +216,7 @@ TEST_CASE("game_state: terminal to LevelSelect hides stale world renderables",
     reg.emplace<ModelTransform>(stale);
     reg.emplace<TagWorldPass>(stale);
 
-    gs.phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
     gs.transition_pending = true;
     gs.next_phase = GamePhase::LevelSelect;
 
@@ -297,7 +297,7 @@ TEST_CASE("game_state: transition clears in-flight pointer capture", "[gamestate
 TEST_CASE("game_state: transition to Title sets phase and resets timer", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Playing;
+    set_test_phase(reg, GamePhase::Playing);
     gs.phase_timer = 5.0f;
     gs.transition_pending = true;
     gs.next_phase = GamePhase::Title;
@@ -311,7 +311,7 @@ TEST_CASE("game_state: transition to Title sets phase and resets timer", "[games
 TEST_CASE("game_state: level select confirmed starts tutorial when FTUE is incomplete", "[gamestate][ftue][issue882]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::LevelSelect;
+    set_test_phase(reg, GamePhase::LevelSelect);
     gs.phase_timer = 0.5f;  // past 0.2s guard
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.confirmed = true;
@@ -328,7 +328,7 @@ TEST_CASE("game_state: level select confirmed triggers playing when FTUE is comp
           "[gamestate][ftue][issue882]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::LevelSelect;
+    set_test_phase(reg, GamePhase::LevelSelect);
     gs.phase_timer = 0.5f;  // past 0.2s guard
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.confirmed = true;
@@ -345,7 +345,7 @@ TEST_CASE("tutorial: continue marks FTUE complete and requests gameplay",
           "[gamestate][ftue][issue882]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Tutorial;
+    set_test_phase(reg, GamePhase::Tutorial);
 
     auto& settings = settings_state(reg);
     settings.ftue_run_count = 0;
@@ -366,7 +366,7 @@ TEST_CASE("tutorial: menu confirm marks FTUE complete and requests gameplay",
           "[gamestate][ftue][input][issue882]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Tutorial;
+    set_test_phase(reg, GamePhase::Tutorial);
     gs.phase_timer = 0.5f;
 
     auto& settings = settings_state(reg);
@@ -391,7 +391,7 @@ TEST_CASE("tutorial: menu confirm marks FTUE complete and requests gameplay",
 TEST_CASE("game_state: level select ignores confirmed during delay", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::LevelSelect;
+    set_test_phase(reg, GamePhase::LevelSelect);
     gs.phase_timer = 0.1f;  // within 0.2s delay
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.confirmed = true;
@@ -405,7 +405,7 @@ TEST_CASE("game_state: level select ignores confirmed during delay", "[gamestate
 TEST_CASE("game_state: game_over restart button triggers playing", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
     gs.phase_timer = 0.5f;
     reg.ctx().emplace<EndChoiceRestart>();
 
@@ -418,7 +418,7 @@ TEST_CASE("game_state: game_over restart button triggers playing", "[gamestate]"
 TEST_CASE("game_state: game_over main_menu button triggers title", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
     gs.phase_timer = 0.5f;
     reg.ctx().emplace<EndChoiceMainMenu>();
 
@@ -431,7 +431,7 @@ TEST_CASE("game_state: game_over main_menu button triggers title", "[gamestate]"
 TEST_CASE("game_state: game_over level_select button triggers level_select", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
     gs.phase_timer = 0.5f;
     reg.ctx().emplace<EndChoiceLevelSelect>();
 
@@ -447,7 +447,7 @@ TEST_CASE("game_state: game_over level_select button triggers level_select", "[g
 TEST_CASE("game_state: game_over ignores choice at readiness boundary", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
     gs.phase_timer = 0.4f;
     reg.ctx().emplace<EndChoiceRestart>();
 
@@ -462,7 +462,7 @@ TEST_CASE("game_state: game_over ignores choice at readiness boundary", "[gamest
 TEST_CASE("game_state: game_over ignores missing end choice", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
     gs.phase_timer = 0.5f;
     REQUIRE(reg.ctx().find<EndChoiceRestart>() == nullptr);
     REQUIRE(reg.ctx().find<EndChoiceLevelSelect>() == nullptr);
@@ -479,7 +479,7 @@ TEST_CASE("game_state: game_over ignores missing end choice", "[gamestate]") {
 TEST_CASE("game_state: game_over restart enters fresh play session on next tick", "[gamestate][play_session]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
     gs.phase_timer = 0.5f;
     reg.ctx().emplace<EndChoiceRestart>();
 
@@ -504,7 +504,7 @@ TEST_CASE("game_state: game_over restart enters fresh play session on next tick"
 TEST_CASE("game_state: title position tap triggers level_select", "[gamestate]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Title;
+    set_test_phase(reg, GamePhase::Title);
     // Simulate a tap → Confirm menu button press (title screen has full-screen confirm)
     auto btn = make_menu_button(reg, MenuActionKind::Confirm);
     press_button(reg, btn);
@@ -519,7 +519,7 @@ TEST_CASE("title settings navigation: pending Settings transition reaches Settin
           "[gamestate][ui][settings][regression]") {
     auto reg = make_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Title;
+    set_test_phase(reg, GamePhase::Title);
     gs.phase_timer = 2.0f;
     gs.transition_pending = true;
     gs.next_phase = GamePhase::Settings;

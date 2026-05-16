@@ -45,7 +45,7 @@ TEST_CASE("song_playback: song ends when duration exceeded", "[song_playback]") 
 
 TEST_CASE("song_playback: does nothing when not in Playing phase", "[song_playback]") {
     auto reg = make_rhythm_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::Title;
+    set_test_phase(reg, GamePhase::Title);
     auto& song = reg.ctx().get<SongState>();
     float original_time = song.song_time;
 

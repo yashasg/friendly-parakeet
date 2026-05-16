@@ -7,7 +7,7 @@
 
 TEST_CASE("energy: no action when not in Playing phase", "[energy]") {
     auto reg = make_rhythm_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::Title;
+    set_test_phase(reg, GamePhase::Title);
     auto& energy = reg.ctx().get<EnergyState>();
     energy.energy = 0.0f;
 

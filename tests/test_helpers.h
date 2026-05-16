@@ -25,19 +25,19 @@
 #include "entities/beat_map.h"
 #include "entities/obstacle_render_entity.h"
 #include "systems/all_systems.h"
+#include "systems/game_phase_transition.h"
 #include "systems/runtime_systems.h"
 #include "systems/input_routing.h"
 #include "systems/input_system_private.h"
 
-// Sets up a registry with all singletons in their default state
+// Sets up a registry with all singletons in their default state.
 //
-// NOTE (issue #1202 PR A): pre-existing tests that bypass `enter_phase()`
-// (writing `gs.phase = X` directly) do NOT keep the per-phase ctx-tag mirror
-// in lockstep. The strict invariant only needs to hold post-`enter_phase()`,
-// which is enforced by `test_game_phase_tags.cpp`. Production callers always
-// route through `enter_phase()`; the test fixture intentionally does not
-// prime a tag here so existing direct-write tests stay readable. Migration
-// PRs B–G move tests onto the tag path with a helper.
+// Per Fabian's existential processing (#1202/#1204, PR F): the per-phase
+// ctx-tag mirror is primed alongside the `GameState` ctx singleton so
+// downstream consumers (`if (ctx.contains<GamePhase*Tag>())`) match the
+// `GameState::phase` field set here. Tests that mutate `gs.phase` directly
+// must call `set_test_phase()` below to keep the mirror in lockstep until
+// the enum-typed field itself is deleted in PR G.
 inline entt::registry make_registry() {
     entt::registry reg;
     reg.ctx().emplace<InputState>();
@@ -49,6 +49,7 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<GameState>(GameState{
         GamePhase::Playing, 0.0f, false, GamePhase::Playing
     });
+    sync_game_phase_tags(reg, GamePhase::Playing);
     reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<ScoreDisplay>();
     reg.ctx().emplace<CurrentSongHighScore>();
@@ -63,6 +64,15 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<HighScoreSession>();
     runtime_system_scratch_init(reg);
     return reg;
+}
+
+// Mutate the phase in tests without going through `enter_phase()` (which
+// also resets `phase_timer` and would defeat tests that pin a specific
+// timer value). Keeps the per-phase ctx-tag mirror invariant intact so
+// the migrated consumers in `app/` dispatch on the new phase immediately.
+inline void set_test_phase(entt::registry& reg, GamePhase phase) {
+    reg.ctx().get<GameState>().phase = phase;
+    sync_game_phase_tags(reg, phase);
 }
 
 struct GoCapture {

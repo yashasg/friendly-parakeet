@@ -415,7 +415,7 @@ TEST_CASE("pipeline: gameplay HUD proximity ring progresses through far near per
 TEST_CASE("pipeline: gameplay HUD raygui shape presses ignored outside Playing",
           "[input_pipeline][hud]") {
     auto reg = make_rhythm_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::Paused;
+    set_test_phase(reg, GamePhase::Paused);
     auto player = make_rhythm_player(reg);
     REQUIRE(window_phase_is_idle(reg, player));
     gameplay_hud_apply_button_presses(reg,

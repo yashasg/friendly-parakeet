@@ -26,7 +26,7 @@ void drain_timed_queue(entt::registry& reg,
 }  // namespace
 
 void popup_feedback_system(entt::registry& reg, [[maybe_unused]] float dt) {
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+    if (!reg.ctx().contains<GamePhasePlayingTag>()) return;
     auto& queue = reg.ctx().get<ScorePopupRequestQueue>();
     if (queue.perfect.empty() && queue.good.empty() && queue.ok.empty() &&
         queue.bad.empty() && queue.untimed.empty()) {

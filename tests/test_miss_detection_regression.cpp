@@ -171,7 +171,7 @@ TEST_CASE("miss_detection: visual obstacle leftovers without Obstacle payload ar
 TEST_CASE("miss_detection: no-op when game phase is not Playing",
           "[miss_detection][regression][issue336]") {
     auto reg = make_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::GameOver;
+    set_test_phase(reg, GamePhase::GameOver);
 
     auto obs = make_expired_obstacle(reg);
 

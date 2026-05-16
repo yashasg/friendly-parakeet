@@ -34,7 +34,7 @@ TEST_CASE("song_playback: song_time advances by dt", "[song_playback]") {
 
 TEST_CASE("song_playback: no advancement when not Playing", "[song_playback]") {
     auto reg = make_rhythm_registry();
-    reg.ctx().get<GameState>().phase = GamePhase::Title;
+    set_test_phase(reg, GamePhase::Title);
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 1.0f;
 
@@ -190,7 +190,7 @@ TEST_CASE("song_playback: obstacles can clear after playback ends without soft-l
           "[song_playback][gamestate][issue444]") {
     auto reg = make_rhythm_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Playing;
+    set_test_phase(reg, GamePhase::Playing);
 
     auto& song = reg.ctx().get<SongState>();
     song.duration_sec = 1.0f;
@@ -221,7 +221,7 @@ TEST_CASE("song_playback: end-of-song transitions to SongComplete and remains st
           "[song_playback][gamestate][song_complete][regression]") {
     auto reg = make_rhythm_registry();
     auto& gs = reg.ctx().get<GameState>();
-    gs.phase = GamePhase::Playing;
+    set_test_phase(reg, GamePhase::Playing);
 
     auto& song = reg.ctx().get<SongState>();
     song.duration_sec = 1.0f;
@@ -293,7 +293,6 @@ TEST_CASE("song_playback: zero beat_period handled safely", "[song_playback]") {
 TEST_CASE("song_playback: pause to playing resume guard is one-shot",
           "[song_playback][regression][issue504]") {
     auto reg = make_rhythm_registry();
-    auto& gs = reg.ctx().get<GameState>();
     auto& song = reg.ctx().get<SongState>();
 
     auto& music = reg.ctx().emplace<MusicContext>();
@@ -301,7 +300,7 @@ TEST_CASE("song_playback: pause to playing resume guard is one-shot",
     music.started = true;
     music.paused = true;
 
-    gs.phase = GamePhase::Playing;
+    set_test_phase(reg, GamePhase::Playing);
     song.playing = true;
 
     song_playback_system(reg, 0.016f);
