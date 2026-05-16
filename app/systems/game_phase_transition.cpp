@@ -56,6 +56,18 @@ void erase_all_game_phase_tags(entt::registry& reg) {
     if (ctx.find<GamePhaseTutorialTag>())     ctx.erase<GamePhaseTutorialTag>();
 }
 
+void erase_all_next_phase_tags(entt::registry& reg) {
+    auto& ctx = reg.ctx();
+    if (ctx.find<NextPhaseTitleTag>())        ctx.erase<NextPhaseTitleTag>();
+    if (ctx.find<NextPhaseLevelSelectTag>())  ctx.erase<NextPhaseLevelSelectTag>();
+    if (ctx.find<NextPhasePlayingTag>())      ctx.erase<NextPhasePlayingTag>();
+    if (ctx.find<NextPhasePausedTag>())       ctx.erase<NextPhasePausedTag>();
+    if (ctx.find<NextPhaseGameOverTag>())     ctx.erase<NextPhaseGameOverTag>();
+    if (ctx.find<NextPhaseSongCompleteTag>()) ctx.erase<NextPhaseSongCompleteTag>();
+    if (ctx.find<NextPhaseSettingsTag>())     ctx.erase<NextPhaseSettingsTag>();
+    if (ctx.find<NextPhaseTutorialTag>())     ctx.erase<NextPhaseTutorialTag>();
+}
+
 }  // namespace
 
 void sync_game_phase_tags(entt::registry& reg, GamePhase phase) {
@@ -71,6 +83,25 @@ void sync_game_phase_tags(entt::registry& reg, GamePhase phase) {
         case GamePhase::Settings:     ctx.emplace<GamePhaseSettingsTag>();     break;
         case GamePhase::Tutorial:     ctx.emplace<GamePhaseTutorialTag>();     break;
     }
+}
+
+void sync_next_phase_tags(entt::registry& reg, GamePhase phase) {
+    erase_all_next_phase_tags(reg);
+    auto& ctx = reg.ctx();
+    switch (phase) {
+        case GamePhase::Title:        ctx.emplace<NextPhaseTitleTag>();        break;
+        case GamePhase::LevelSelect:  ctx.emplace<NextPhaseLevelSelectTag>();  break;
+        case GamePhase::Playing:      ctx.emplace<NextPhasePlayingTag>();      break;
+        case GamePhase::Paused:       ctx.emplace<NextPhasePausedTag>();       break;
+        case GamePhase::GameOver:     ctx.emplace<NextPhaseGameOverTag>();     break;
+        case GamePhase::SongComplete: ctx.emplace<NextPhaseSongCompleteTag>(); break;
+        case GamePhase::Settings:     ctx.emplace<NextPhaseSettingsTag>();     break;
+        case GamePhase::Tutorial:     ctx.emplace<NextPhaseTutorialTag>();     break;
+    }
+}
+
+void clear_next_phase_tags(entt::registry& reg) {
+    erase_all_next_phase_tags(reg);
 }
 
 void enter_phase(entt::registry& reg, GameState& gs, GamePhase next_phase) {

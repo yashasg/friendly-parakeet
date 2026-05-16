@@ -46,6 +46,26 @@ struct GamePhaseSongCompleteTag {};
 struct GamePhaseSettingsTag     {};
 struct GamePhaseTutorialTag     {};
 
+// ── Pending phase transition (per-tag ctx tables) ──────────────────────
+// Per Fabian existential processing (issue #1202/#1204, PR C), the
+// per-frame "transition request" target is mirrored 1:1 into per-tag ctx
+// slots so the transition dispatch in `game_state_system` can run as
+// per-tag transforms instead of a `switch (gs.next_phase)`. The mirror
+// is populated from `gs.next_phase` at the top of the dispatch block via
+// `sync_next_phase_tags()` and cleared at the bottom via
+// `clear_next_phase_tags()`; outside of that block exactly zero
+// `NextPhase*Tag` ctx slots are present. The enum-typed field is retained
+// during the staged migration (PRs C–F) and deleted with the enum itself
+// in PR G.
+struct NextPhaseTitleTag        {};
+struct NextPhaseLevelSelectTag  {};
+struct NextPhasePlayingTag      {};
+struct NextPhasePausedTag       {};
+struct NextPhaseGameOverTag     {};
+struct NextPhaseSongCompleteTag {};
+struct NextPhaseSettingsTag     {};
+struct NextPhaseTutorialTag     {};
+
 // ── End-screen menu choice (per-choice ctx tables) ───────────
 // Per Fabian's existential processing (issue #1202/#1204), each former
 // EndScreenChoice value is its own zero-column table on `registry.ctx()`.

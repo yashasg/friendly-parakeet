@@ -104,45 +104,58 @@ void game_state_system(entt::registry& reg, float dt) {
         // InputSystemPrivate (issue #1196).
         input_system_clear_pointer_state(reg);
 
-        switch (gs.next_phase) {
-            case GamePhase::Playing:
-                // Resume from Paused must NOT re-init the play session — that
-                // would discard score/energy/obstacles. All other paths into
-                // Playing (Title/LevelSelect/etc.) bootstrap a fresh session.
-                // See #482 for the rationale that converged screen controllers
-                // and input routing on the deferred (transition_pending) path.
-                if (gs.phase == GamePhase::Paused) {
-                    enter_phase(reg, gs, GamePhase::Playing);
-                } else {
-                    setup_play_session(reg);
-                }
-                break;
-            case GamePhase::GameOver:
-                game_state_enter_terminal_phase(reg, GamePhase::GameOver);
-                break;
-            case GamePhase::SongComplete:
-                game_state_enter_terminal_phase(reg, GamePhase::SongComplete);
-                break;
-            case GamePhase::Paused:
-                enter_phase(reg, gs, GamePhase::Paused);
-                break;
-            case GamePhase::Title:
-                enter_phase(reg, gs, GamePhase::Title);
-                break;
-            case GamePhase::LevelSelect:
-                enter_phase(reg, gs, GamePhase::LevelSelect);
-                {
-                    auto& lss = reg.ctx().get<LevelSelectState>();
-                    lss.confirmed = false;
-                }
-                break;
-            case GamePhase::Settings:
-                enter_phase(reg, gs, GamePhase::Settings);
-                break;
-            case GamePhase::Tutorial:
-                enter_phase(reg, gs, GamePhase::Tutorial);
-                break;
+        // Per Fabian's existential processing (issue #1202/#1204, PR C):
+        // each former `case GamePhase::X` is now its own per-tag transform.
+        // `sync_next_phase_tags` mirrors `gs.next_phase` into exactly one
+        // `NextPhase*Tag` ctx slot; the transforms below dispatch on tag
+        // presence; `clear_next_phase_tags` drains the mirror so a stale
+        // request cannot fire again next frame. The `gs.next_phase` field
+        // is retained during the staged migration; PR G deletes it along
+        // with the `GamePhase` enum itself.
+        sync_next_phase_tags(reg, gs.next_phase);
+        auto& ctx = reg.ctx();
+
+        if (ctx.contains<NextPhasePlayingTag>()) {
+            // Resume from Paused must NOT re-init the play session — that
+            // would discard score/energy/obstacles. All other paths into
+            // Playing (Title/LevelSelect/etc.) bootstrap a fresh session.
+            // See #482 for the rationale that converged screen controllers
+            // and input routing on the deferred (transition_pending) path.
+            //
+            // NB: this `gs.phase == GamePhase::Paused` check is on the
+            // current phase (not the dispatch target) and is migrated as
+            // part of PR F (`if (gs.phase == X)` sweep), not PR C.
+            if (gs.phase == GamePhase::Paused) {
+                enter_phase(reg, gs, GamePhase::Playing);
+            } else {
+                setup_play_session(reg);
+            }
         }
+        if (ctx.contains<NextPhaseGameOverTag>()) {
+            game_state_enter_terminal_phase(reg, GamePhase::GameOver);
+        }
+        if (ctx.contains<NextPhaseSongCompleteTag>()) {
+            game_state_enter_terminal_phase(reg, GamePhase::SongComplete);
+        }
+        if (ctx.contains<NextPhasePausedTag>()) {
+            enter_phase(reg, gs, GamePhase::Paused);
+        }
+        if (ctx.contains<NextPhaseTitleTag>()) {
+            enter_phase(reg, gs, GamePhase::Title);
+        }
+        if (ctx.contains<NextPhaseLevelSelectTag>()) {
+            enter_phase(reg, gs, GamePhase::LevelSelect);
+            auto& lss = reg.ctx().get<LevelSelectState>();
+            lss.confirmed = false;
+        }
+        if (ctx.contains<NextPhaseSettingsTag>()) {
+            enter_phase(reg, gs, GamePhase::Settings);
+        }
+        if (ctx.contains<NextPhaseTutorialTag>()) {
+            enter_phase(reg, gs, GamePhase::Tutorial);
+        }
+
+        clear_next_phase_tags(reg);
 #if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
         if (gs.phase != GamePhase::Playing) {
             reset_web_playing_lane_marker(reg);
