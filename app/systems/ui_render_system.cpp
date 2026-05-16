@@ -91,41 +91,24 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
         SetMouseScale(inv_scale, inv_scale);
     }
 
-    // Dynamic screens that still need specialized rendering
-    switch (gs.phase) {
-        case GamePhase::Title: {
-            render_title_screen_ui(reg);
-            break;
-        }
-        case GamePhase::LevelSelect: {
-            render_level_select_screen_ui(reg);
-            break;
-        }
-        case GamePhase::Playing: {
-            render_gameplay_hud_screen_ui(reg);
-            break;
-        }
-        case GamePhase::Paused: {
-            render_paused_screen_ui(reg);
-            break;
-        }
-        case GamePhase::GameOver: {
-            render_game_over_screen_ui(reg);
-            break;
-        }
-        case GamePhase::SongComplete: {
-            render_song_complete_screen_ui(reg);
-            break;
-        }
-        case GamePhase::Settings: {
-            render_settings_screen_ui(reg);
-            break;
-        }
-        case GamePhase::Tutorial: {
-            render_tutorial_screen_ui(reg);
-            break;
-        }
-    }
+    // Dynamic screens that still need specialized rendering.
+    //
+    // Per Fabian's existential processing (issue #1202/#1204, PR D): each
+    // former `case GamePhase::X` is its own per-tag transform on the ctx-tag
+    // mirror seeded by `sync_game_phase_tags()` / `enter_phase()`. The mirror
+    // invariant pinned by `tests/test_game_phase_tags.cpp` guarantees that
+    // exactly one `GamePhase*Tag` is present at any time, so these eight
+    // `if` blocks are mutually exclusive even without `else` chaining and
+    // dispatch on tag presence rather than on an enum compare.
+    const auto& ctx = reg.ctx();
+    if (ctx.contains<GamePhaseTitleTag>())        { render_title_screen_ui(reg); }
+    if (ctx.contains<GamePhaseLevelSelectTag>())  { render_level_select_screen_ui(reg); }
+    if (ctx.contains<GamePhasePlayingTag>())      { render_gameplay_hud_screen_ui(reg); }
+    if (ctx.contains<GamePhasePausedTag>())       { render_paused_screen_ui(reg); }
+    if (ctx.contains<GamePhaseGameOverTag>())     { render_game_over_screen_ui(reg); }
+    if (ctx.contains<GamePhaseSongCompleteTag>()) { render_song_complete_screen_ui(reg); }
+    if (ctx.contains<GamePhaseSettingsTag>())     { render_settings_screen_ui(reg); }
+    if (ctx.contains<GamePhaseTutorialTag>())     { render_tutorial_screen_ui(reg); }
 
     // Restore raw mouse transform for non-UI systems in subsequent frames.
     SetMouseOffset(0, 0);
