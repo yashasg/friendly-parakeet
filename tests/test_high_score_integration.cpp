@@ -3,6 +3,7 @@
 #include <fstream>
 
 #include "components/high_score.h"
+#include "tags/tags.h"
 #include "util/level_content_config.h"
 #include "entities/camera_entity.h"
 #include "entities/obstacle_entity.h"
@@ -292,7 +293,7 @@ TEST_CASE("High score integration: missing active entry does not report new best
 
     CHECK(current.value == 1000);
     CHECK_FALSE(reg.ctx().get<TerminalResultState>().new_best);
-    CHECK_FALSE(reg.ctx().get<HighScorePersistence>().dirty);
+    CHECK_FALSE(reg.ctx().contains<HighScoreDirtyTag>());
     CHECK(high_score::get_score(high_scores, "overflow|hard") == 0);
 }
 
@@ -326,7 +327,7 @@ TEST_CASE("High score integration: failed save keeps dirty state for retry",
     game_state_system(reg, 0.016f);
 
     const auto& persistence_state = reg.ctx().get<HighScorePersistence>();
-    CHECK(persistence_state.dirty);
+    CHECK(reg.ctx().contains<HighScoreDirtyTag>());
     CHECK(persistence_state.last_save.status == persistence::Status::DirectoryCreateFailed);
 
     remove_path(root);
@@ -338,7 +339,7 @@ TEST_CASE("High score integration: failed save keeps dirty state for retry",
     game_state_system(reg, 0.016f);
 
     const auto& retried_persistence = reg.ctx().get<HighScorePersistence>();
-    CHECK_FALSE(retried_persistence.dirty);
+    CHECK_FALSE(reg.ctx().contains<HighScoreDirtyTag>());
     CHECK(retried_persistence.last_save.status == persistence::Status::Success);
 
     HighScoreState loaded;

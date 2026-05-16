@@ -132,9 +132,7 @@ void render_settings_screen_ui(entt::registry& reg) {
     }
 
     if (settings_changed) {
-        if (auto* persistence_state = find_settings_persistence(reg)) {
-            settings::mark_dirty_and_save(*persistence_state, *st);
-        }
+        settings::mark_dirty_and_save(reg, *st);
     }
 
     if (close_pressed) {

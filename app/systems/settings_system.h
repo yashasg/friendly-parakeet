@@ -22,7 +22,11 @@ namespace settings {
 
 persistence::Result load_settings(SettingsState& state, const std::filesystem::path& path);
 persistence::Result save_settings(const SettingsState& state, const std::filesystem::path& path);
-void mark_dirty_and_save(SettingsPersistence& persistence_state, const SettingsState& state);
+// Mark the settings as needing a save and attempt persistence. On success
+// the SettingsDirtyTag is removed from the settings entity; on failure the
+// tag remains so a later call retries. The settings entity must exist
+// (created via create_settings_entity).
+void mark_dirty_and_save(entt::registry& reg, const SettingsState& state);
 persistence::Result get_settings_file_path(
     std::filesystem::path& out_path,
     const std::filesystem::path& root_override = {});

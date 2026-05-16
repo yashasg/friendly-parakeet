@@ -1,4 +1,5 @@
 #include "play_session.h"
+#include "tags/tags.h"
 #include "../components/game_state.h"
 #include "../components/player.h"
 #include "../components/transform.h"
@@ -101,6 +102,11 @@ void setup_play_session(entt::registry& reg) {
     SettingsState settings = previous_settings ? *previous_settings : SettingsState{};
     SettingsPersistence settings_persistence =
         previous_settings_persistence ? *previous_settings_persistence : SettingsPersistence{};
+    bool settings_was_dirty = false;
+    if (restore_settings) {
+        auto dirty_view = reg.view<SettingsTag, SettingsDirtyTag>();
+        settings_was_dirty = dirty_view.begin() != dirty_view.end();
+    }
 
     reg.clear();
 
@@ -109,7 +115,11 @@ void setup_play_session(entt::registry& reg) {
     create_energy_bar_entity(reg);
     create_beat_map_entity(reg);
     if (restore_settings) {
-        create_settings_entity(reg, settings, settings_persistence);
+        const auto settings_entity =
+            create_settings_entity(reg, settings, settings_persistence);
+        if (settings_was_dirty) {
+            reg.emplace<SettingsDirtyTag>(settings_entity);
+        }
     }
 
     // Load beatmap from level selection. BeatMap is an entity singleton whose

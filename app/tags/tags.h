@@ -139,6 +139,25 @@ struct TimingBadTag     {};
 struct BeatMapTag {};
 struct SettingsTag {};
 
+// ── Persistence dirty flags (existence = needs save) ─────────
+// Replaces the former `bool dirty` columns on `SettingsPersistence` and
+// `HighScorePersistence` per Fabian relational normalization (issue #1203
+// "Apply relational normalization to god-class component bundles"). A
+// "dirty" state-machine flag is a NULL-column in disguise: meaningful only
+// while a save is pending. Per Fabian's existential processing, that
+// pending-state is its own zero-column table; presence on the owning
+// entity / ctx is the entire signal.
+//
+// `SettingsDirtyTag` lives on the singleton SettingsTag entity (matches
+// the entity-level SettingsPersistence component).
+// `HighScoreDirtyTag` lives on `registry.ctx()` (matches the ctx-level
+// HighScorePersistence singleton).
+//
+// Writers: `settings::mark_dirty_and_save()`, `update_and_persist_high_score()`.
+// Test helpers: emplace / remove the tag directly via the registry / ctx.
+struct SettingsDirtyTag  {};
+struct HighScoreDirtyTag {};
+
 // ── Game phase (per-tag ctx tables; exactly one present at any time) ──
 // Per Fabian's existential processing (issue #1202/#1204), each former
 // GamePhase enum value gets its own zero-column table on `registry.ctx()`.

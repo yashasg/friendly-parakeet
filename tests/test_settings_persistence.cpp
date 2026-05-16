@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "entities/settings.h"
+#include "tags/tags.h"
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -280,12 +281,14 @@ TEST_CASE("Settings persistence runtime: mark_dirty_and_save persists and clears
     state.reduce_motion = true;
     state.ftue_run_count = 1;
 
-    SettingsPersistence persistence_state;
-    persistence_state.path = file.string();
+    entt::registry reg;
+    SettingsPersistence persistence;
+    persistence.path = file.string();
+    const auto entity = create_settings_entity(reg, state, std::move(persistence));
 
-    settings::mark_dirty_and_save(persistence_state, state);
-    CHECK_FALSE(persistence_state.dirty);
-    CHECK(persistence_state.last_save.status == persistence::Status::Success);
+    settings::mark_dirty_and_save(reg, state);
+    CHECK_FALSE(reg.all_of<SettingsDirtyTag>(entity));
+    CHECK(reg.get<SettingsPersistence>(entity).last_save.status == persistence::Status::Success);
     CHECK(std::filesystem::exists(file));
 
     SettingsState loaded;
@@ -301,12 +304,13 @@ TEST_CASE("Settings persistence runtime: mark_dirty_and_save persists and clears
 TEST_CASE("Settings persistence runtime: mark_dirty_and_save keeps dirty when path unavailable",
           "[settings][issue-303]") {
     SettingsState state;
-    SettingsPersistence persistence_state;
+    entt::registry reg;
+    const auto entity = create_settings_entity(reg, state);
 
-    settings::mark_dirty_and_save(persistence_state, state);
+    settings::mark_dirty_and_save(reg, state);
 
-    CHECK(persistence_state.dirty);
-    CHECK(persistence_state.last_save.status == persistence::Status::PathUnavailable);
+    CHECK(reg.all_of<SettingsDirtyTag>(entity));
+    CHECK(reg.get<SettingsPersistence>(entity).last_save.status == persistence::Status::PathUnavailable);
 }
 
 TEST_CASE("Persistence paths: one shared policy resolves both settings and high-score files", "[settings]") {

@@ -2,6 +2,7 @@
 #include "game_phase_transition.h"
 #include "audio_events.h"
 #include "haptics.h"
+#include "tags/tags.h"
 #include "../components/high_score.h"
 #include "../components/rhythm.h"
 #include "../components/scoring.h"
@@ -9,8 +10,10 @@
 
 namespace {
 
-void persist_dirty_high_scores(const HighScoreState& high_scores, HighScorePersistence& persistence) {
-    if (!persistence.dirty) return;
+void persist_dirty_high_scores(entt::registry& reg,
+                               const HighScoreState& high_scores,
+                               HighScorePersistence& persistence) {
+    if (!reg.ctx().contains<HighScoreDirtyTag>()) return;
 
     if (persistence.path.empty()) {
         persistence.last_save = persistence::Result{persistence::Status::PathUnavailable, {}};
@@ -19,7 +22,7 @@ void persist_dirty_high_scores(const HighScoreState& high_scores, HighScorePersi
 
     persistence.last_save = high_score::save_high_scores(high_scores, persistence.path);
     if (persistence.last_save.ok()) {
-        persistence.dirty = false;
+        reg.ctx().erase<HighScoreDirtyTag>();
     }
 }
 
@@ -41,9 +44,9 @@ bool update_and_persist_high_score(entt::registry& reg) {
         }
         if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
             if (score_exceeds_high_score && recorded_new_high_score && has_active_high_score_key) {
-                hp->dirty = true;
+                reg.ctx().emplace<HighScoreDirtyTag>();
             }
-            persist_dirty_high_scores(*hs, *hp);
+            persist_dirty_high_scores(reg, *hs, *hp);
         }
     } else if (score_exceeds_high_score) {
         current.value = score.score;
