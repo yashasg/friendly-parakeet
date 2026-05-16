@@ -93,6 +93,25 @@ void continue_button_action(entt::registry& reg, entt::entity /*entity*/) {
     tutorial_screen_continue(reg);
 }
 
+// Title screen actions (issue #1294).
+//
+// `exit_button_action`: native-only quit. On PLATFORM_WEB the ExitButton
+// entity carries `UiHiddenOnWebTag` and is skipped by `ui_update_system`
+// before dispatch, so the platform guard here is defense-in-depth — the
+// handler also covers callers (e.g. tests) that simulate a press by
+// invoking the dispatcher directly.
+void exit_button_action(entt::registry& reg, entt::entity /*entity*/) {
+#ifndef PLATFORM_WEB
+    reg.ctx().get<InputState>().quit_requested = true;
+#else
+    (void)reg;
+#endif
+}
+
+void settings_button_action(entt::registry& reg, entt::entity /*entity*/) {
+    request_phase_transition<NextPhaseSettingsTag>(reg);
+}
+
 // ── Dispatch table ──────────────────────────────────────────────────
 //
 // Order must match the `ActionId` enumerator order in
@@ -108,7 +127,7 @@ constexpr std::array<ActionHandler, 17> kActionHandlers = {
     /* DifficultyEasy       */ &noop_action_handler,
     /* DifficultyHard       */ &noop_action_handler,
     /* DifficultyMedium     */ &noop_action_handler,
-    /* ExitButton           */ &noop_action_handler,
+    /* ExitButton           */ &exit_button_action,
     /* HapticsToggle        */ &noop_action_handler,
     /* LevelSelectButton    */ &level_select_button_action,
     /* MenuButton           */ &menu_button_action,
@@ -116,7 +135,7 @@ constexpr std::array<ActionHandler, 17> kActionHandlers = {
     /* ReduceMotionToggle   */ &noop_action_handler,
     /* RestartButton        */ &restart_button_action,
     /* ResumeButton         */ &resume_button_action,
-    /* SettingsButton       */ &noop_action_handler,
+    /* SettingsButton       */ &settings_button_action,
 };
 
 // Bumping ActionId without bumping kActionHandlers (or vice versa) is a
@@ -178,7 +197,15 @@ void ui_update_system(entt::registry& reg) {
     const Vector2 pointer = {input.end_x, input.end_y};
 
     // First-hit wins, matching raygui's GuiButton dispatch order.
-    auto view = reg.view<UiPosition, UiBounds, OnPress, UiButtonTag>();
+    // Entities carrying `UiHiddenOnWebTag` (e.g. Title-screen ExitButton on
+    // Web per #511) are excluded from dispatch on PLATFORM_WEB — they still
+    // occupy bounds for tap-anywhere dead-zone purposes elsewhere (see
+    // `title_start_tap_system`), but pressing them must not fire an action.
+    auto view = reg.view<UiPosition, UiBounds, OnPress, UiButtonTag>(
+#ifdef PLATFORM_WEB
+        entt::exclude<UiHiddenOnWebTag>
+#endif
+    );
     for (auto [e, pos, sz, on_press] : view.each()) {
         const Rectangle rect{pos.x, pos.y, sz.w, sz.h};
         if (!CheckCollisionPointRec(pointer, rect)) continue;

@@ -251,3 +251,29 @@ struct SettingsScreenTag     {};
 struct UiLabelTag    {};
 struct UiButtonTag   {};
 struct UiDummyRecTag {};
+
+// ── UI shape-icon kind (per-shape table) ─────────────────────
+// Per Fabian's existential processing (issue #1202/#1204), the "which
+// flat 2D shape should this UiDummyRecTag entity render as?" data is
+// presence of one of these tags rather than a `Shape`-typed field. The
+// codegen attaches the matching tag to `.rgl` `UiDummyRecTag` controls
+// whose name is `ShapeCircle` / `ShapeSquare` / `ShapeTriangle` /
+// `ShapeHexagon` (see `tools/rguilayout/codegen.py` NAME_EXTRA_TAGS).
+//
+// `ui_render_system` iterates one view per tag and calls the matching
+// row from `app/util/shape_draw_2d.h` (Fabian Principle 1 lookup table).
+struct UiShapeIconCircleTag   {};
+struct UiShapeIconSquareTag   {};
+struct UiShapeIconTriangleTag {};
+struct UiShapeIconHexagonTag  {};
+
+// ── UI per-platform visibility (existence = hidden) ──────────
+// Per Fabian's existential processing, "hide this entity on Web" is a
+// zero-column table; presence on a UI entity is the entire signal. The
+// renderer and `ui_update_system` skip entities carrying this tag on
+// `PLATFORM_WEB` (the entity still exists for hit-test / dead-zone
+// purposes — e.g. Title screen's ExitButton is invisible on Web but its
+// bounds still gate the tap-anywhere → LevelSelect gesture, #511).
+// Codegen attaches this tag to `.rgl` entities whose name is in the
+// NAME_EXTRA_TAGS web-hidden list (`tools/rguilayout/codegen.py`).
+struct UiHiddenOnWebTag {};

@@ -11,8 +11,8 @@
 #include "../components/ui.h"
 #include "../constants.h"
 #include "../tags/tags.h"
+#include "../util/shape_draw_2d.h"
 
-#include "../ui/screen_controllers/title_screen_controller.h"
 #include "../ui/screen_controllers/settings_screen_controller.h"
 #include "../ui/screen_controllers/level_select_screen_controller.h"
 #include "../ui/screen_controllers/gameplay_hud_screen_controller.h"
@@ -92,13 +92,49 @@ void render_ui_entities(entt::registry& reg) {
     // Buttons — rendered with GuiButton. Press dispatch lives in
     // `ui_update_system`; ignoring the return value keeps that path the
     // single source of truth for button activation.
+    //
+    // `UiHiddenOnWebTag` entities (Title-screen ExitButton on Web per #511)
+    // are skipped to keep the button invisible on Web — their bounds still
+    // act as a tap-anywhere dead-zone via `title_start_tap_system`.
     {
         GuiSetStyle(DEFAULT, TEXT_SIZE, kEntityButtonTextSize);
-        auto view = reg.view<UiPosition, UiBounds, UiLabel, UiButtonTag>();
+        auto view = reg.view<UiPosition, UiBounds, UiLabel, UiButtonTag>(
+#ifdef PLATFORM_WEB
+            entt::exclude<UiHiddenOnWebTag>
+#endif
+        );
         for (auto [e, pos, sz, label] : view.each()) {
             (void)e;
             (void)GuiButton(Rectangle{pos.x, pos.y, sz.w, sz.h}, label.text.data());
         }
+    }
+
+    // Shape icons — per-shape tag table; each row picks one row of
+    // `shape_draw_2d::kFlatDrawFns`. No `switch` on a discriminator
+    // (Fabian Principle 1). Used today by the Title screen's three shape
+    // preview entities (issue #1294); any `.rgl` UiDummyRec named
+    // ShapeCircle / ShapeSquare / ShapeTriangle / ShapeHexagon picks up
+    // the matching tag via `tools/rguilayout/codegen.py`.
+    {
+        constexpr Color kShapeIconColor{200, 230, 255, 255};
+
+        auto draw_for_tag = []<typename Tag>(entt::registry& r,
+                                             Shape shape,
+                                             Color color) {
+            auto v = r.view<UiPosition, UiBounds, Tag>();
+            for (auto [e, pos, sz] : v.each()) {
+                (void)e;
+                const float cx   = pos.x + sz.w * 0.5f;
+                const float cy   = pos.y + sz.h * 0.5f;
+                const float size = std::min(sz.w, sz.h);
+                shape_draw_2d::draw_flat(shape, cx, cy, size, color);
+            }
+        };
+
+        draw_for_tag.template operator()<UiShapeIconCircleTag>  (reg, Shape::Circle,   kShapeIconColor);
+        draw_for_tag.template operator()<UiShapeIconSquareTag>  (reg, Shape::Square,   kShapeIconColor);
+        draw_for_tag.template operator()<UiShapeIconTriangleTag>(reg, Shape::Triangle, kShapeIconColor);
+        draw_for_tag.template operator()<UiShapeIconHexagonTag> (reg, Shape::Hexagon,  kShapeIconColor);
     }
 
     GuiSetStyle(LABEL, TEXT_ALIGNMENT, saved_label_alignment);
@@ -179,10 +215,9 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     //
     // Paused was migrated to the entity-driven path (#1287 pilot);
     // Tutorial migrated in #1291; Song Complete migrated in #1292; Game
-    // Over migrated in #1293. The remaining four screens migrate in
-    // follow-up sub-issues — see #1287.
+    // Over migrated in #1293; Title migrated in #1294. The remaining three
+    // screens migrate in follow-up sub-issues — see #1287.
     const auto& ctx = reg.ctx();
-    if (ctx.contains<GamePhaseTitleTag>())        { render_title_screen_ui(reg); }
     if (ctx.contains<GamePhaseLevelSelectTag>())  { render_level_select_screen_ui(reg); }
     if (ctx.contains<GamePhasePlayingTag>())      { render_gameplay_hud_screen_ui(reg); }
     if (ctx.contains<GamePhaseSettingsTag>())     { render_settings_screen_ui(reg); }
