@@ -31,6 +31,7 @@
 #include "systems/screen_lifecycle_system.h"
 #include "systems/game_over_scoreboard_bind_system.h"
 #include "systems/song_complete_scoreboard_bind_system.h"
+#include "systems/title_start_tap_system.h"
 #include "systems/tutorial_dodge_hint_bind_system.h"
 #include "systems/ui_update_system.h"
 
@@ -283,6 +284,7 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
     compute_screen_transform(reg);
     input_system(reg, raw_dt);
     ui_update_system(reg);
+    title_start_tap_system(reg);
     gameplay_hud_process_button_input(reg);
     test_player_system(reg, raw_dt);
 

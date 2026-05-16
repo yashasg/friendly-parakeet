@@ -54,6 +54,31 @@ RGL_TYPES: Dict[int, Tuple[str, bool]] = {
 }
 
 
+# ── Per-control-name extra tags ─────────────────────────────────────────
+# Names → list of extra existential tags emitted on the entity alongside
+# the per-kind tag. Per Fabian's existential processing (issue #1202/#1204),
+# "which flat 2D icon does this slot render?" / "which entities are hidden
+# on PLATFORM_WEB?" are tag-presence rows rather than discriminator fields.
+#
+# Adding a new name → tag mapping: the tag must already exist in
+# `app/tags/tags.h`; the codegen does not generate tag declarations.
+NAME_EXTRA_TAGS: Dict[str, Tuple[str, ...]] = {
+    # Title-screen shape preview icons. The renderer iterates one view per
+    # shape tag (see `ui_render_system.cpp`) and calls the matching row of
+    # `shape_draw_2d::kFlatDrawFns`.
+    "ShapeCircle":   ("UiShapeIconCircleTag",),
+    "ShapeSquare":   ("UiShapeIconSquareTag",),
+    "ShapeTriangle": ("UiShapeIconTriangleTag",),
+    "ShapeHexagon":  ("UiShapeIconHexagonTag",),
+    # Title-screen ExitButton is invisible on Web per #511 but still
+    # functions as a tap-anywhere dead-zone. `ui_render_system` and
+    # `ui_update_system` skip entities carrying this tag under
+    # PLATFORM_WEB; `title_start_tap_system` keeps treating their bounds
+    # as a dead-zone (defense-in-depth).
+    "ExitButton":    ("UiHiddenOnWebTag",),
+}
+
+
 # Map of screen-file stem → per-screen tag name. The codegen aborts if a
 # `.rgl` is passed whose stem isn't in this table — the per-screen tag must
 # exist in `app/tags/tags.h` before the codegen will emit a spawner for it.
@@ -234,6 +259,8 @@ def emit_spawner_cpp(layout: Layout, path: Path) -> str:
         a(f"        auto e = reg.create();")
         a(f"        reg.emplace<{screen_tag}>(e);")
         a(f"        reg.emplace<{kind_tag}>(e);")
+        for extra_tag in NAME_EXTRA_TAGS.get(c.name, ()):
+            a(f"        reg.emplace<{extra_tag}>(e);")
         a(f"        reg.emplace<UiPosition>(e, {_fmt_float(abs_x)}, {_fmt_float(abs_y)});")
         a(f"        reg.emplace<UiBounds>(e, {_fmt_float(c.w)}, {_fmt_float(c.h)});")
         a(f"        auto& label = reg.emplace<UiLabel>(e);")

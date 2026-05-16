@@ -32,6 +32,7 @@
 #include "systems/screen_lifecycle_system.h"
 #include "systems/settings_system.h"
 #include "systems/song_complete_scoreboard_bind_system.h"
+#include "systems/title_start_tap_system.h"
 #include "systems/tutorial_dodge_hint_bind_system.h"
 #include "systems/ui_update_system.h"
 #include "tags/tags.h"
@@ -680,3 +681,206 @@ TEST_CASE("game_over_scoreboard_bind_system: no-op when Game Over entities absen
     game_over_scoreboard_bind_system(reg);
     CHECK(reg.view<GameOverScreenTag>().size() == 0);
 }
+
+// ── Title migration (issue #1294) ─────────────────────────────────────
+
+namespace {
+
+void prime_title_entry(entt::registry& reg) {
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
+    spawn_title_screen(reg);
+    reg.ctx().get<GameState>().phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.05f;
+    clear_next_phase_tags(reg);
+}
+
+}  // namespace
+
+TEST_CASE("screen_lifecycle_system: spawns Title entities on phase entry, "
+          "despawns on exit",
+          "[ui][screen_lifecycle_system][issue1294]") {
+    entt::registry reg = make_registry();
+    clear_next_phase_tags(reg);
+
+    // Pre-condition: not on Title.
+    sync_game_phase_tags<GamePhasePausedTag>(reg);
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<TitleScreenTag>().size() == 0);
+
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<TitleScreenTag>().size() > 0);
+
+    const auto count_after_first_spawn = reg.view<TitleScreenTag>().size();
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<TitleScreenTag>().size() == count_after_first_spawn);
+
+    sync_game_phase_tags<GamePhasePlayingTag>(reg);
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<TitleScreenTag>().size() == 0);
+}
+
+TEST_CASE("Title shape preview entities carry per-shape icon tags (issue #1294)",
+          "[ui][title][codegen]") {
+    entt::registry reg;
+    spawn_title_screen(reg);
+
+    // Exactly one icon entity per shape (Hexagon not present on the Title
+    // screen; codegen NAME_EXTRA_TAGS only declares the three preview shapes).
+    CHECK(reg.view<UiShapeIconCircleTag>().size()   == 1);
+    CHECK(reg.view<UiShapeIconSquareTag>().size()   == 1);
+    CHECK(reg.view<UiShapeIconTriangleTag>().size() == 1);
+    CHECK(reg.view<UiShapeIconHexagonTag>().size()  == 0);
+
+    // Each icon entity also carries the parent screen tag plus UiDummyRecTag
+    // (Fabian existential mechanic — icon kind is presence, not a Shape field).
+    auto circles = reg.view<UiShapeIconCircleTag, TitleScreenTag, UiDummyRecTag>();
+    CHECK(circles.size_hint() > 0);
+}
+
+TEST_CASE("Title ExitButton carries UiHiddenOnWebTag (#511, issue #1294)",
+          "[ui][title][codegen]") {
+    entt::registry reg;
+    spawn_title_screen(reg);
+
+    auto exit_view = reg.view<OnPress, UiHiddenOnWebTag, TitleScreenTag>();
+    int matches = 0;
+    for (auto [e, on_press] : exit_view.each()) {
+        (void)e;
+        CHECK(on_press.action == ActionId::ExitButton);
+        ++matches;
+    }
+    CHECK(matches == 1);
+}
+
+#ifndef PLATFORM_WEB
+TEST_CASE("ui_update_system: Title ExitButton press sets quit_requested (#1294)",
+          "[ui][ui_update_system][issue1294]") {
+    entt::registry reg = make_registry();
+    prime_title_entry(reg);
+
+    auto& input = reg.ctx().get<InputState>();
+    // ExitButton bounds from title.rgl: (260, 1080, 200, 56).
+    click_at(input, 360.0f, 1108.0f);
+
+    ui_update_system(reg);
+
+    CHECK(input.quit_requested);
+    CHECK_FALSE(any_next_phase_pending(reg));
+}
+#endif
+
+TEST_CASE("ui_update_system: Title SettingsButton press requests Settings phase (#1294)",
+          "[ui][ui_update_system][issue1294]") {
+    entt::registry reg = make_registry();
+    prime_title_entry(reg);
+
+    auto& input = reg.ctx().get<InputState>();
+    // SettingsButton bounds from title.rgl: (632, 1170, 64, 64).
+    click_at(input, 664.0f, 1202.0f);
+
+    ui_update_system(reg);
+
+    CHECK(reg.ctx().contains<NextPhaseSettingsTag>());
+    CHECK_FALSE(input.quit_requested);
+}
+
+TEST_CASE("title_start_tap_system: tap outside button bounds requests LevelSelect (#1294)",
+          "[ui][title_start_tap_system][issue1294]") {
+    entt::registry reg = make_registry();
+    prime_title_entry(reg);
+
+    auto& input = reg.ctx().get<InputState>();
+    // Centre of the "TAP TO START" label — definitely not in any button.
+    click_at(input, 360.0f, 668.0f);
+
+    title_start_tap_system(reg);
+
+    CHECK(reg.ctx().contains<NextPhaseLevelSelectTag>());
+}
+
+TEST_CASE("title_start_tap_system: tap on SettingsButton bounds does NOT start (#1294)",
+          "[ui][title_start_tap_system][issue1294]") {
+    entt::registry reg = make_registry();
+    prime_title_entry(reg);
+
+    auto& input = reg.ctx().get<InputState>();
+    click_at(input, 664.0f, 1202.0f);  // inside Settings button bounds
+
+    title_start_tap_system(reg);
+
+    CHECK_FALSE(reg.ctx().contains<NextPhaseLevelSelectTag>());
+}
+
+TEST_CASE("title_start_tap_system: tap on ExitButton bounds is a dead-zone on every platform (#511, #1294)",
+          "[ui][title_start_tap_system][issue1294]") {
+    entt::registry reg = make_registry();
+    prime_title_entry(reg);
+
+    auto& input = reg.ctx().get<InputState>();
+    // Inside the ExitButton bounds (260, 1080, 200, 56).
+    click_at(input, 360.0f, 1108.0f);
+
+    title_start_tap_system(reg);
+
+    // Must remain a dead-zone on every platform: the entity is invisible on
+    // Web (UiHiddenOnWebTag) but its bounds still gate the start gesture.
+    CHECK_FALSE(reg.ctx().contains<NextPhaseLevelSelectTag>());
+}
+
+TEST_CASE("title_start_tap_system: respects UI_ENTRY_DEBOUNCE (#1294)",
+          "[ui][title_start_tap_system][issue1294]") {
+    entt::registry reg = make_registry();
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
+    spawn_title_screen(reg);
+    clear_next_phase_tags(reg);
+
+    auto& gs = reg.ctx().get<GameState>();
+    gs.phase_timer = constants::UI_ENTRY_DEBOUNCE * 0.5f;  // before debounce
+
+    auto& input = reg.ctx().get<InputState>();
+    click_at(input, 360.0f, 668.0f);
+
+    title_start_tap_system(reg);
+
+    CHECK_FALSE(reg.ctx().contains<NextPhaseLevelSelectTag>());
+}
+
+TEST_CASE("title_start_tap_system: no-op when GamePhaseTitleTag absent (#1294)",
+          "[ui][title_start_tap_system][issue1294]") {
+    entt::registry reg = make_registry();
+    sync_game_phase_tags<GamePhasePausedTag>(reg);
+    clear_next_phase_tags(reg);
+
+    auto& input = reg.ctx().get<InputState>();
+    click_at(input, 360.0f, 668.0f);
+
+    title_start_tap_system(reg);
+
+    CHECK_FALSE(reg.ctx().contains<NextPhaseLevelSelectTag>());
+}
+
+TEST_CASE("title_start_tap_system: idle frame (no click/touch_up) is a no-op (#1294)",
+          "[ui][title_start_tap_system][issue1294]") {
+    entt::registry reg = make_registry();
+    prime_title_entry(reg);
+
+    title_start_tap_system(reg);  // no click_at — InputState all-default
+
+    CHECK_FALSE(reg.ctx().contains<NextPhaseLevelSelectTag>());
+}
+
+#ifdef PLATFORM_WEB
+TEST_CASE("ui_update_system: PLATFORM_WEB skips UiHiddenOnWebTag entities (#511, #1294)",
+          "[ui][ui_update_system][issue1294][web]") {
+    entt::registry reg = make_registry();
+    prime_title_entry(reg);
+
+    auto& input = reg.ctx().get<InputState>();
+    click_at(input, 360.0f, 1108.0f);  // ExitButton centre
+
+    ui_update_system(reg);
+
+    CHECK_FALSE(input.quit_requested);
+    CHECK_FALSE(any_next_phase_pending(reg));
+}
+#endif

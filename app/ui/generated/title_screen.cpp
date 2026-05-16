@@ -17,6 +17,7 @@ void spawn_title_screen(entt::registry& reg) {
         auto e = reg.create();
         reg.emplace<TitleScreenTag>(e);
         reg.emplace<UiDummyRecTag>(e);
+        reg.emplace<UiShapeIconCircleTag>(e);
         reg.emplace<UiPosition>(e, 280.0f, 401.0f);
         reg.emplace<UiBounds>(e, 80.0f, 80.0f);
         auto& label = reg.emplace<UiLabel>(e);
@@ -27,6 +28,7 @@ void spawn_title_screen(entt::registry& reg) {
         auto e = reg.create();
         reg.emplace<TitleScreenTag>(e);
         reg.emplace<UiDummyRecTag>(e);
+        reg.emplace<UiShapeIconSquareTag>(e);
         reg.emplace<UiPosition>(e, 360.0f, 401.0f);
         reg.emplace<UiBounds>(e, 80.0f, 80.0f);
         auto& label = reg.emplace<UiLabel>(e);
@@ -37,6 +39,7 @@ void spawn_title_screen(entt::registry& reg) {
         auto e = reg.create();
         reg.emplace<TitleScreenTag>(e);
         reg.emplace<UiDummyRecTag>(e);
+        reg.emplace<UiShapeIconTriangleTag>(e);
         reg.emplace<UiPosition>(e, 440.0f, 401.0f);
         reg.emplace<UiBounds>(e, 80.0f, 80.0f);
         auto& label = reg.emplace<UiLabel>(e);
@@ -67,6 +70,7 @@ void spawn_title_screen(entt::registry& reg) {
         auto e = reg.create();
         reg.emplace<TitleScreenTag>(e);
         reg.emplace<UiButtonTag>(e);
+        reg.emplace<UiHiddenOnWebTag>(e);
         reg.emplace<UiPosition>(e, 260.0f, 1080.0f);
         reg.emplace<UiBounds>(e, 200.0f, 56.0f);
         auto& label = reg.emplace<UiLabel>(e);
