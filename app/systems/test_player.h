@@ -1,10 +1,16 @@
 #pragma once
 
-#include "../components/player.h"
 #include "tags/tags.h"
 #include <entt/entity/entity.hpp>
 #include <cstdint>
 #include <random>
+
+// Per-shape press dispatch row (defined in test_player_system.cpp).
+// Forward-declared so this header does not depend on entt::dispatcher or
+// the input-event types. Identity-is-the-choice (Fabian): the pointer's
+// value IS the shape choice — there is no enum compared at any consumer
+// site. See `app/systems/test_player_system.cpp` for the table.
+struct ShapePressSpec;
 
 // ── Skill config (per-skill data row) ────────────────────────
 // Per Fabian's existential-processing canon (.squad/decisions.md
@@ -26,25 +32,30 @@ inline constexpr SkillConfig SKILL_GOOD { 600.0f, 0.500f, 0.800f, false, "good" 
 inline constexpr SkillConfig SKILL_BAD  { 400.0f, 0.800f, 1.200f, false, "bad"  };
 
 // ── Queued action (value type, NOT a component) ──────────────
-// Sentinel values encode "no action needed":
-//   target_shape  = Hexagon         → no shape change
+// Sentinel-free choice encoding:
+//   shape_press   = nullptr         → no shape change (identity-is-the-choice)
 //   target_lane   = -1              → no lane change
 //   !wants_jump && !wants_slide     → no vertical action
 //
 // Per-sub-action completion is tracked as three independent boolean
 // columns (formerly an `ActionDoneBit` bitmask). Per Fabian's existential-
 // processing canon (.squad/decisions.md § DoD source-text grounding,
-// Principle 4), control-flow discriminators — including bitmask
-// discriminators and the former `VMode target_vertical` enum — become
-// per-case tables. For a value type, that's per-case columns on the
-// same row.
+// Principle 4), control-flow discriminators — including the former
+// `Shape target_shape = Shape::Hexagon` sentinel (issue #1202 PR C3),
+// the `ActionDoneBit` bitmask, and the `VMode target_vertical` enum —
+// become per-case tables. For a value type, the per-shape table is
+// reached through `shape_press` — a pointer into the per-row dispatch
+// table in `test_player_system.cpp`. `nullptr` means "no shape required"
+// (replaces the former `Shape::Hexagon` sentinel compare); a non-null
+// pointer carries both the press-enqueue function and the log labels
+// for that shape, so consumers never branch on a Shape value.
 struct TestPlayerAction {
     entt::entity obstacle       = entt::null;
     float        timer          = 0.0f;
     float        arrival_time   = 0.0f;
     float        shape_not_before_time = 0.0f;
 
-    Shape  target_shape         = Shape::Hexagon;
+    const ShapePressSpec* shape_press = nullptr;
     int8_t target_lane          = -1;
     bool   wants_jump           = false;
     bool   wants_slide          = false;
