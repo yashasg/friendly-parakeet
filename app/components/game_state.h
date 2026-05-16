@@ -3,85 +3,31 @@
 #include <cstdint>
 #include <entt/entt.hpp>
 
+// Phase-mirror, end-screen-choice, terminal-cause, and level-select-
+// confirmation tags formerly lived in this header. Per the single-tags-
+// header convention (`.squad/decisions.md` § "DoD source-text grounding
+// (Fabian)" Principle: tags single-header) and Fabian drift issue #1276,
+// they now live in `app/tags/tags.h` under the "Game phase mirrors",
+// "Pending phase transition", "End-screen menu choice", "Game-over cause",
+// and "Level-select confirmation latch" sections. The include below
+// keeps existing consumers (which expect these tags via `game_state.h`)
+// resolving.
+#include "tags/tags.h"
+
 // Per Fabian's existential processing (issue #1202/#1204): the former
 // `GamePhase` enum and its `GameState::phase`/`next_phase`/`transition_pending`
 // mirror fields have been eradicated. Active phase and pending-transition
 // requests are now expressed entirely as ctx-singleton tag presence on
 // `entt::registry` (see the `GamePhase*Tag` / `NextPhase*Tag` struct sets
-// below and `app/systems/game_phase_transition.h` for the API).
+// in `app/tags/tags.h` and `app/systems/game_phase_transition.h` for the API).
 struct GameState {
     float phase_timer = 0.0f;
 };
-
-// ── Game phase (per-tag ctx tables; exactly one present at any time) ──
-// Per Fabian's existential processing (issue #1202/#1204), each former
-// GamePhase enum value gets its own zero-column table on `registry.ctx()`.
-// Exactly one of these tags is present at any time; `enter_phase<...>()`
-// (see `systems/game_phase_transition.h`) is the sole writer.
-struct GamePhaseTitleTag        {};
-struct GamePhaseLevelSelectTag  {};
-struct GamePhasePlayingTag      {};
-struct GamePhasePausedTag       {};
-struct GamePhaseGameOverTag     {};
-struct GamePhaseSongCompleteTag {};
-struct GamePhaseSettingsTag     {};
-struct GamePhaseTutorialTag     {};
-
-// ── Pending phase transition (per-tag ctx tables) ──────────────────────
-// Per Fabian existential processing (issue #1202/#1204), the per-frame
-// "transition request" target is expressed as ctx-tag presence. UI / input
-// systems call `request_phase_transition<NextPhase*Tag>()` instead of
-// writing an enum field; `game_state_system` reads tag presence at the top
-// of its dispatch block, performs the per-tag swap, and drains the mirror
-// via `clear_next_phase_tags()`. Outside that block exactly zero
-// `NextPhase*Tag` ctx slots are present; inside it, exactly one.
-struct NextPhaseTitleTag        {};
-struct NextPhaseLevelSelectTag  {};
-struct NextPhasePlayingTag      {};
-struct NextPhasePausedTag       {};
-struct NextPhaseGameOverTag     {};
-struct NextPhaseSongCompleteTag {};
-struct NextPhaseSettingsTag     {};
-struct NextPhaseTutorialTag     {};
-
-// ── End-screen menu choice (per-choice ctx tables) ───────────
-// Per Fabian's existential processing (issue #1202/#1204), each former
-// EndScreenChoice value is its own zero-column table on `registry.ctx()`.
-// Presence of an EndChoice* tag signals the player's selection on a Game
-// Over or Song Complete screen; absence of all three is the "no choice
-// yet" state (what EndScreenChoice::None represented). One transform per
-// tag in `game_state_end_screen_system` consumes the choice when the
-// per-phase input delay has elapsed; until then the tag persists.
-struct EndChoiceRestart {};
-struct EndChoiceLevelSelect {};
-struct EndChoiceMainMenu {};
 
 struct LevelSelectState {
     int selected_level      = 0;
     int selected_difficulty  = 1;  // default medium
 };
-
-// ── Level-select confirmation latch (singleton ctx tag) ──────
-// Per Fabian's existential processing / relational normalization
-// (issues #1194, #1203): the former `LevelSelectState::confirmed` bool was a
-// one-shot latch with a different lifecycle than the selection bundle
-// (selection persists across phases; confirmation is a per-frame intent set
-// by UI on START and drained by game_state_system after the entry debounce).
-// Existence of this ctx tag is the data; absence is "not confirmed yet".
-// Matches the precedent set for `EndChoiceRestart` / `EndChoiceLevelSelect` /
-// `EndChoiceMainMenu` (player-choice latches on the end screens).
-struct LevelSelectConfirmedTag {};
-
-// ── Game-over cause (per-cause ctx tables) ──────────────────
-// Per Fabian's existential processing, each former DeathCause value is its
-// own zero-column table on `registry.ctx()`. Presence of a *Death tag is the
-// data; absence of all *Death tags means "no terminal cause recorded" (what
-// the former DeathCause::None sentinel represented).
-//
-// The system that triggers the end-of-run condition emplaces the matching
-// tag; the Game Over screen controller reads tag presence to surface a
-// one-line, platform-neutral, colorblind-safe reason.
-struct EnergyDepletedDeath {};
 
 // ── Terminal Result Snapshot (singleton) ─────────────────────
 // Captured by game_state_terminal_phase_system at the moment of song
