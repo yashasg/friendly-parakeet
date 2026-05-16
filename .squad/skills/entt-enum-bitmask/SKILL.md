@@ -19,68 +19,60 @@ When an `enum class` represents a set of flags (not a single state), EnTT provid
 ### 1. Define the enum with power-of-two values + sentinel
 
 ```cpp
-// In game_state.h (or the relevant component header)
-enum class GamePhaseBit : uint8_t {
-    Title        = 1 << 0,
-    LevelSelect  = 1 << 1,
-    Playing      = 1 << 2,
-    Paused       = 1 << 3,
-    GameOver     = 1 << 4,
-    SongComplete = 1 << 5,
+// In test_player.h (or the relevant component/system header)
+enum class ActionDoneBit : uint8_t {
+    Shape    = 1 << 0,
+    Lane     = 1 << 1,
+    Vertical = 1 << 2,
     _entt_enum_as_bitmask   // sentinel — no value needed, just presence
 };
 ```
 
 `_entt_enum_as_bitmask` is detected by `entt::enum_as_bitmask<T>` via `std::void_t`. No `#include` beyond `<entt/entt.hpp>` is required.
 
-### 2. Use typed field in component
+### 2. Use typed field in a value type or component
 
 ```cpp
-struct ActiveInPhase {
-    GamePhaseBit phase_mask = GamePhaseBit{};  // default: no bits set
+struct TestPlayerAction {
+    // …other fields…
+    ActionDoneBit done_flags = ActionDoneBit{};  // default: no bits set
 };
 ```
 
-Default-construct `GamePhaseBit{}` for an empty mask (zero underlying value).
+Default-construct `ActionDoneBit{}` for an empty mask (zero underlying value).
 
-### 3. Bridge helper for state→bit conversion
+### 3. Check a bit using the !! double-not idiom
 
 ```cpp
-[[nodiscard]] constexpr GamePhaseBit to_phase_bit(GamePhase p) noexcept {
-    return static_cast<GamePhaseBit>(uint8_t{1} << static_cast<uint8_t>(p));
+static bool test_player_shape_done(const TestPlayerAction& action) {
+    return !!(action.done_flags & ActionDoneBit::Shape);
 }
 ```
 
-### 4. Spawn sites use typed literals and |
+`entt::operator!(ActionDoneBit)` returns `bool` (true if zero). `!!` inverts twice: "non-zero → true".
+
+### 4. Set a bit using compound-assign |=
 
 ```cpp
-// Single phase
-reg.emplace<ActiveInPhase>(btn, GamePhaseBit::Playing);
-
-// Multiple phases
-const GamePhaseBit mask = GamePhaseBit::GameOver | GamePhaseBit::SongComplete;
-reg.emplace<ActiveInPhase>(card, mask);
-```
-
-### 5. Phase check uses !! double-not idiom
-
-```cpp
-inline bool phase_active(const ActiveInPhase& aip, GamePhase phase) {
-    return !!(aip.phase_mask & to_phase_bit(phase));
+static void test_player_mark_shape_done(TestPlayerAction& action) {
+    action.done_flags |= ActionDoneBit::Shape;
 }
 ```
 
-`entt::operator!(GamePhaseBit)` returns `bool` (true if zero). `!!` inverts twice: "non-zero → true".
+### 5. Combine bits with typed |
+
+```cpp
+const ActionDoneBit all_handled =
+    ActionDoneBit::Shape | ActionDoneBit::Lane | ActionDoneBit::Vertical;
+```
 
 ## Examples
 
-- `app/components/game_state.h` — `GamePhaseBit` definition + `to_phase_bit`
-- `app/systems/input_events.h` — `ActiveInPhase`, `phase_active()`
-- `app/systems/ui_button_spawner.h` — spawn sites using typed literals
-- `tests/test_components.cpp` — `[phase_mask]` test cases
+- `app/systems/test_player.h` — `ActionDoneBit` definition + `TestPlayerAction::done_flags`
+- `app/systems/test_player_system.cpp` — `&` read sites and `|=` write sites
 
 ## Anti-Patterns
 
-- **Don't mix `uint8_t` and `GamePhaseBit`**: once the field is typed, all sites must use the typed enum. Implicit constructors are not provided.
-- **Don't add `_entt_enum_as_bitmask` to state-machine enums**: `GamePhase::Title | GamePhase::Playing` is meaningless and would compile, producing confusing bugs.
+- **Don't mix `uint8_t` and the typed enum**: once the field is typed, all sites must use the typed enum. Implicit constructors are not provided.
+- **Don't add `_entt_enum_as_bitmask` to state-machine enums** (single-value discriminants such as `GamePhase`): `Phase::A | Phase::B` is meaningless and would compile, producing confusing bugs. Per `#1202`/`#1204`, prefer per-value tags over discriminator enums entirely; only use this skill when a *true* bitmask is the right model.
 - **Don't use `static_cast<uint8_t>(mask) != 0`** when `!!(mask & bit)` is available — prefer the typed operators.

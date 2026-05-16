@@ -298,63 +298,6 @@ TEST_CASE("ecs: make_split_path creates proper entity", "[ecs]") {
     CHECK(reg.get<RequiredLane>(obs).lane == 2);
 }
 
-// ── GamePhaseBit typed mask tests ─────────────────────────
-
-TEST_CASE("GamePhaseBit: single-phase bit does not overlap others", "[phase_mask]") {
-    auto playing = GamePhaseBit::Playing;
-    CHECK( (playing & GamePhaseBit::Playing) == GamePhaseBit::Playing);
-    CHECK( (playing & GamePhaseBit::Title) != GamePhaseBit::Title);
-    CHECK( (playing & GamePhaseBit::LevelSelect) != GamePhaseBit::LevelSelect);
-    CHECK( (playing & GamePhaseBit::Paused) != GamePhaseBit::Paused);
-    CHECK( (playing & GamePhaseBit::GameOver) != GamePhaseBit::GameOver);
-    CHECK( (playing & GamePhaseBit::SongComplete) != GamePhaseBit::SongComplete);
-}
-
-TEST_CASE("GamePhaseBit: multi-phase OR mask covers both phases", "[phase_mask]") {
-    auto mask = GamePhaseBit::GameOver | GamePhaseBit::SongComplete;
-    CHECK((mask & GamePhaseBit::GameOver) == GamePhaseBit::GameOver);
-    CHECK((mask & GamePhaseBit::SongComplete) == GamePhaseBit::SongComplete);
-    CHECK((mask & GamePhaseBit::Playing) != GamePhaseBit::Playing);
-    CHECK((mask & GamePhaseBit::Title) != GamePhaseBit::Title);
-    CHECK((mask & GamePhaseBit::LevelSelect) != GamePhaseBit::LevelSelect);
-    CHECK((mask & GamePhaseBit::Paused) != GamePhaseBit::Paused);
-}
-
-TEST_CASE("GamePhaseBit: all eight phases have distinct bits", "[phase_mask]") {
-    // Each GamePhaseBit value must be a distinct power-of-two
-    CHECK(GamePhaseBit::Title        != GamePhaseBit::LevelSelect);
-    CHECK(GamePhaseBit::LevelSelect  != GamePhaseBit::Playing);
-    CHECK(GamePhaseBit::Playing      != GamePhaseBit::Paused);
-    CHECK(GamePhaseBit::Paused       != GamePhaseBit::GameOver);
-    CHECK(GamePhaseBit::GameOver     != GamePhaseBit::SongComplete);
-    CHECK(GamePhaseBit::SongComplete != GamePhaseBit::Settings);
-    CHECK(GamePhaseBit::Settings     != GamePhaseBit::Tutorial);
-    // Combined mask must not equal any single bit
-    GamePhaseBit combined = GamePhaseBit::GameOver | GamePhaseBit::SongComplete;
-    CHECK(combined != GamePhaseBit::GameOver);
-    CHECK(combined != GamePhaseBit::SongComplete);
-}
-
-TEST_CASE("GamePhaseBit: to_phase_bit round-trips all GamePhase values", "[phase_mask]") {
-    using P = GamePhase;
-    using B = GamePhaseBit;
-    CHECK(to_phase_bit(P::Title)        == B::Title);
-    CHECK(to_phase_bit(P::LevelSelect)  == B::LevelSelect);
-    CHECK(to_phase_bit(P::Playing)      == B::Playing);
-    CHECK(to_phase_bit(P::Paused)       == B::Paused);
-    CHECK(to_phase_bit(P::GameOver)     == B::GameOver);
-    CHECK(to_phase_bit(P::SongComplete) == B::SongComplete);
-    CHECK(to_phase_bit(P::Settings)     == B::Settings);
-    CHECK(to_phase_bit(P::Tutorial)     == B::Tutorial);
-}
-
-TEST_CASE("GamePhaseBit: zero mask has no phase bits set", "[phase_mask]") {
-    auto mask = static_cast<GamePhaseBit>(0);
-    CHECK((mask & GamePhaseBit::Title) != GamePhaseBit::Title);
-    CHECK((mask & GamePhaseBit::Playing) != GamePhaseBit::Playing);
-    CHECK((mask & GamePhaseBit::GameOver) != GamePhaseBit::GameOver);
-}
-
 namespace {
 
 int mesh_child_count(entt::registry& reg) {
