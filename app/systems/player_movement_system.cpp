@@ -9,12 +9,52 @@
 #include "../util/lane_utils.h"
 #include <raymath.h>
 
+namespace {
+
+// Tick all jumping entities: advance the parabolic-arc timer, update
+// y_offset, and remove the Jumping component when the jump lands
+// (firing the JumpLand haptic). Per Fabian, this is the "Jumping"
+// table's per-row transform; entities without a Jumping row are not
+// touched.
+void tick_jumping(entt::registry& reg, float dt) {
+    auto view = reg.view<PlayerTag, Jumping>();
+    for (auto [entity, jump] : view.each()) {
+        jump.timer -= dt;
+        const float half = constants::JUMP_DURATION / 2.0f;
+        const float t = constants::JUMP_DURATION - jump.timer;
+        const float normalized = t / half - 1.0f;
+        jump.y_offset = -constants::JUMP_HEIGHT * (1.0f - normalized * normalized);
+
+        if (jump.timer <= 0.0f) {
+            if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
+                disp->enqueue<PlayHapticEvent>({HapticEvent::JumpLand});
+            }
+            reg.remove<Jumping>(entity);
+        }
+    }
+}
+
+// Tick all sliding entities: advance the slide timer and remove the
+// Sliding component when the slide completes. Slide has no vertical
+// offset — the visual squash is applied by the render system.
+void tick_sliding(entt::registry& reg, float dt) {
+    auto view = reg.view<PlayerTag, Sliding>();
+    for (auto [entity, slide] : view.each()) {
+        slide.timer -= dt;
+        if (slide.timer <= 0.0f) {
+            reg.remove<Sliding>(entity);
+        }
+    }
+}
+
+}  // namespace
+
 void player_movement_system(entt::registry& reg, float dt) {
     auto* song = reg.ctx().find<SongState>();
     const bool rhythm_mode = (song != nullptr && (song->playing || song->finished));
 
-    auto view = reg.view<PlayerTag, WorldTransform, PlayerShape, Lane, VerticalState>();
-    for (auto [entity, transform, pshape, lane, vstate] : view.each()) {
+    auto view = reg.view<PlayerTag, WorldTransform, PlayerShape, Lane>();
+    for (auto [entity, transform, pshape, lane] : view.each()) {
         lane_utils::normalize(lane, &transform);
 
         // Morph animation — freeplay only.
@@ -43,32 +83,12 @@ void player_movement_system(entt::registry& reg, float dt) {
                 transform.position.x = constants::LANE_X[lane.current];
             }
         }
-
-        // Vertical movement
-        if (vstate.mode != VMode::Grounded) {
-            vstate.timer -= dt;
-
-            if (vstate.mode == VMode::Jumping) {
-                // Parabolic jump: peak at half duration
-                float half = constants::JUMP_DURATION / 2.0f;
-                float t = constants::JUMP_DURATION - vstate.timer;
-                float normalized = t / half - 1.0f;
-                vstate.y_offset = -constants::JUMP_HEIGHT * (1.0f - normalized * normalized);
-            } else if (vstate.mode == VMode::Sliding) {
-                vstate.y_offset = 0.0f; // visual handled in render (squash)
-            }
-
-            if (vstate.timer <= 0.0f) {
-                const bool was_jumping = (vstate.mode == VMode::Jumping);
-                if (was_jumping) {
-                    if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
-                        disp->enqueue<PlayHapticEvent>({HapticEvent::JumpLand});
-                    }
-                }
-                vstate.mode     = VMode::Grounded;
-                vstate.timer    = 0.0f;
-                vstate.y_offset = 0.0f;
-            }
-        }
+        (void)entity;
     }
+
+    // Per-state vertical-motion transforms (issue #1202/#1204).
+    // Grounded entities have neither Jumping nor Sliding, so no transform
+    // runs for them.
+    tick_jumping(reg, dt);
+    tick_sliding(reg, dt);
 }

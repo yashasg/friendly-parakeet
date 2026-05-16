@@ -182,7 +182,7 @@ TEST_CASE("game_camera_system rejects invalid PlayerShape before mesh lookup", "
     reg.emplace<PlayerTag>(player);
     reg.emplace<WorldTransform>(player, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<PlayerShape>(player, PlayerShape{static_cast<Shape>(255), 1.0f});
-    reg.emplace<VerticalState>(player);
+    // Vertical motion: grounded = absence of Jumping/Sliding (#1202/#1204).
     reg.emplace<Color>(player, WHITE);
     reg.emplace<ModelTransform>(player, ModelTransform{MatrixIdentity(), WHITE});
     reg.emplace<MeshKindShape>(player, MeshKindShape{255});

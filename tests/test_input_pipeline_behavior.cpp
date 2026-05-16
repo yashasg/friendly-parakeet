@@ -103,28 +103,26 @@ TEST_CASE("pipeline: swipe up starts jump in same pipeline call",
           "[input_pipeline]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& vstate = reg.get<VerticalState>(player);
-    REQUIRE(vstate.mode == VMode::Grounded);
+    REQUIRE_FALSE(reg.any_of<Jumping, Sliding>(player));
 
     push_go(reg, Direction::Up);
     run_pipeline(reg);
 
-    CHECK(vstate.mode == VMode::Jumping);
-    CHECK(vstate.timer == constants::JUMP_DURATION);
+    REQUIRE(reg.all_of<Jumping>(player));
+    CHECK(reg.get<Jumping>(player).timer == constants::JUMP_DURATION);
 }
 
 TEST_CASE("pipeline: swipe down starts slide in same pipeline call",
           "[input_pipeline]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& vstate = reg.get<VerticalState>(player);
-    REQUIRE(vstate.mode == VMode::Grounded);
+    REQUIRE_FALSE(reg.any_of<Jumping, Sliding>(player));
 
     push_go(reg, Direction::Down);
     run_pipeline(reg);
 
-    CHECK(vstate.mode == VMode::Sliding);
-    CHECK(vstate.timer == constants::SLIDE_DURATION);
+    REQUIRE(reg.all_of<Sliding>(player));
+    CHECK(reg.get<Sliding>(player).timer == constants::SLIDE_DURATION);
 }
 
 TEST_CASE("pipeline: swipe right at right boundary does not wrap lane",
@@ -345,13 +343,12 @@ TEST_CASE("pipeline: pending phase transition blocks queued go input",
     auto player = make_rhythm_player(reg);
     auto& gs = reg.ctx().get<GameState>();
     auto& lane = reg.get<Lane>(player);
-    auto& vstate = reg.get<VerticalState>(player);
 
     REQUIRE(gs.phase == GamePhase::Playing);
     REQUIRE(lane.current == 1);
     lane.target = lane.current;
     REQUIRE(lane.target == 1);
-    REQUIRE(vstate.mode == VMode::Grounded);
+    REQUIRE_FALSE(reg.any_of<Jumping, Sliding>(player));
 
     gs.transition_pending = true;
     gs.next_phase = GamePhase::Paused;
@@ -363,7 +360,7 @@ TEST_CASE("pipeline: pending phase transition blocks queued go input",
     CHECK(gs.phase == GamePhase::Paused);
     CHECK_FALSE(gs.transition_pending);
     CHECK(lane.target == 1);
-    CHECK(vstate.mode == VMode::Grounded);
+    CHECK_FALSE(reg.any_of<Jumping, Sliding>(player));
 }
 
 TEST_CASE("pipeline: gameplay HUD shape tap uses slot rectangle bounds",

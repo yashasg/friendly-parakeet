@@ -26,8 +26,8 @@ void push_haptic(entt::registry& reg, HapticEvent event) {
 
 void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
     if (!gameplay_input_enabled(reg)) return;
-    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane, VerticalState>();
-    for (auto [entity, pshape, swindow, lane, vstate] : view.each()) {
+    auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
+    for (auto [entity, pshape, swindow, lane] : view.each()) {
         lane_utils::normalize(lane);
         const bool horizontal_input = evt.dir == Direction::Left || evt.dir == Direction::Right;
         const bool lane_switch_active =
@@ -42,20 +42,16 @@ void player_input_handle_go(entt::registry& reg, const GoEvent& evt) {
             }
         }
 
+        const bool grounded = !reg.any_of<Jumping, Sliding>(entity);
         if (delta != 0) {
             lane.target = lane.current + delta;
             lane.lerp_t = 0.0f;
             push_haptic(reg, HapticEvent::LaneSwitch);
-        } else if (!horizontal_input && evt.dir == Direction::Up && vstate.mode == VMode::Grounded) {
-            vstate.mode = VMode::Jumping;
-            vstate.timer = constants::JUMP_DURATION;
-            vstate.y_offset = 0.0f;
-        } else if (!horizontal_input && evt.dir == Direction::Down && vstate.mode == VMode::Grounded) {
-            vstate.mode = VMode::Sliding;
-            vstate.timer = constants::SLIDE_DURATION;
-            vstate.y_offset = 0.0f;
+        } else if (!horizontal_input && evt.dir == Direction::Up && grounded) {
+            reg.emplace<Jumping>(entity, Jumping{constants::JUMP_DURATION, 0.0f});
+        } else if (!horizontal_input && evt.dir == Direction::Down && grounded) {
+            reg.emplace<Sliding>(entity, Sliding{constants::SLIDE_DURATION});
         }
-        (void)entity;
         (void)pshape;
         (void)swindow;
     }
