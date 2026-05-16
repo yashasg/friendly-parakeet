@@ -16,7 +16,6 @@
 #include "systems/audio_routing.h"
 #include "constants.h"
 #include "systems/all_systems.h"
-#include "systems/game_phase_transition.h"
 #include "systems/input_routing.h"
 #include "util/shape_tag.h"
 
@@ -31,7 +30,6 @@ static entt::registry make_bench_registry() {
     reg.ctx().emplace<GameState>(GameState{
         GamePhase::Playing, 0.0f, false, GamePhase::Playing
     });
-    sync_game_phase_tags(reg, GamePhase::Playing);
     reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<SongState>();
     runtime_system_scratch_init(reg);

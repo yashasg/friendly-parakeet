@@ -28,9 +28,16 @@
 #include "systems/runtime_systems.h"
 #include "systems/input_routing.h"
 #include "systems/input_system_private.h"
-#include "systems/game_phase_transition.h"
 
 // Sets up a registry with all singletons in their default state
+//
+// NOTE (issue #1202 PR A): pre-existing tests that bypass `enter_phase()`
+// (writing `gs.phase = X` directly) do NOT keep the per-phase ctx-tag mirror
+// in lockstep. The strict invariant only needs to hold post-`enter_phase()`,
+// which is enforced by `test_game_phase_tags.cpp`. Production callers always
+// route through `enter_phase()`; the test fixture intentionally does not
+// prime a tag here so existing direct-write tests stay readable. Migration
+// PRs B–G move tests onto the tag path with a helper.
 inline entt::registry make_registry() {
     entt::registry reg;
     reg.ctx().emplace<InputState>();
@@ -42,7 +49,6 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<GameState>(GameState{
         GamePhase::Playing, 0.0f, false, GamePhase::Playing
     });
-    sync_game_phase_tags(reg, GamePhase::Playing);
     reg.ctx().emplace<ScoreState>();
     reg.ctx().emplace<ScoreDisplay>();
     reg.ctx().emplace<CurrentSongHighScore>();
