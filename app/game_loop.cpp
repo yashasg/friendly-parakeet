@@ -28,6 +28,8 @@
 #include "components/high_score.h"
 #include "systems/high_score_system.h"
 #include "systems/haptics_backend.h"
+#include "systems/screen_lifecycle_system.h"
+#include "systems/ui_update_system.h"
 
 #include <raylib.h>
 #include <algorithm>
@@ -277,6 +279,7 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
 
     compute_screen_transform(reg);
     input_system(reg, raw_dt);
+    ui_update_system(reg);
     gameplay_hud_process_button_input(reg);
     test_player_system(reg, raw_dt);
 
@@ -284,6 +287,12 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
         tick_fixed_systems(reg, FIXED_DT);
         accumulator -= FIXED_DT;
     }
+
+    // Screen entity lifecycle: spawn/despawn per-screen UI entities to
+    // match the active `GamePhase*Tag` produced by the fixed tick. Must
+    // run before render so this frame's UI reflects the post-transition
+    // phase. Issue #1287.
+    screen_lifecycle_system(reg);
 
     // Camera runs after gameplay systems so transforms reflect current frame
     game_camera_system(reg, raw_dt);
