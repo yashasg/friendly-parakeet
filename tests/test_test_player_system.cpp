@@ -17,7 +17,7 @@ static entt::registry make_test_player_registry(SkillConfig skill = SKILL_PRO) {
 
 static entt::entity make_shape_gate_at_lane(entt::registry& reg, Shape shape, int8_t lane, float y) {
     auto obs = make_shape_gate(reg, shape, y);
-    reg.get<WorldTransform>(obs).position.x = constants::LANE_X[lane];
+    reg.get<WorldPosition>(obs).position.x = constants::LANE_X[lane];
     auto& song = reg.ctx().get<SongState>();
     float spawn_time = song.song_time - (y - constants::SPAWN_Y) / song.scroll_speed;
     float arrival = spawn_time + (constants::PLAYER_Y - constants::SPAWN_Y) / song.scroll_speed;
@@ -81,7 +81,7 @@ static entt::entity make_loggable_obstacle(entt::registry& reg) {
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
     reg.emplace<Obstacle>(obs, int16_t{constants::PTS_SHAPE_GATE});
-    reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
+    reg.emplace<WorldPosition>(obs, WorldPosition{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<BeatInfo>(obs, 7, 2.0f, 0.0f);
     return obs;
 }
@@ -161,8 +161,8 @@ TEST_CASE("test_player: ignores visual obstacle leftovers without Obstacle paylo
 
     auto visual_leftover = reg.create();
     reg.emplace<ObstacleTag>(visual_leftover);
-    reg.emplace<WorldTransform>(visual_leftover,
-                                WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y - 200.0f}});
+    reg.emplace<WorldPosition>(visual_leftover,
+                                WorldPosition{{constants::LANE_X[1], constants::PLAYER_Y - 200.0f}});
     set_required_shape_tag(reg, visual_leftover, Shape::Circle);
 
     test_player_system(reg, 0.016f);

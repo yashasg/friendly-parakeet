@@ -67,12 +67,12 @@ bool shape_gate_lane_match(int8_t obstacle_lane, int player_lane) {
 }  // namespace
 
 void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
-    auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, ShapeWindow, Lane>();
+    auto player_view = reg.view<PlayerTag, WorldPosition, PlayerShape, ShapeWindow, Lane>();
     if (player_view.begin() == player_view.end()) return;
 
     auto player_entity = *player_view.begin();
     auto [p_transform, p_shape, p_window, p_lane] =
-        player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane>(player_entity);
+        player_view.get<WorldPosition, PlayerShape, ShapeWindow, Lane>(player_entity);
     lane_utils::normalize(p_lane, &p_transform);
     (void)p_shape;
 
@@ -131,7 +131,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     };
 
     auto resolve_shape_obstacle = [&](entt::entity entity,
-                                      const WorldTransform& wt,
+                                      const WorldPosition& wt,
                                       bool lane_ok,
                                       const BeatInfo* timing_info) {
         if (!lane_ok) {
@@ -158,7 +158,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     // reservation in `app/components/obstacle.h` (issue #1198). SplitPath
     // entities are filtered out by absence of `ShapeGateTag`.
     {
-        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, ShapeGateTag, int8_t, BeatInfo>(
+        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldPosition, ShapeGateTag, int8_t, BeatInfo>(
             entt::exclude<ScoredTag, ResolvedObstacleTag>);
         for (auto [e, obstacle, wt, lane, info] : rhythm_view.each()) {
             (void)obstacle;
@@ -166,7 +166,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
             resolve_shape_obstacle(e, wt, lane_ok, &info);
         }
 
-        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, ShapeGateTag, int8_t>(
+        auto view = reg.view<ObstacleTag, Obstacle, WorldPosition, ShapeGateTag, int8_t>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, BeatInfo>);
         for (auto [e, obstacle, wt, lane] : view.each()) {
             (void)obstacle;
@@ -174,7 +174,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
             resolve_shape_obstacle(e, wt, lane_ok, nullptr);
         }
 
-        auto fallback_rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, ShapeGateTag, BeatInfo>(
+        auto fallback_rhythm_view = reg.view<ObstacleTag, Obstacle, WorldPosition, ShapeGateTag, BeatInfo>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, int8_t>);
         for (auto [e, obstacle, wt, info] : fallback_rhythm_view.each()) {
             (void)obstacle;
@@ -182,7 +182,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
             resolve_shape_obstacle(e, wt, lane_ok, &info);
         }
 
-        auto fallback_view = reg.view<ObstacleTag, Obstacle, WorldTransform, ShapeGateTag>(
+        auto fallback_view = reg.view<ObstacleTag, Obstacle, WorldPosition, ShapeGateTag>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, BeatInfo, int8_t>);
         for (auto [e, obstacle, wt] : fallback_view.each()) {
             (void)obstacle;
@@ -196,7 +196,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     // reservation in `app/components/obstacle.h` (issue #1198). ShapeGate
     // entities are filtered out by absence of `SplitPathTag`.
     {
-        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, SplitPathTag, int8_t, BeatInfo>(
+        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldPosition, SplitPathTag, int8_t, BeatInfo>(
             entt::exclude<ScoredTag, ResolvedObstacleTag>);
         for (auto [e, obstacle, wt, rlane, info] : rhythm_view.each()) {
             (void)obstacle;
@@ -204,7 +204,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
             resolve_shape_obstacle(e, wt, lane_ok, &info);
         }
 
-        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, SplitPathTag, int8_t>(
+        auto view = reg.view<ObstacleTag, Obstacle, WorldPosition, SplitPathTag, int8_t>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, BeatInfo>);
         for (auto [e, obstacle, wt, rlane] : view.each()) {
             (void)obstacle;

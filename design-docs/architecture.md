@@ -125,17 +125,15 @@ read infrequently or only by one system.
 ```cpp
 // components/transform.h
 
-/// Authoritative world-space spatial state for moving/rendered entities.
+/// Authoritative world-space position for moving/rendered entities.
 /// Iterated by: scroll_system, game_camera_system, ui_camera_system,
 ///              collision_system, obstacle_despawn_system
-struct WorldTransform {
+struct WorldPosition {
     Vector2 position = {0.0f, 0.0f};
-    float   rotation = 0.0f;
-    Vector2 scale    = {1.0f, 1.0f};
 };
 
 /// Movement vector in pixels/second for entities that integrate position.
-/// Iterated with WorldTransform by motion_system every frame.
+/// Iterated with WorldPosition by motion_system every frame.
 /// Rhythm obstacles use BeatInfo and are positioned by scroll_system instead.
 struct MotionVelocity {
     Vector2 value = {0.0f, 0.0f};
@@ -551,7 +549,7 @@ struct DrawSize {
 ```cpp
 // components/particle.h
 
-/// Particle-specific data (WorldTransform, MotionVelocity, Color are separate).
+/// Particle-specific data (WorldPosition, MotionVelocity, Color are separate).
 struct ParticleData {
     float size;            // base rendered size
     float remaining;       // seconds until destroy
@@ -602,7 +600,7 @@ struct AudioQueue {
 ```
 COMPONENT          BYTES   ACCESS     ITERATED BY
 ─────────────────────────────────────────────────────────────
-WorldTransform      20     HOT        motion, render, collision, despawn
+WorldPosition       8     HOT        motion, render, collision, despawn
 MotionVelocity       8     HOT        motion, particle effects
 ParticleData        12     HOT        particle expiry/render fade
 ScorePopup          16     HOT        popup expiry/render fade
@@ -713,7 +711,7 @@ system in the same frame (unidirectional data flow).
  │  │                           positions from SongState     │
  │  │                           song_time + BeatInfo.        │
  │  │                                                        │
- │  │     f. motion_system      For every (WorldTransform,   │
+ │  │     f. motion_system      For every (WorldPosition,   │
  │  │                           MotionVelocity):             │
  │  │                           position += velocity * dt.   │
  │  │                           Simple, tight inner loop.    │
@@ -783,7 +781,7 @@ system in the same frame (unidirectional data flow).
 systems. Fixed-lifetime effects no longer use a shared generic timer component:
 `particle_system` owns `ParticleData::remaining`, and `popup_display_system`
 owns `ScorePopup::remaining`. Obstacle destruction is handled by
-`obstacle_despawn_system`, which reads `WorldTransform` for obstacle position.
+`obstacle_despawn_system`, which reads `WorldPosition` for obstacle position.
 
 ---
 
@@ -862,7 +860,7 @@ In code, reusable construction lives in `app/entities/` factory functions
 ```
 ┌─ Player ──────────────────────────────────────────────────┐
 │ PlayerTag          (tag, 0 bytes)                         │
-│ WorldTransform     { position: {360.0, 920.0} }          │
+│ WorldPosition     { position: {360.0, 920.0} }          │
 │ PlayerShape        { current: Hexagon, morph_t: 1.0 }     │
 │ ShapeWindow        { target: Hexagon, phase: Idle, ... }  │
 │ Lane               { current: 1, target: -1, lerp_t: 1 } │
@@ -879,7 +877,7 @@ Total: ~97 bytes per entity (1 entity)
 ```
 ┌─ Shape Gate ──────────────────────────────────────────────┐
 │ ObstacleTag        (tag, 0 bytes)                         │
-│ WorldTransform     { position: {360.0, -120.0} }         │
+│ WorldPosition     { position: {360.0, -120.0} }         │
 │ MotionVelocity     { value: {0.0, 400.0} }               │
 │ Obstacle           { base_points: 200 }                    │
 │ RequiredShape      { shape: Triangle }                     │
@@ -910,7 +908,7 @@ LowBar/HighBar entity archetypes are historical only. The current runtime enum, 
 ```
 ┌─ Split Path ──────────────────────────────────────────────┐
 │ ObstacleTag        (tag, 0 bytes)                         │
-│ WorldTransform     { position: {360.0, -120.0} }         │
+│ WorldPosition     { position: {360.0, -120.0} }         │
 │ MotionVelocity     { value: {0.0, 400.0} }               │
 │ Obstacle           { base_points: 300 }                    │
 │ RequiredShape      { shape: Circle }                       │
@@ -927,7 +925,7 @@ Total: ~44 bytes per entity
 ```
 ┌─ Onset Marker ────────────────────────────────────────────┐
 │ ObstacleTag        (tag, 0 bytes)                         │
-│ WorldTransform     { position: {360.0, -120.0} }          │
+│ WorldPosition     { position: {360.0, -120.0} }          │
 │ MotionVelocity     { value: {0.0, 400.0} }                │
 │ Obstacle           { base_points: 0 }                      │
 │ OnsetMarkerTag     (tag, 0 bytes)                         │
@@ -952,7 +950,7 @@ during normal play.
 
 ```
 ┌─ Score Popup ─────────────────────────────────────────────┐
-│ WorldTransform     { position: {360.0, 900.0} }          │
+│ WorldPosition     { position: {360.0, 900.0} }          │
 │ MotionVelocity     { value: {0.0, -80.0} } (floats up)   │
 │ ScorePopup         { value: 600, tier: 3, remaining: 1.2 } │
 │ Color              { r: 255, g: 200, b: 50, a: 255 }     │
@@ -966,7 +964,7 @@ Total: ~33 bytes per entity (0–5 active)
 ```
 ┌─ Particle ────────────────────────────────────────────────┐
 │ ParticleTag        (tag, 0 bytes)                         │
-│ WorldTransform     { position: {360.0, 920.0} }          │
+│ WorldPosition     { position: {360.0, 920.0} }          │
 │ MotionVelocity     { value: {rand, rand} } (random burst) │
 │ ParticleData       { size: 4.0, remaining: 0.6, max_time: 0.6 } │
 │ Color              { r: 255, g: 100, b: 50, a: 255 }     │
@@ -1124,7 +1122,7 @@ int main(int argc, char* argv[]) {
     │ BeatMap      │                                             │ PlayerShape │
     │ SongState    │                                             │ Lane        │
     └──────┬───────┘                                             │ VertState   │
-           │ beat_scheduler_system                               │ WorldTransform │
+           │ beat_scheduler_system                               │ WorldPosition │
            │ creates note when spawn_time arrives                └──────┬──────┘
            ▼                                                            │
     ┌──────────────┐                                                    │
@@ -1323,7 +1321,7 @@ This entire game state fits in L1 cache (~32-64 KB).
   ACCESS FREQUENCY
   ▲
   │
-  │  ■ WorldTransform  (motion, render, collision, every frame, R+W)
+  │  ■ WorldPosition  (motion, render, collision, every frame, R+W)
   │  ■ MotionVelocity  (motion + particle, every frame, R+W)
   │  ■ ParticleData    (particle sys, every frame, R+W)
   │  ■ ScorePopup      (popup sys, every frame, R+W)
@@ -1350,22 +1348,22 @@ EnTT stores each component type in its own **sparse set** — effectively a
 `std::vector<T>` per component type with an indirection layer. This gives us:
 
 ```
-WorldTransform pool: [xf0] [xf1] [xf2] [xf3] ... [xfN]    contiguous in memory
+WorldPosition pool: [xf0] [xf1] [xf2] [xf3] ... [xfN]    contiguous in memory
 MotionVelocity pool: [vel0] [vel1] [vel2] ... [velN]      contiguous in memory
 Obstacle pool:   [obs0] [obs1] [obs2] ... [obsM]          contiguous in memory
 ```
 
 **For SHAPESHIFTER, AoS (EnTT default) is optimal because:**
 
-1. **Entity counts are tiny** (~71 peak). The whole `WorldTransform` pool is
+1. **Entity counts are tiny** (~71 peak). The whole `WorldPosition` pool is
    roughly 20 bytes × 71 = 1.4 KB. There is no cache pressure that SoA would
    alleviate.
 
 2. **Iteration patterns are simple**. The hottest loop (`motion_system`) reads
-   `WorldTransform` + `MotionVelocity` together — two tiny pools that are in L1
+   `WorldPosition` + `MotionVelocity` together — two tiny pools that are in L1
    after the first iteration.
 
-3. **SoA (splitting `WorldTransform::position` into x[] and y[])** would add
+3. **SoA (splitting `WorldPosition::position` into x[] and y[])** would add
    indirection overhead and code complexity for zero performance gain at these
    entity counts. SoA becomes beneficial at 10,000+ entities — we peak at 71.
 
@@ -1373,7 +1371,7 @@ The current implementation uses an EnTT view for the small dt-integrated set:
 
 ```cpp
 void motion_system(entt::registry& reg, float dt) {
-    auto motion_view = reg.view<WorldTransform, MotionVelocity>();
+    auto motion_view = reg.view<WorldPosition, MotionVelocity>();
     for (auto [entity, transform, velocity] : motion_view.each()) {
         transform.position.x += velocity.value.x * dt;
         transform.position.y += velocity.value.y * dt;
@@ -1413,7 +1411,7 @@ With only 5–15 obstacles on screen and 1 player, brute-force is optimal:
 ```cpp
 void collision_system(entt::registry& reg, float dt) {
     // Get player state (single entity)
-    auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, Lane, VerticalState>();
+    auto player_view = reg.view<PlayerTag, WorldPosition, PlayerShape, Lane, VerticalState>();
     // Early-out: exactly one player
     auto [p_ent, p_pos, p_shape, p_lane, p_vstate] = *player_view.each().begin();
 
@@ -1421,10 +1419,10 @@ void collision_system(entt::registry& reg, float dt) {
     float player_y = p_pos.position.y + p_vstate.y_offset;
 
     // Linear scan of obstacles — 15 entities max
-    auto obs_view = reg.view<ObstacleTag, WorldTransform, Obstacle>(
+    auto obs_view = reg.view<ObstacleTag, WorldPosition, Obstacle>(
         entt::exclude<ScoredTag, ResolvedObstacleTag, NonScorableTag>);
     for (auto entity : obs_view) {
-        const auto& o_pos = obs_view.get<WorldTransform>(entity);
+        const auto& o_pos = obs_view.get<WorldPosition>(entity);
 
         // Broad phase: vertical proximity check
         float dy = o_pos.position.y - player_y;
@@ -1523,7 +1521,7 @@ void render_frame_pseudocode(entt::registry& reg, float alpha) {
 
         // Obstacles (5-15 entities — draw in pool order, no sort needed)
         {
-            auto view = reg.view<ObstacleTag, WorldTransform, Obstacle, Color, DrawSize>();
+            auto view = reg.view<ObstacleTag, WorldPosition, Obstacle, Color, DrawSize>();
             for (auto [e, pos, obs, col, sz] : view.each()) {
                 draw_obstacle(pos, obs, col, sz, reg, e);
             }
@@ -1531,7 +1529,7 @@ void render_frame_pseudocode(entt::registry& reg, float alpha) {
 
         // Player (1 entity)
         {
-            auto view = reg.view<PlayerTag, WorldTransform, PlayerShape,
+            auto view = reg.view<PlayerTag, WorldPosition, PlayerShape,
                                   Lane, VerticalState, Color, DrawSize>();
             for (auto [e, pos, shape, lane, vs, col, sz] : view.each()) {
                 // Interpolate position for smooth sub-frame rendering
@@ -1546,7 +1544,7 @@ void render_frame_pseudocode(entt::registry& reg, float alpha) {
     // ── Layer 2: Effects ──────────────────────────────
     // Particles
     {
-        auto view = reg.view<ParticleTag, WorldTransform, ParticleData, Color>();
+        auto view = reg.view<ParticleTag, WorldPosition, ParticleData, Color>();
         for (auto [e, transform, pd, col] : view.each()) {
             float t = pd.remaining / pd.max_time;
             uint8_t a = static_cast<uint8_t>(col.a * t);
@@ -1558,7 +1556,7 @@ void render_frame_pseudocode(entt::registry& reg, float alpha) {
 
     // Score popups
     {
-        auto view = reg.view<ScorePopup, WorldTransform>();
+        auto view = reg.view<ScorePopup, WorldPosition>();
         for (auto [e, popup, pos] : view.each()) {
             float t = popup.remaining / popup.max_time;
             draw_score_popup(pos.position.x, pos.position.y, popup.value, popup.tier, t);
@@ -1599,7 +1597,7 @@ app/
 ├── constants.h                  ← all tuning knobs (§1)
 │
 ├── components/                  ← all component structs
-│   ├── transform.h              ← WorldTransform, MotionVelocity
+│   ├── transform.h              ← WorldPosition, MotionVelocity
 │   ├── window_phase.h           ← WindowPhase (shared by player.h and rhythm.h)
 │   ├── player.h                 ← PlayerTag, PlayerShape, ShapeWindow, Lane, VerticalState
 │   ├── obstacle.h               ← obstacle tags (ScoredTag, MissTag,
@@ -1668,7 +1666,7 @@ float t = song.song_time;
 
 ```cpp
 // Multi-component view — O(n) where n = smallest pool
-auto view = reg.view<ObstacleTag, WorldTransform, Obstacle>();
+auto view = reg.view<ObstacleTag, WorldPosition, Obstacle>();
 for (auto [entity, pos, obs] : view.each()) {
     // ...
 }
@@ -1678,7 +1676,7 @@ for (auto [entity, pos, obs] : view.each()) {
 
 ```cpp
 // Used in motion_system for dt-integrated entities.
-auto motion_view = reg.view<WorldTransform, MotionVelocity>();
+auto motion_view = reg.view<WorldPosition, MotionVelocity>();
 for (auto [entity, transform, velocity] : motion_view.each()) {
     transform.position.x += velocity.value.x * dt;
     transform.position.y += velocity.value.y * dt;
@@ -1692,7 +1690,7 @@ entt::entity spawn_rhythm_shape_gate(entt::registry& reg, Shape required,
                                      int8_t lane, const BeatInfo& beat_info) {
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
-    reg.emplace<WorldTransform>(e, WorldTransform{{constants::LANE_X[lane], constants::SPAWN_Y}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{constants::LANE_X[lane], constants::SPAWN_Y}});
     reg.emplace<BeatInfo>(e, beat_info);
     reg.emplace<Obstacle>(e, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<RequiredShape>(e, required);

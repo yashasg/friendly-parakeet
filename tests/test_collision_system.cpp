@@ -44,7 +44,7 @@ TEST_CASE("collision: shape gate collision uses authored lane, not visual hitbox
         auto player = make_player(reg);
         auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
 
-        reg.get<WorldTransform>(obs).position.x = reg.get<WorldTransform>(player).position.x + tc.offset;
+        reg.get<WorldPosition>(obs).position.x = reg.get<WorldPosition>(player).position.x + tc.offset;
         collision_system(reg, 0.016f);
 
         CHECK(reg.all_of<ScoredTag>(obs));
@@ -59,7 +59,7 @@ TEST_CASE("collision: shape gate does not clear from target lane before strafe a
     auto& lane = reg.get<Lane>(player);
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
 
-    reg.get<WorldTransform>(obs).position.x = constants::LANE_X[0];
+    reg.get<WorldPosition>(obs).position.x = constants::LANE_X[0];
     reg.get<int8_t>(obs) = int8_t{0};
     lane.target = 0;
     lane.lerp_t = 0.0f;
@@ -76,7 +76,7 @@ TEST_CASE("collision: shape gate ignores visual lane drift from authored lane",
     make_player(reg);
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
 
-    reg.get<WorldTransform>(obs).position.x = constants::LANE_X[0];
+    reg.get<WorldPosition>(obs).position.x = constants::LANE_X[0];
 
     collision_system(reg, 0.016f);
 
@@ -91,9 +91,9 @@ TEST_CASE("collision: shape gate clears when interpolated player hitbox reaches 
     auto& lane = reg.get<Lane>(player);
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
 
-    reg.get<WorldTransform>(obs).position.x = constants::LANE_X[0];
+    reg.get<WorldPosition>(obs).position.x = constants::LANE_X[0];
     reg.get<int8_t>(obs) = int8_t{0};
-    reg.get<WorldTransform>(player).position.x = constants::LANE_X[0];
+    reg.get<WorldPosition>(player).position.x = constants::LANE_X[0];
     lane.target = 0;
     lane.lerp_t = 1.0f;
 
@@ -108,7 +108,7 @@ TEST_CASE("collision: split path uses interpolated player lane during transition
     auto reg = make_registry();
     auto player = make_player(reg);
     auto& lane = reg.get<Lane>(player);
-    auto& transform = reg.get<WorldTransform>(player);
+    auto& transform = reg.get<WorldPosition>(player);
     lane.current = 1;
     lane.target = 2;
     lane.lerp_t = 0.9f;
@@ -195,7 +195,7 @@ TEST_CASE("collision: visual obstacle leftovers without Obstacle payload are ign
 
     auto visual_leftover = reg.create();
     reg.emplace<ObstacleTag>(visual_leftover);
-    reg.emplace<WorldTransform>(visual_leftover, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
+    reg.emplace<WorldPosition>(visual_leftover, WorldPosition{{constants::LANE_X[1], constants::PLAYER_Y}});
     set_required_shape_tag(reg, visual_leftover, Shape::Triangle);
 
     collision_system(reg, 0.016f);

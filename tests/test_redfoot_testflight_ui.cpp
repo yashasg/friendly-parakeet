@@ -89,7 +89,7 @@ namespace {
 void spawn_aligned_player(entt::registry& reg, float y) {
     auto p = reg.create();
     reg.emplace<PlayerTag>(p);
-    reg.emplace<WorldTransform>(p, WorldTransform{{constants::LANE_X[1], y}});
+    reg.emplace<WorldPosition>(p, WorldPosition{{constants::LANE_X[1], y}});
     PlayerShape ps;
     reg.emplace<PlayerShape>(p, ps);
     set_player_shape_tag(reg, p, Shape::Hexagon);
@@ -104,7 +104,7 @@ void spawn_aligned_player(entt::registry& reg, float y) {
 entt::entity spawn_obstacle(entt::registry& reg, float y) {
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
-    reg.emplace<WorldTransform>(e, WorldTransform{{constants::LANE_X[1], y}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{constants::LANE_X[1], y}});
     reg.emplace<Obstacle>(e, int16_t{0});
     return e;
 }

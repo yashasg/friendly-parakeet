@@ -109,7 +109,7 @@ void spawn_score_particles(entt::registry& reg, const Vector2& position, Color c
         auto particle = reg.create();
         reg.emplace<ParticleTag>(particle);
         reg.emplace<ParticleData>(particle, kSize, kLifetime, kLifetime);
-        reg.emplace<WorldTransform>(particle, WorldTransform{position});
+        reg.emplace<WorldPosition>(particle, WorldPosition{position});
         reg.emplace<Vector2>(particle, Vector2Scale(dir, kSpeed));
         reg.emplace<Color>(particle, color);
         reg.emplace<TagEffectsPass>(particle);
@@ -136,7 +136,7 @@ void process_tier_hit_pass(entt::registry& reg,
     auto& hit_buf = scratch.hit_buf;
     hit_buf.clear();
 
-    auto view = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldTransform, TimingGrade, TierTag>(
+    auto view = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldPosition, TimingGrade, TierTag>(
         entt::exclude<MissTag, NonScorableTag>);
     for (auto [e, obs, wt, tg] : view.each()) {
         HitRecord r;
@@ -197,7 +197,7 @@ void process_ungraded_hit_pass(entt::registry& reg,
     auto& hit_buf = scratch.hit_buf;
     hit_buf.clear();
 
-    auto view = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldTransform>(
+    auto view = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldPosition>(
         entt::exclude<MissTag, NonScorableTag, TimingGrade>);
     for (auto [e, obs, wt] : view.each()) {
         HitRecord r;

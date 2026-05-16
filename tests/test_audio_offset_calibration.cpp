@@ -263,7 +263,7 @@ OffsetGameplayResult run_calibrated_on_arrival_hit(int16_t audio_offset_ms) {
     auto obstacle = *view.begin();
 
     auto& info = reg.get<BeatInfo>(obstacle);
-    auto& wt = reg.get<WorldTransform>(obstacle);
+    auto& wt = reg.get<WorldPosition>(obstacle);
     wt.position.y = constants::PLAYER_Y;
 
     sw.press_time = info.spawn_time + song.lead_time;

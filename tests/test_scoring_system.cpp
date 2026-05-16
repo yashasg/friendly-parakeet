@@ -149,7 +149,7 @@ TEST_CASE("scoring: popup entity spawned on score", "[scoring]") {
     auto popup_view = reg.view<ScorePopup>();
     int popup_count = 0;
     for (auto e : popup_view) {
-        CHECK(reg.all_of<WorldTransform>(e));
+        CHECK(reg.all_of<WorldPosition>(e));
         CHECK(reg.all_of<Vector2>(e));
         CHECK(reg.all_of<TagHUDPass>(e));
         ++popup_count;
@@ -167,7 +167,7 @@ TEST_CASE("scoring: score feedback spawns effect particles", "[scoring][particle
 
     int particle_count = 0;
     auto particle_view =
-        reg.view<ParticleTag, ParticleData, WorldTransform, Vector2, Color, TagEffectsPass>();
+        reg.view<ParticleTag, ParticleData, WorldPosition, Vector2, Color, TagEffectsPass>();
     for (auto [entity, particle, transform, velocity, color] : particle_view.each()) {
         CHECK(reg.valid(entity));
         CHECK(particle.remaining > 0.0f);
@@ -358,7 +358,7 @@ TEST_CASE("scoring: popup entity has full factory contract", "[scoring][popup_en
     int count = 0;
     for (auto e : popup_view) {
         ++count;
-        CHECK(reg.all_of<WorldTransform>(e));
+        CHECK(reg.all_of<WorldPosition>(e));
         CHECK(reg.all_of<Vector2>(e));
         CHECK(reg.all_of<Color>(e));
         CHECK(reg.all_of<TagHUDPass>(e));
@@ -381,7 +381,7 @@ TEST_CASE("scoring: NonScorableTag entity cleared without scoring", "[scoring][n
 
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
-    reg.emplace<WorldTransform>(e, WorldTransform{{300.0f, constants::PLAYER_Y}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{300.0f, constants::PLAYER_Y}});
     reg.emplace<Obstacle>(e, int16_t{999});
     reg.emplace<NonScorableTag>(e);
     reg.emplace<ScoredTag>(e);
@@ -411,7 +411,7 @@ TEST_CASE("scoring: missed NonScorableTag entity is resolved without effects",
 
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
-    reg.emplace<WorldTransform>(e, WorldTransform{{300.0f, constants::PLAYER_Y}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{300.0f, constants::PLAYER_Y}});
     reg.emplace<Obstacle>(e, int16_t{0});
     reg.emplace<NonScorableTag>(e);
     reg.emplace<ScoredTag>(e);
@@ -439,7 +439,7 @@ TEST_CASE("scoring: missed obstacle drains energy without setting terminal death
 
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
-    reg.emplace<WorldTransform>(e, WorldTransform{{300.0f, constants::PLAYER_Y}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{300.0f, constants::PLAYER_Y}});
     reg.emplace<Obstacle>(e, int16_t{200});
     reg.emplace<ScoredTag>(e);
     reg.emplace<MissTag>(e);

@@ -13,7 +13,7 @@ TEST_CASE("player_entity: canonical component set present", "[archetype][player]
     auto p = create_player_entity(reg);
 
     CHECK(reg.all_of<PlayerTag>(p));
-    CHECK(reg.all_of<WorldTransform>(p));
+    CHECK(reg.all_of<WorldPosition>(p));
     CHECK(reg.all_of<PlayerShape>(p));
     CHECK(reg.all_of<ShapeWindow>(p));
     CHECK(reg.all_of<Lane>(p));
@@ -28,7 +28,7 @@ TEST_CASE("player_entity: starts at center lane position", "[archetype][player]"
     auto reg = make_registry();
     auto p = create_player_entity(reg);
 
-    auto& transform = reg.get<WorldTransform>(p);
+    auto& transform = reg.get<WorldPosition>(p);
     CHECK(transform.position.x == constants::LANE_X[1]);
     CHECK(transform.position.y == constants::PLAYER_Y);
 }

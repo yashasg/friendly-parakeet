@@ -5,44 +5,44 @@
 // ── motion_system ────────────────────────────────────────────
 //
 // Single path after #349 migration:
-//   motion_view — WorldTransform+Vector2 (obstacles, popups, particles, player)
+//   motion_view — WorldPosition+Vector2 (obstacles, popups, particles, player)
 //                 also bridges to Position when both components are present.
 
-TEST_CASE("motion: WorldTransform+Vector2 moves by velocity * dt", "[motion]") {
+TEST_CASE("motion: WorldPosition+Vector2 moves by velocity * dt", "[motion]") {
     auto reg = make_registry();
     auto e = reg.create();
-    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{100.0f, 200.0f}});
     reg.emplace<Vector2>(e, Vector2{10.0f, 20.0f});
 
     motion_system(reg, 1.0f);
 
-    CHECK(reg.get<WorldTransform>(e).position.x == 110.0f);
-    CHECK(reg.get<WorldTransform>(e).position.y == 220.0f);
+    CHECK(reg.get<WorldPosition>(e).position.x == 110.0f);
+    CHECK(reg.get<WorldPosition>(e).position.y == 220.0f);
 }
 
 TEST_CASE("motion: zero Vector2 means no movement", "[motion]") {
     auto reg = make_registry();
     auto e = reg.create();
-    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{100.0f, 200.0f}});
     reg.emplace<Vector2>(e, Vector2{0.0f, 0.0f});
 
     motion_system(reg, 1.0f);
 
-    CHECK(reg.get<WorldTransform>(e).position.x == 100.0f);
-    CHECK(reg.get<WorldTransform>(e).position.y == 200.0f);
+    CHECK(reg.get<WorldPosition>(e).position.x == 100.0f);
+    CHECK(reg.get<WorldPosition>(e).position.y == 200.0f);
 }
 
-// ── motion_system: WorldTransform+Vector2 path (modern, issue #349 target) ──
+// ── motion_system: WorldPosition+Vector2 path (modern, issue #349 target) ──
 
-TEST_CASE("motion: WorldTransform+Vector2 entity moves by velocity * dt", "[motion]") {
+TEST_CASE("motion: WorldPosition+Vector2 entity moves by velocity * dt", "[motion]") {
     auto reg = make_registry();
     auto e = reg.create();
-    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{100.0f, 200.0f}});
     reg.emplace<Vector2>(e, Vector2{10.0f, 20.0f});
 
     motion_system(reg, 1.0f);
 
-    const auto& wt = reg.get<WorldTransform>(e);
+    const auto& wt = reg.get<WorldPosition>(e);
     CHECK(wt.position.x == 110.0f);
     CHECK(wt.position.y == 220.0f);
 }
@@ -52,12 +52,12 @@ TEST_CASE("motion: BeatInfo alone does not make an entity movable", "[motion]") 
     // Vector2. BeatInfo by itself is ignored by motion_system.
     auto reg = make_registry();
     auto e = reg.create();
-    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{100.0f, 200.0f}});
     reg.emplace<BeatInfo>(e, BeatInfo{0, 0.0f, 0.0f});  // marks entity as beat-authoritative
 
     motion_system(reg, 1.0f);
 
-    const auto& wt = reg.get<WorldTransform>(e);
+    const auto& wt = reg.get<WorldPosition>(e);
     CHECK(wt.position.x == 100.0f);
     CHECK(wt.position.y == 200.0f);
 }
@@ -69,7 +69,7 @@ TEST_CASE("cleanup: destroys obstacles past DESTROY_Y", "[cleanup]") {
     auto reg = make_registry();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, constants::DESTROY_Y + 10.0f}});
+    reg.emplace<WorldPosition>(obs, WorldPosition{{0.0f, constants::DESTROY_Y + 10.0f}});
 
     obstacle_despawn_system(reg, 0.016f);
 
@@ -80,7 +80,7 @@ TEST_CASE("cleanup: keeps obstacles above DESTROY_Y", "[cleanup]") {
     auto reg = make_registry();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, constants::DESTROY_Y - 10.0f}});
+    reg.emplace<WorldPosition>(obs, WorldPosition{{0.0f, constants::DESTROY_Y - 10.0f}});
 
     obstacle_despawn_system(reg, 0.016f);
 
@@ -90,7 +90,7 @@ TEST_CASE("cleanup: keeps obstacles above DESTROY_Y", "[cleanup]") {
 TEST_CASE("cleanup: non-obstacle entities are untouched", "[cleanup]") {
     auto reg = make_registry();
     auto e = reg.create();
-    reg.emplace<WorldTransform>(e, WorldTransform{{0.0f, constants::DESTROY_Y + 100.0f}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{0.0f, constants::DESTROY_Y + 100.0f}});
     // No ObstacleTag
 
     obstacle_despawn_system(reg, 0.016f);
@@ -226,7 +226,7 @@ TEST_CASE("game_state: enter_playing clears entities and creates player", "[game
     // Create some entities that should be cleared
     auto junk = reg.create();
     reg.emplace<ObstacleTag>(junk);
-    reg.emplace<WorldTransform>(junk, WorldTransform{{0.0f, 0.0f}});
+    reg.emplace<WorldPosition>(junk, WorldPosition{{0.0f, 0.0f}});
 
     request_phase_transition<NextPhasePlayingTag>(reg);
 
@@ -316,7 +316,7 @@ TEST_CASE("game_state: paused resume preserves active play session state", "[gam
     auto player = make_player(reg);
     auto obstacle = reg.create();
     reg.emplace<ObstacleTag>(obstacle);
-    reg.emplace<WorldTransform>(obstacle, WorldTransform{{0.0f, 123.0f}});
+    reg.emplace<WorldPosition>(obstacle, WorldPosition{{0.0f, 123.0f}});
 
     auto& score = reg.ctx().get<ScoreState>();
     score.score = 4321;
@@ -408,26 +408,26 @@ TEST_CASE("scroll: no movement when not in Playing phase", "[scroll]") {
     auto reg = make_registry();
     set_test_phase<GamePhaseTitleTag>(reg);
     auto e = reg.create();
-    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{100.0f, 200.0f}});
     reg.emplace<Vector2>(e, Vector2{10.0f, 20.0f});
 
     scroll_system(reg, 1.0f);
 
-    CHECK(reg.get<WorldTransform>(e).position.x == 100.0f);
-    CHECK(reg.get<WorldTransform>(e).position.y == 200.0f);
+    CHECK(reg.get<WorldPosition>(e).position.x == 100.0f);
+    CHECK(reg.get<WorldPosition>(e).position.y == 200.0f);
 }
 
 TEST_CASE("motion: no movement when not in Playing phase", "[motion]") {
     auto reg = make_registry();
     set_test_phase<GamePhaseTitleTag>(reg);
     auto e = reg.create();
-    reg.emplace<WorldTransform>(e, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<WorldPosition>(e, WorldPosition{{100.0f, 200.0f}});
     reg.emplace<Vector2>(e, Vector2{10.0f, 20.0f});
 
     tick_playing_systems(reg, 1.0f);
 
-    CHECK(reg.get<WorldTransform>(e).position.x == 100.0f);
-    CHECK(reg.get<WorldTransform>(e).position.y == 200.0f);
+    CHECK(reg.get<WorldPosition>(e).position.x == 100.0f);
+    CHECK(reg.get<WorldPosition>(e).position.y == 200.0f);
 }
 
 // ── cleanup: edge cases ─────────────────────────────────────
@@ -436,7 +436,7 @@ TEST_CASE("cleanup: obstacle at exactly DESTROY_Y is kept", "[cleanup]") {
     auto reg = make_registry();
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    reg.emplace<WorldTransform>(obs, WorldTransform{{0.0f, constants::DESTROY_Y}});
+    reg.emplace<WorldPosition>(obs, WorldPosition{{0.0f, constants::DESTROY_Y}});
 
     obstacle_despawn_system(reg, 0.016f);
 
@@ -452,7 +452,7 @@ TEST_CASE("cleanup: destroys multiple obstacles past DESTROY_Y in one pass", "[c
     for (int i = 0; i < N; ++i) {
         obs[i] = reg.create();
         reg.emplace<ObstacleTag>(obs[i]);
-        reg.emplace<WorldTransform>(obs[i], WorldTransform{{0.0f, constants::DESTROY_Y + static_cast<float>(i + 1) * 10.0f}});
+        reg.emplace<WorldPosition>(obs[i], WorldPosition{{0.0f, constants::DESTROY_Y + static_cast<float>(i + 1) * 10.0f}});
     }
 
     obstacle_despawn_system(reg, 0.016f);
@@ -475,8 +475,8 @@ TEST_CASE("cleanup: dense despawn burst stays within reserved capacity",
     for (int i = 0; i < dense_count; ++i) {
         auto obs = reg.create();
         reg.emplace<ObstacleTag>(obs);
-        reg.emplace<WorldTransform>(obs,
-            WorldTransform{{0.0f, constants::DESTROY_Y + static_cast<float>(i + 1) * 10.0f}});
+        reg.emplace<WorldPosition>(obs,
+            WorldPosition{{0.0f, constants::DESTROY_Y + static_cast<float>(i + 1) * 10.0f}});
     }
 
     obstacle_despawn_system(reg, 0.016f);
@@ -491,7 +491,7 @@ TEST_CASE("cleanup: does not emplace MissTag or ScoredTag on surviving obstacles
 
     auto survivor = reg.create();
     reg.emplace<ObstacleTag>(survivor);
-    reg.emplace<WorldTransform>(survivor, WorldTransform{{0.0f, constants::DESTROY_Y - 1.0f}});
+    reg.emplace<WorldPosition>(survivor, WorldPosition{{0.0f, constants::DESTROY_Y - 1.0f}});
 
     obstacle_despawn_system(reg, 0.016f);
 

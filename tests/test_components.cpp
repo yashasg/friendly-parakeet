@@ -9,8 +9,8 @@
 
 // Verify component defaults and basic ECS operations
 
-TEST_CASE("components: WorldTransform defaults to origin position", "[components][transform]") {
-    WorldTransform transform{};
+TEST_CASE("components: WorldPosition defaults to origin position", "[components][transform]") {
+    WorldPosition transform{};
     CHECK(transform.position.x == 0.0f);
     CHECK(transform.position.y == 0.0f);
 }
@@ -231,7 +231,7 @@ TEST_CASE("ecs: make_player creates proper entity", "[ecs]") {
     auto p = make_player(reg);
 
     CHECK(reg.all_of<PlayerTag>(p));
-    CHECK(reg.all_of<WorldTransform>(p));
+    CHECK(reg.all_of<WorldPosition>(p));
     CHECK(reg.all_of<PlayerShape>(p));
     CHECK(reg.all_of<ShapeWindow>(p));
     CHECK(reg.all_of<Lane>(p));

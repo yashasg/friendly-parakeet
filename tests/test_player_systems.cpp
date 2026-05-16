@@ -188,10 +188,10 @@ TEST_CASE("player_movement: lane transition moves position", "[player]") {
     reg.get<Lane>(p).target = 0;
     reg.get<Lane>(p).lerp_t = 0.0f;
 
-    float initial_x = reg.get<WorldTransform>(p).position.x;
+    float initial_x = reg.get<WorldPosition>(p).position.x;
     player_movement_system(reg, 0.016f);
 
-    CHECK(reg.get<WorldTransform>(p).position.x < initial_x);
+    CHECK(reg.get<WorldPosition>(p).position.x < initial_x);
 }
 
 TEST_CASE("player_movement: lane transition completes", "[player]") {
@@ -207,14 +207,14 @@ TEST_CASE("player_movement: lane transition completes", "[player]") {
 
     CHECK(reg.get<Lane>(p).current == 2);
     CHECK(reg.get<Lane>(p).target == -1);
-    CHECK(reg.get<WorldTransform>(p).position.x == constants::LANE_X[2]);
+    CHECK(reg.get<WorldPosition>(p).position.x == constants::LANE_X[2]);
 }
 
 TEST_CASE("player_movement: clears stale lane target when target equals current", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
     auto& lane = reg.get<Lane>(p);
-    auto& transform = reg.get<WorldTransform>(p);
+    auto& transform = reg.get<WorldPosition>(p);
     lane.current = 1;
     lane.target = 1;
     lane.lerp_t = 0.0f;
@@ -231,7 +231,7 @@ TEST_CASE("player_movement: normalizes invalid current lane", "[player][issue900
     auto reg = make_registry();
     auto p = make_player(reg);
     auto& lane = reg.get<Lane>(p);
-    auto& transform = reg.get<WorldTransform>(p);
+    auto& transform = reg.get<WorldPosition>(p);
     lane.current = -1;
     lane.target = 0;
     lane.lerp_t = 0.0f;
@@ -249,7 +249,7 @@ TEST_CASE("player_movement: normalizes invalid target lane", "[player][issue900]
     auto reg = make_registry();
     auto p = make_player(reg);
     auto& lane = reg.get<Lane>(p);
-    auto& transform = reg.get<WorldTransform>(p);
+    auto& transform = reg.get<WorldPosition>(p);
     lane.current = 1;
     lane.target = constants::LANE_COUNT;
     lane.lerp_t = 0.0f;

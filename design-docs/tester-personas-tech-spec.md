@@ -9,7 +9,7 @@
 
 > **Legacy transform naming note:** this older test-player spec still uses
 > `Position`/`Velocity` in diagrams and pseudocode. Current runtime transform
-> components are `WorldTransform` and `MotionVelocity`; treat the older names in
+> components are `WorldPosition` and `MotionVelocity`; treat the older names in
 > this document as historical aliases unless the text explicitly references
 > current component declarations.
 

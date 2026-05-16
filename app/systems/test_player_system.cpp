@@ -155,7 +155,7 @@ static TestPlayerAction determine_action(
         action.arrival_time = beat->arrival_time;
     } else {
         // Estimate from position + velocity
-        auto* wt  = reg.try_get<WorldTransform>(entity);
+        auto* wt  = reg.try_get<WorldPosition>(entity);
         auto* vel = reg.try_get<Vector2>(entity);
         if (wt && vel && vel->y > 0.0f) {
             action.arrival_time = song.song_time +
@@ -169,7 +169,7 @@ static TestPlayerAction determine_action(
 
         // ShapeGate: player must also be in the lane where the shape hole is.
         // The hole is at obs_pos.x — find which lane that corresponds to.
-        auto* obs_wt = reg.try_get<WorldTransform>(entity);
+        auto* obs_wt = reg.try_get<WorldPosition>(entity);
         if (obs_wt && !reg.all_of<SplitPathTag>(entity)) {
             for (int i = 0; i < constants::LANE_COUNT; ++i) {
                 if (!lane_centers_overlap(obs_wt->position.x, constants::LANE_X[i])) continue;
@@ -276,12 +276,12 @@ void test_player_system(entt::registry& reg, float dt) {
     const auto& cfg = test_player_config(*state);
 
     // ── Find player ──────────────────────────────────────────
-    auto player_view = reg.view<PlayerTag, WorldTransform, PlayerShape, ShapeWindow, Lane>();
+    auto player_view = reg.view<PlayerTag, WorldPosition, PlayerShape, ShapeWindow, Lane>();
     if (player_view.begin() == player_view.end()) return;
 
     auto player_entity = *player_view.begin();
     auto [p_transform, p_shape, p_window, p_lane] =
-        player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane>(player_entity);
+        player_view.get<WorldPosition, PlayerShape, ShapeWindow, Lane>(player_entity);
     lane_utils::normalize(p_lane, &p_transform);
 
     // Per-frame constant: player's vertical offset (Grounded/Sliding → 0,
@@ -301,7 +301,7 @@ void test_player_system(entt::registry& reg, float dt) {
         }
     }
 
-    auto obs_view = reg.view<ObstacleTag, WorldTransform, Obstacle>(
+    auto obs_view = reg.view<ObstacleTag, WorldPosition, Obstacle>(
         entt::exclude<ScoredTag, TestPlayerPlannedTag, NonScorableTag>);
     for (auto [entity, obs_wt, obs] : obs_view.each()) {
         (void)obs;
@@ -458,7 +458,7 @@ void test_player_system(entt::registry& reg, float dt) {
                                  && pending_shape_obstacle != action.obstacle);
         bool zone_blocked = false;
         {
-            auto zone_view = reg.view<ObstacleTag, Obstacle, WorldTransform>(
+            auto zone_view = reg.view<ObstacleTag, Obstacle, WorldPosition>(
                 entt::exclude<ScoredTag, NonScorableTag>);
             for (auto [ze, obstacle, zwt] : zone_view.each()) {
                 (void)obstacle;
@@ -480,7 +480,7 @@ void test_player_system(entt::registry& reg, float dt) {
             if (action.target_lane < next_lane) next_lane--;
             else if (action.target_lane > next_lane) next_lane++;
 
-            auto closer_view = reg.view<ObstacleTag, Obstacle, WorldTransform>(
+            auto closer_view = reg.view<ObstacleTag, Obstacle, WorldPosition>(
                 entt::exclude<ScoredTag, NonScorableTag>);
             for (auto [oe, obstacle, owt] : closer_view.each()) {
                 (void)obstacle;
@@ -545,7 +545,7 @@ void test_player_system(entt::registry& reg, float dt) {
                                       && pending_shape_obstacle != action.obstacle);
         bool vert_zone_blocked = false;
         {
-            auto zone_view = reg.view<ObstacleTag, Obstacle, WorldTransform>(
+            auto zone_view = reg.view<ObstacleTag, Obstacle, WorldPosition>(
                 entt::exclude<ScoredTag, NonScorableTag>);
             for (auto [ze, obstacle, zwt] : zone_view.each()) {
                 (void)obstacle;

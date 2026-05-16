@@ -105,7 +105,7 @@ TEST_CASE("beat_scheduler: defaults invalid ShapeGate lane to center lane", "[be
     song.next_onset_marker_idx = 0;
     beat_scheduler_system(reg, 0.016f);
 
-    auto view = reg.view<ObstacleTag, WorldTransform, ShapeGateTag, int8_t>();
+    auto view = reg.view<ObstacleTag, WorldPosition, ShapeGateTag, int8_t>();
     REQUIRE(view.size_hint() == 1);
     for (auto [e, wt, lane] : view.each()) {
         (void)e;
@@ -318,7 +318,7 @@ TEST_CASE("beat_scheduler: spawns OnsetMarker as visible non-scorable cue",
     beat_scheduler_system(reg, 0.016f);
 
     auto view = reg.view<ObstacleTag, OnsetMarkerTag, NonScorableTag, Obstacle,
-                         BeatInfo, WorldTransform, ObstacleChildren>();
+                         BeatInfo, WorldPosition, ObstacleChildren>();
     REQUIRE(view.size_hint() == 1);
 
     entt::entity cue = entt::null;
@@ -371,7 +371,7 @@ TEST_CASE("beat_scheduler: spawns SplitPath in authored lane", "[beat_scheduler]
     song.next_onset_marker_idx = 0;
     beat_scheduler_system(reg, 0.016f);
 
-    auto view = reg.view<ObstacleTag, WorldTransform, SplitPathTag, int8_t>();
+    auto view = reg.view<ObstacleTag, WorldPosition, SplitPathTag, int8_t>();
     REQUIRE(view.size_hint() == 1);
     for (auto [e, wt, lane] : view.each()) {
         CHECK_THAT(wt.position.x, Catch::Matchers::WithinAbs(constants::LANE_X[2], 0.01f));
@@ -393,7 +393,7 @@ TEST_CASE("beat_scheduler: defaults invalid SplitPath lane to center lane", "[be
     song.next_onset_marker_idx = 0;
     CHECK_NOTHROW(beat_scheduler_system(reg, 0.016f));
 
-    auto view = reg.view<ObstacleTag, WorldTransform, SplitPathTag, int8_t, ObstacleChildren>();
+    auto view = reg.view<ObstacleTag, WorldPosition, SplitPathTag, int8_t, ObstacleChildren>();
     REQUIRE(view.size_hint() == 1);
     for (auto [e, wt, lane, children] : view.each()) {
         CHECK_THAT(wt.position.x, Catch::Matchers::WithinAbs(constants::LANE_X[1], 0.01f));
@@ -474,7 +474,7 @@ TEST_CASE("beat_scheduler: obstacles spawn with overshoot compensation", "[beat_
 
     // Obstacle should spawn below SPAWN_Y to compensate for late spawn.
     // start_y = SPAWN_Y + overshoot * scroll_speed
-    auto view = reg.view<ObstacleTag, WorldTransform>();
+    auto view = reg.view<ObstacleTag, WorldPosition>();
     for (auto [e, wt] : view.each()) {
         CHECK(wt.position.y > constants::SPAWN_Y);
     }
@@ -585,7 +585,7 @@ TEST_CASE("beat_scheduler: clamped late-spawn stores adjusted spawn_time in Beat
     float max_start_y = constants::PLAYER_Y;
 
     // Position must be clamped
-    auto pview = reg.view<ObstacleTag, WorldTransform>();
+    auto pview = reg.view<ObstacleTag, WorldPosition>();
     for (auto [e, wt] : pview.each()) {
         CHECK_THAT(wt.position.y, Catch::Matchers::WithinAbs(max_start_y, 0.01f));
     }

@@ -120,7 +120,7 @@ TEST_CASE("game_camera_system drops stale MeshChild parents without crashing", "
     reg.ctx().emplace<ShapeMeshConfig>();
     reg.ctx().emplace<FloorParams>();
     auto parent = reg.create();
-    reg.emplace<WorldTransform>(parent, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<WorldPosition>(parent, WorldPosition{{100.0f, 200.0f}});
     auto child = reg.create();
     reg.emplace<MeshChild>(
         child,
@@ -160,7 +160,7 @@ TEST_CASE("game_camera_system rejects invalid MeshChild shape index", "[camera3d
     reg.ctx().emplace<ShapeMeshConfig>();
     reg.ctx().emplace<FloorParams>();
     auto parent = reg.create();
-    reg.emplace<WorldTransform>(parent, WorldTransform{{100.0f, 200.0f}});
+    reg.emplace<WorldPosition>(parent, WorldPosition{{100.0f, 200.0f}});
     auto child = reg.create();
     reg.emplace<MeshChild>(
         child,
@@ -195,7 +195,7 @@ TEST_CASE("game_camera_system: dense stale-parent cleanup stays within reserved 
     constexpr int dense_count = beat_capacity * ObstacleChildren::MAX;
     for (int i = 0; i < dense_count; ++i) {
         auto parent = reg.create();
-        reg.emplace<WorldTransform>(parent, WorldTransform{{static_cast<float>(i), 0.0f}});
+        reg.emplace<WorldPosition>(parent, WorldPosition{{static_cast<float>(i), 0.0f}});
         auto child = reg.create();
         reg.emplace<MeshChild>(
             child,

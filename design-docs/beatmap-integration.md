@@ -250,8 +250,8 @@ creates the standard runtime obstacle archetypes via `spawn_rhythm_obstacle()`.
   │  ✅ beat_log_system            (per-beat diagnostic log)        │
   │  ✅ beat_scheduler_system      (BeatMap → spawn entities)       │
   │  ✅ shape_window_activation_system (early MorphIn tick)         │
-  │  ✅ player_movement_system     (animate WorldTransform)         │
-  │  ✅ scroll_system              (WorldTransform += MotionVel·dt) │
+  │  ✅ player_movement_system     (animate WorldPosition)         │
+  │  ✅ scroll_system              (WorldPosition += MotionVel·dt) │
   │  ✅ motion_system              (additional motion components)   │
   │  ✅ collision_system           (player vs obstacles → ScoredTag)│
   │  ✅ shape_window_system        (runs AFTER collision — see #871)│

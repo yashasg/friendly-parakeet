@@ -36,7 +36,7 @@ struct MeshKindShape {
 struct MeshChild {
     entt::entity parent = entt::null;
     float x = 0.0f;             // absolute X position in game coords
-    float z_offset = 0.0f;      // offset from parent WorldTransform.position.y (scroll axis)
+    float z_offset = 0.0f;      // offset from parent WorldPosition.position.y (scroll axis)
     float width = 0.0f;         // slab width (game coords)
     float depth = 0.0f;         // slab depth (game coords)
     float height = 0.0f;        // slab height (game coords)
