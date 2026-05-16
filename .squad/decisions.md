@@ -3259,10 +3259,122 @@ This is a **per-entity audit problem** that surfaces during migration. It is not
 
 ---
 
+## 7. Folder Layout — Authoritative 5-Folder Allowlist (2026-05-15)
+
+**Date:** 2026-05-15T06:24:15Z
+**Source directive:** Coordinator inbox (yashas, via Copilot)
+**Status:** Supersedes Section 5 "Folder Layout Standard" above.
+
+The complete and authoritative list of allowed subfolders under `app/` is:
+
+| Folder | Contents |
+|---|---|
+| `app/components/` | Pure data structs — non-tag components |
+| `app/entities/` | Entity-archetype factory functions |
+| `app/systems/` | Free functions over registry views |
+| `app/tags/` | Empty marker structs used as registry filters (see Section 8) |
+| `app/util/` | Header-only inline/constexpr pure functions (platform helpers fold in here) |
+
+Anything outside this list is a violation. Future ECS canon enforcement (linter, drift checks, agent prompts) MUST use this exact 5-folder allowlist.
+
+**Implications versus Section 5:**
+
+- `app/platform/` is NOT its own folder — its contents fold into `app/util/` (platform-cross-cutting helpers are just utility functions). The earlier "platform may exist for cross-platform readability" carve-out (Section 3, Section 5) is rescinded.
+- `app/audio/`, `app/input/`, `app/session/`, `app/ui/`, `app/content/`, `app/rendering/` are ALL systems-in-costume, confirmed. They are destined for deletion; their contents migrate to `components/`, `entities/`, `systems/`, `tags/`, or `util/` per their actual shape. (`audio/`, `input/`, `session/`, `platform/`, `content/` already folded; `rendering/`, `ui/` remain — see #1193 follow-ups for `ui/`.)
+- `app/tags/` is now first-class. EnTT tag-style empty marker components live here. They are component-shaped (zero-size empty structs used as registry filters) but conceptually distinct enough to warrant their own slot.
+
+Verbatim user input:
+
+> "hey the allowed folders are app/components app/entities/ app/systems app/tags and app/util, technically the platform functions are just util, and we already decided that the remaining folders are just costume"
+
+---
+
+## 8. Tags Single-Header Convention (2026-05-15)
+
+**Date:** 2026-05-15T06:26:30Z
+**Source directive:** Coordinator inbox (yashas, via Copilot)
+
+`app/tags/` contains a single header file `tags.h` that declares ALL tag structs the codebase needs. Do NOT create one file per tag.
+
+- Tag types are empty marker structs (zero-size, used as `registry.view<...>()` filters or `excludes`).
+- All tag declarations co-locate in `app/tags/tags.h`. Adding a new tag = adding one line to that header.
+- No `app/tags/player_tag.h`, `app/tags/scored_tag.h`, etc. The folder houses one file.
+
+Single-file convention keeps tag inventory discoverable in one place and avoids file-explosion. Tags are conceptually a flat catalog, not a per-domain partition.
+
+Verbatim user input:
+
+> "yeah you can just have a tags.h, which declares all the tags structs we need. dont need separate files for it"
+
+---
+
+## 9. DoD source-text grounding (Fabian)
+
+**Date:** 2026-05-15T06:55:00Z
+**Source directive:** Coordinator inbox (yashas, via Copilot)
+**Cross-refs:** #1203 (god-class normalization), #1204 (enum eradication + magic_enum removal)
+
+These five principles distill the *Data-Oriented Design* (Richard Fabian) passages quoted in #1203 and #1204 into project-specific rules. Each principle is paraphrased and tagged with the chapter+section citation. The raw blockquoted passages remain in the issue bodies; the canon holds the project rule.
+
+**Order matters.** Principle 0 is the philosophical foundation; Principles 1–4 are mechanism-level consequences.
+
+### Principle 0 — An entity's class IS the set of tables it belongs to
+
+An entity has no fields, no methods, no inherent type. It is a primary key (`entt::entity`) that participates in some set of tables (component storages). Behavior is dispatched by *which tables a system queries*, not by inspecting a discriminator field on the entity. Two entities with identical components are the same "class"; an entity that gains or loses a component has changed class — no cast, no virtual call, no union.
+
+This is the WHY behind every other principle. If you find yourself reading a field to decide what to do, you have re-introduced a switch and stepped outside the model. The right move is almost always: split the entities into two tables, write two systems, and let the registry's view do the dispatch.
+
+Source: *DoD* ch. Existential Processing — § "Dynamic runtime polymorphism"
+
+### Principle 1 — Control-flow enums become tables, not switch statements
+
+When an enum is used by a `switch` or virtual call to dispatch behavior, the cases ARE the systems. Replace the enum with one component table per former case. Each former case becomes a system that views its own table. The dispatch dissolves because the registry already partitions entities by component type. **There is no central switch.**
+
+Corollary: enums survive only as labels and lookup keys — keybindings, color names, return values, indices into static lookup tables. Anything that drives control flow is a misnamed system.
+
+Source: *DoD* ch. Existential Processing — § "Don't use enums quite as much"
+
+### Principle 2 — A "table" is not a "tag"
+
+A table is the typed storage of rows in EnTT (`registry.storage<T>()`). Rows have columns (the fields of `T`); the primary key is the entity ID. **A tag is the degenerate special case** — a zero-column table where existence-in-the-table IS the data.
+
+The migration question for any former enum value is therefore: *does this value carry data unique to itself?*
+- Yes → real component struct (table with columns).
+- No → empty tag (zero-column table).
+
+Blanket "every enum value → empty tag" is wrong; it loses the per-case data and forces us to invent a side-channel struct to carry it.
+
+Source: *DoD* ch. Relational Databases — § "Primary keys"
+
+### Principle 3 — God-class components fail 1NF
+
+A component is in 1NF only if it has:
+- **No NULL columns.** A field that is meaningful only when another field has a particular value is a NULL column in disguise. Move it to its own table whose membership IS the precondition. (Example: `GameState.end_choice` is only meaningful when `phase == GameOver` → `GameOverPhase { EndScreenChoice end_choice; }` lives in its own table.)
+- **No array columns.** A `std::vector<X>` field is a 1NF violation. Each element becomes a row in its own table, with the parent's entity ID as the foreign key.
+- **No duplicate rows.** EnTT enforces this for free — one component per type per entity.
+
+When a component fails any of these, it is a god-class wearing a struct hat. The fix is the normal-forms walk (1NF/2NF/3NF/BCNF) applied to its fields.
+
+Source: *DoD* ch. Relational Databases — § "1st Normal Form"
+
+### Principle 4 — Operations are insert / delete / update only
+
+After normalization, every state change is one of three table operations: `emplace`, `remove`, or mutate-component-in-place. There are no other primitives. "Transition to GameOver" becomes `r.remove<PlayingPhase>(e); r.emplace<GameOverPhase>(e, end_choice);` — two table ops, no switch on phase, no nullable column carrying state across a phase boundary.
+
+This is the operational consequence of the existence-IS-state principle. If a state change requires more than insert/delete/update, the relevant data has not been normalized far enough.
+
+Source: *DoD* ch. Relational Databases — § "Operations"
+
+### Operational corollary (cross-reference, do not duplicate)
+
+The cyclomatic-complexity ratchet (1 + branches + switch cases, downward only) and the grep-based enum allowlist (`app/.allowed-enums.txt`, `tools/check_enum_allowlist.py`) are mechanism-level decisions captured in #1204. The canon references #1204 for the mechanism without inlining the implementation.
+
+---
+
 ## Enforcement
 
 - Keyser (Lead Architect) owns this standard.
-- Every PR touching `app/` is measured against these six sections.
-- Issues #1193–#1200 are the active work queue derived from applying this standard to the current codebase.
+- Every PR touching `app/` is measured against these nine sections.
+- Issues #1193–#1200 (and their follow-ups #1203 / #1204 / #1216–#1218 / #1232 / #1273–#1286) are the active work queue derived from applying this standard to the current codebase.
 - When a new agent or team member asks "how do we do ECS here?", point them at this file first.
 - Deviation from this standard requires an explicit decision entry superseding or extending this one.
