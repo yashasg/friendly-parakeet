@@ -338,6 +338,38 @@ TEST_CASE("ecs: repeated unwire_input_dispatcher is idempotent before rewire",
     CHECK(drain_sfx_events(reg).count == 1);
 }
 
+// Issue #1268: dispatcher connections must NOT auto-release on registry
+// teardown. EnTT's `ctx` is a `dense_map` whose packed `std::vector`
+// destruction order is unspecified (libc++ destroys in reverse, libstdc++
+// in forward). With `scoped_connection`, libstdc++ would destruct the
+// dispatcher first and the connection-holder's destructor would then call
+// `release()` on a freed `sigh` — SIGSEGV in teardown. The fix is to use
+// raw `entt::connection` so destruction is a no-op; release happens only
+// through `unwire_*_dispatcher()` while the dispatcher is still alive.
+TEST_CASE("ecs: registry teardown without unwire_* is safe (no UAF)",
+          "[ecs][dispatcher][shutdown][regression]") {
+    // Constructing then dropping a registry without ever calling
+    // `unwire_*_dispatcher()` must not crash. Every TEST_CASE that does
+    // `auto reg = make_registry();` exercises the same teardown path at
+    // scope-exit; this case makes the intent explicit, drains a wired
+    // listener so the dispatcher's `sigh` has real bookkeeping, and
+    // then lets the inner block destruct the registry.
+    {
+        auto reg = make_rhythm_registry();
+        auto player = make_rhythm_player(reg);
+        REQUIRE(window_phase_is_idle(reg, player));
+
+        auto& disp = reg.ctx().get<entt::dispatcher>();
+        disp.enqueue<GoEvent>(GoEvent{Direction::Right});
+        disp.update<GoEvent>();
+        CHECK(reg.get<Lane>(player).target == 2);
+        // Inner-block exit destroys the registry. With `scoped_connection`,
+        // libstdc++ would SIGSEGV here because the dispatcher's `sigh` is
+        // destroyed before the holder's auto-release runs.
+    }
+    SUCCEED("registry teardown completed without crash");
+}
+
 TEST_CASE("collision: SongState ctx singleton identity is stable across collision ticks",
           "[collision][song_state][regression]") {
     auto reg = make_registry();
