@@ -3,7 +3,6 @@
 #include "../components/player.h"
 #include "tags/tags.h"
 #include <entt/entity/entity.hpp>
-#include <entt/core/enum.hpp>
 #include <cstdint>
 #include <random>
 
@@ -23,21 +22,18 @@ inline constexpr SkillConfig SKILL_TABLE[] = {
     { 400.0f, 0.800f, 1.200f, false },   // Bad
 };
 
-// ── Done-flag bits for TestPlayerAction ──────────────────────
-// Power-of-two values + _entt_enum_as_bitmask activates EnTT's
-// typed |/&/^ operators, replacing raw uint8_t literal helpers.
-enum class ActionDoneBit : uint8_t {
-    Shape    = 1 << 0,
-    Lane     = 1 << 1,
-    Vertical = 1 << 2,
-    _entt_enum_as_bitmask
-};
-
 // ── Queued action (value type, NOT a component) ──────────────
 // Sentinel values encode "no action needed":
 //   target_shape  = Hexagon   → no shape change
 //   target_lane   = -1        → no lane change
 //   target_vertical = Grounded → no jump/slide
+//
+// Per-sub-action completion is tracked as three independent boolean
+// columns (formerly an `ActionDoneBit` bitmask). Per Fabian's existential-
+// processing canon (.squad/decisions.md § DoD source-text grounding,
+// Principle 4), control-flow discriminators — including bitmask
+// discriminators — become per-case tables. For a value type, that's
+// per-case columns on the same row.
 struct TestPlayerAction {
     entt::entity obstacle       = entt::null;
     float        timer          = 0.0f;
@@ -48,8 +44,9 @@ struct TestPlayerAction {
     int8_t target_lane          = -1;
     VMode  target_vertical      = VMode::Grounded;
 
-    ActionDoneBit done_flags = ActionDoneBit{};
-
+    bool shape_done    = false;
+    bool lane_done     = false;
+    bool vertical_done = false;
 };
 
 // ── Test player state (context singleton) ────────────────────
