@@ -17,12 +17,16 @@ struct MissRecord {
     bool has_timing = false;
 };
 
+// HitRecord carries per-row data only — the tier discriminator that used to
+// live here is now a per-tier tag on the obstacle entity (#1202/#1204), so
+// scoring_system snapshots an obstacle plus its per-tier tag and dispatches
+// to the matching transform without re-querying the registry per row.
 struct HitRecord {
     entt::entity e = entt::null;
     Vector2 popup_xy = {0.0f, 0.0f};
     Obstacle obs;
     bool has_timing = false;
-    TimingGrade timing{};
+    float precision = 0.0f;
 };
 
 struct ScoringSystemScratch {

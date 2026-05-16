@@ -12,7 +12,7 @@ int score_good_shape_gate(entt::registry& reg) {
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.0f);
+    emplace_timing_good(reg, obs, 0.0f);
     scoring_system(reg, 0.0f);
 
     return score.score - before;
@@ -22,12 +22,14 @@ int score_good_shape_gate(entt::registry& reg) {
 
 namespace {
 
+using TierEmplace = void(*)(entt::registry&, entt::entity, float);
+
 struct ScoredTierResult {
     int points = 0;
     float energy_delta = 0.0f;
 };
 
-ScoredTierResult score_single_shape_gate_with_tier(TimingTier tier) {
+ScoredTierResult score_single_shape_gate_with_tier(TierEmplace emplace_tag) {
     auto reg = make_registry();
     auto& score = reg.ctx().get<ScoreState>();
     auto& energy = reg.ctx().get<EnergyState>();
@@ -36,7 +38,7 @@ ScoredTierResult score_single_shape_gate_with_tier(TimingTier tier) {
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, tier, 0.0f);
+    emplace_tag(reg, obs, 0.0f);
 
     scoring_system(reg, 0.0f);
     energy_system(reg, 0.0f);
@@ -75,7 +77,7 @@ TEST_CASE("scoring: scored obstacle awards points", "[scoring]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
+    emplace_timing_good(reg, obs, 0.5f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
@@ -92,7 +94,7 @@ TEST_CASE("scoring: chain multiplier increases points", "[scoring]") {
     for (int i = 0; i < 3; ++i) {
         auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + float(i));
         reg.emplace<ScoredTag>(obs);
-        reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
+        emplace_timing_good(reg, obs, 0.5f);
         scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
     energy_system(reg, 0.016f);
@@ -110,7 +112,7 @@ TEST_CASE("scoring: chain persists across authored rests until miss (#100)", "[s
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
+    emplace_timing_good(reg, obs, 0.5f);
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
     energy_system(reg, 0.016f);
@@ -138,7 +140,7 @@ TEST_CASE("scoring: popup entity spawned on score", "[scoring]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
+    emplace_timing_good(reg, obs, 0.5f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
@@ -159,7 +161,7 @@ TEST_CASE("scoring: score feedback spawns effect particles", "[scoring][particle
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Perfect, 1.0f);
+    emplace_timing_perfect(reg, obs, 1.0f);
 
     scoring_system(reg, 0.016f);
 
@@ -183,7 +185,7 @@ TEST_CASE("scoring: SFX pushed on score", "[scoring]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
+    emplace_timing_good(reg, obs, 0.5f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
@@ -223,7 +225,7 @@ TEST_CASE("scoring: chain multiplier 5+ gives extended value", "[scoring]") {
     for (int i = 0; i < 5; ++i) {
         auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + float(i));
         reg.emplace<ScoredTag>(obs);
-        reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
+        emplace_timing_good(reg, obs, 0.5f);
         scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
     energy_system(reg, 0.016f);
@@ -285,7 +287,7 @@ TEST_CASE("scoring: obstacle entity cleaned up after scoring", "[scoring]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
+    emplace_timing_good(reg, obs, 0.5f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
@@ -320,7 +322,7 @@ TEST_CASE("scoring: no-penalty — on-beat gate scores at base points", "[scorin
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
+    emplace_timing_good(reg, obs, 0.5f);
 
     scoring_system(reg, 0.0f);
     popup_feedback_system(reg, 0.0f);
@@ -331,13 +333,13 @@ TEST_CASE("scoring: no-penalty — on-beat gate scores at base points", "[scorin
 }
 
 TEST_CASE("scoring: timing multiplier applies end-to-end for non-perfect tiers (#221)", "[scoring][issue221]") {
-    const auto good = score_single_shape_gate_with_tier(TimingTier::Good);
+    const auto good = score_single_shape_gate_with_tier(&emplace_timing_good);
     CHECK(good.points == 200);
 
-    const auto ok = score_single_shape_gate_with_tier(TimingTier::Ok);
+    const auto ok = score_single_shape_gate_with_tier(&emplace_timing_ok);
     CHECK(ok.points == 100);
 
-    const auto bad = score_single_shape_gate_with_tier(TimingTier::Bad);
+    const auto bad = score_single_shape_gate_with_tier(&emplace_timing_bad);
     CHECK(bad.points == 50);
     CHECK_THAT(bad.energy_delta, Catch::Matchers::WithinAbs(-constants::ENERGY_DRAIN_BAD, 0.0001f));
 }
@@ -346,7 +348,7 @@ TEST_CASE("scoring: popup entity has full factory contract", "[scoring][popup_en
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
+    emplace_timing_good(reg, obs, 0.5f);
 
     scoring_system(reg, 0.016f);
     popup_feedback_system(reg, 0.016f);
@@ -414,7 +416,7 @@ TEST_CASE("scoring: missed NonScorableTag entity is resolved without effects",
     reg.emplace<NonScorableTag>(e);
     reg.emplace<ScoredTag>(e);
     reg.emplace<MissTag>(e);
-    reg.emplace<TimingGrade>(e, TimingTier::Bad, 0.0f);
+    emplace_timing_bad(reg, e, 0.0f);
 
     scoring_system(reg, 0.0f);
     energy_system(reg, 0.0f);
@@ -472,7 +474,7 @@ TEST_CASE("scoring: obstacle/timing points still apply after playback has finish
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
+    emplace_timing_good(reg, obs, 0.5f);
 
     scoring_system(reg, 1.0f);
 
@@ -489,24 +491,26 @@ TEST_CASE("runtime scratch: dense scoring burst stays within reserved capacity",
     auto& popup_queue = reg.ctx().get<ScorePopupRequestQueue>();
     const auto hit_capacity = scratch.hit_buf.capacity();
     const auto energy_capacity = energy.events.capacity();
-    const auto popup_capacity = popup_queue.requests.capacity();
+    // Per-tier queues (post-#1202/#1204): the dense burst below all goes
+    // into queue.good, so guard the Good queue's capacity for this test.
+    const auto popup_capacity = popup_queue.good.capacity();
 
     for (int i = 0; i < dense_count; ++i) {
         auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + static_cast<float>(i));
         reg.emplace<ScoredTag>(obs);
-        reg.emplace<TimingGrade>(obs, TimingTier::Good, 0.5f);
+        emplace_timing_good(reg, obs, 0.5f);
     }
 
     scoring_system(reg, 0.0f);
 
     CHECK(scratch.hit_buf.capacity() == hit_capacity);
     CHECK(energy.events.capacity() == energy_capacity);
-    CHECK(popup_queue.requests.capacity() == popup_capacity);
+    CHECK(popup_queue.good.capacity() == popup_capacity);
     CHECK(scratch.hit_capacity_exceeded_count == 0);
     CHECK(energy.capacity_exceeded_count == 0);
     CHECK(popup_queue.capacity_exceeded_count == 0);
     CHECK(energy.events.size() == static_cast<std::size_t>(dense_count));
-    CHECK(popup_queue.requests.size() == static_cast<std::size_t>(dense_count));
+    CHECK(popup_queue.good.size() == static_cast<std::size_t>(dense_count));
 }
 
 // #1089: miss_capacity_exceeded_count is incremented from scoring_system's
@@ -525,7 +529,7 @@ TEST_CASE("runtime scratch: dense miss burst stays within reserved capacity",
         auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + static_cast<float>(i));
         reg.emplace<ScoredTag>(obs);
         reg.emplace<MissTag>(obs);
-        reg.emplace<TimingGrade>(obs, TimingTier::Bad, 0.5f);
+        emplace_timing_bad(reg, obs, 0.5f);
     }
 
     scoring_system(reg, 0.0f);

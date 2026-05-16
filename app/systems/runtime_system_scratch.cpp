@@ -41,7 +41,16 @@ void runtime_system_scratch_reserve(entt::registry& reg, std::size_t beat_capaci
     scoring.hit_buf.reserve(capacity);
 
     reg.ctx().get<PendingEnergyEffects>().events.reserve(capacity);
-    reg.ctx().get<ScorePopupRequestQueue>().requests.reserve(capacity);
+    // Each per-tier popup queue is reserved independently — the total capacity
+    // budget is sized so any single tier can absorb a full-frame burst without
+    // reallocating. (Per #1202/#1204, ScorePopupRequestQueue is now 5 per-tier
+    // vectors instead of one tagged-union vector.)
+    auto& popup_queue = reg.ctx().get<ScorePopupRequestQueue>();
+    popup_queue.perfect.reserve(capacity);
+    popup_queue.good.reserve(capacity);
+    popup_queue.ok.reserve(capacity);
+    popup_queue.bad.reserve(capacity);
+    popup_queue.untimed.reserve(capacity);
     reg.ctx().get<ObstacleDespawnScratch>().to_destroy.reserve(capacity);
     reg.ctx().get<PopupDisplayScratch>().expired.reserve(capacity);
     reg.ctx().get<ParticleSystemScratch>().expired.reserve(capacity);

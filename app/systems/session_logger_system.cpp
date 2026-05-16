@@ -2,6 +2,7 @@
 #include "../components/obstacle.h"
 #include "../components/rhythm.h"
 #include "../components/scoring.h"
+#include "../tags/tags.h"
 
 #include <cstdarg>
 #include <cmath>
@@ -144,7 +145,6 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
 
     bool is_miss = reg.any_of<MissTag>(entity);
 
-    auto* grade = reg.try_get<TimingGrade>(entity);
     auto* beat = reg.try_get<BeatInfo>(entity);
     int beat_num = beat ? beat->beat_index : -1;
     float expected_t = beat ? beat->arrival_time : 0.0f;
@@ -154,6 +154,17 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
         reg.all_of<RequiredLane>(entity));
     const std::string_view kind_name = enum_name_or_unknown(kind);
 
+    // Per-tier tag → label. Replaces enum_name(grade->tier) lookup; the tier
+    // discriminator is now a per-tier tag on the entity (issue #1202/#1204).
+    auto tier_label_or_empty = [&]() -> std::string_view {
+        if (reg.all_of<TimingPerfectTag>(entity)) return "Perfect";
+        if (reg.all_of<TimingGoodTag>(entity))    return "Good";
+        if (reg.all_of<TimingOkTag>(entity))      return "Ok";
+        if (reg.all_of<TimingBadTag>(entity))     return "Bad";
+        return {};
+    };
+
+    auto* grade = reg.try_get<TimingGrade>(entity);
     if (is_miss) {
         session_log_write(*log, t, "GAME",
             "COLLISION obstacle=%u beat=%d expected=%.3f drift=%+.3fs kind=%.*s result=MISS",
@@ -161,7 +172,7 @@ void session_log_on_scored(entt::registry& reg, entt::entity entity) {
             beat_num, expected_t, drift,
             static_cast<int>(kind_name.size()), kind_name.data());
     } else if (grade) {
-        const std::string_view tier_name = enum_name_or_unknown(grade->tier);
+        const std::string_view tier_name = tier_label_or_empty();
         session_log_write(*log, t, "GAME",
             "COLLISION obstacle=%u beat=%d expected=%.3f drift=%+.3fs kind=%.*s result=CLEAR timing=%.*s(%.2f)",
             static_cast<unsigned>(entt::to_integral(entity)),

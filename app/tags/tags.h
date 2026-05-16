@@ -66,6 +66,20 @@ struct TagHUDPass     {};  // screen-space UI elements
 struct MeshKindSlab {};
 struct MeshKindQuad {};
 
+// ── Timing tier (per-tag table; one tier tag per graded obstacle) ──
+// Replaces the former TimingTier enum (issue #1202/#1204). Each former enum
+// value becomes its own zero-column table; the per-row "precision" scalar
+// lives in TimingGrade. collision_system emplaces exactly one tier tag at
+// grading-time; scoring_system, popup_feedback_system, and the session
+// logger dispatch via tag presence (no switch on a discriminator).
+//
+// Score popup entities carry the same tier tag so renderers can identify
+// their tier without re-reading ScorePopup data.
+struct TimingPerfectTag {};
+struct TimingGoodTag    {};
+struct TimingOkTag      {};
+struct TimingBadTag     {};
+
 // ── Singletons ───────────────────────────────────────────────
 struct BeatMapTag {};
 struct SettingsTag {};

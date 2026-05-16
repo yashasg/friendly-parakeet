@@ -4,8 +4,15 @@
 
 namespace {
 
+// Post-#1202/#1204: the per-tier discriminator is now a tag (one of
+// TimingPerfect/Good/Ok/Bad), not an enum field on TimingGrade. We capture
+// the resulting tier as 4 booleans so the test struct stays Fabian-clean
+// (no discriminator enum, columns are independent existential bits).
 struct ScoredTimingResult {
-    TimingTier tier{};
+    bool perfect{false};
+    bool good{false};
+    bool ok{false};
+    bool bad{false};
     SongResults results{};
 };
 
@@ -29,11 +36,16 @@ ScoredTimingResult score_rhythm_shape_hit_at_offset(float arrival_offset_seconds
     collision_system(reg, 0.016f);
 
     REQUIRE(reg.all_of<TimingGrade>(obs));
-    const auto tier = reg.get<TimingGrade>(obs).tier;
+    ScoredTimingResult out{};
+    out.perfect = reg.all_of<TimingPerfectTag>(obs);
+    out.good    = reg.all_of<TimingGoodTag>(obs);
+    out.ok      = reg.all_of<TimingOkTag>(obs);
+    out.bad     = reg.all_of<TimingBadTag>(obs);
 
     scoring_system(reg, 0.016f);
 
-    return {tier, reg.ctx().get<SongResults>()};
+    out.results = reg.ctx().get<SongResults>();
+    return out;
 }
 
 }  // namespace
@@ -110,7 +122,7 @@ TEST_CASE("collision: rhythm mode assigns Perfect for on-time hit", "[collision]
     collision_system(reg, 0.016f);
 
     REQUIRE(reg.all_of<TimingGrade>(obs));
-    CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Perfect);
+    CHECK(reg.all_of<TimingPerfectTag>(obs));
 }
 
 TEST_CASE("collision: on-beat rhythm press clears matching gate during MorphIn",
@@ -138,7 +150,7 @@ TEST_CASE("collision: on-beat rhythm press clears matching gate during MorphIn",
     CHECK(reg.all_of<ScoredTag>(obs));
     CHECK_FALSE(reg.all_of<MissTag>(obs));
     REQUIRE(reg.all_of<TimingGrade>(obs));
-    CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Perfect);
+    CHECK(reg.all_of<TimingPerfectTag>(obs));
 }
 
 TEST_CASE("collision: on-beat shape press requires player hitbox to reach target lane",
@@ -196,7 +208,7 @@ TEST_CASE("collision: rhythm mode assigns Bad for far-off hit", "[collision][rhy
     collision_system(reg, 0.016f);
 
     REQUIRE(reg.all_of<TimingGrade>(obs));
-    CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Bad);
+    CHECK(reg.all_of<TimingBadTag>(obs));
 }
 
 TEST_CASE("collision: rhythm shape gate only matches during Active window",
@@ -334,7 +346,10 @@ TEST_CASE("collision/scoring: rhythm Good increments SongResults good_count (#21
     const auto result = score_rhythm_shape_hit_at_offset(
         (kTimingPerfectSeconds + kTimingGoodSeconds) * 0.5f);
 
-    CHECK(result.tier == TimingTier::Good);
+    CHECK(result.good);
+    CHECK_FALSE(result.perfect);
+    CHECK_FALSE(result.ok);
+    CHECK_FALSE(result.bad);
     CHECK(result.results.perfect_count == 0);
     CHECK(result.results.good_count == 1);
     CHECK(result.results.ok_count == 0);
@@ -346,7 +361,10 @@ TEST_CASE("collision/scoring: rhythm Ok increments SongResults ok_count (#214)",
     const auto result = score_rhythm_shape_hit_at_offset(
         (kTimingGoodSeconds + kTimingOkSeconds) * 0.5f);
 
-    CHECK(result.tier == TimingTier::Ok);
+    CHECK(result.ok);
+    CHECK_FALSE(result.perfect);
+    CHECK_FALSE(result.good);
+    CHECK_FALSE(result.bad);
     CHECK(result.results.perfect_count == 0);
     CHECK(result.results.good_count == 0);
     CHECK(result.results.ok_count == 1);
@@ -357,7 +375,10 @@ TEST_CASE("collision/scoring: rhythm Bad increments SongResults bad_count (#214)
           "[collision][rhythm][issue214]") {
     const auto result = score_rhythm_shape_hit_at_offset(kTimingOkSeconds + 0.001f);
 
-    CHECK(result.tier == TimingTier::Bad);
+    CHECK(result.bad);
+    CHECK_FALSE(result.perfect);
+    CHECK_FALSE(result.good);
+    CHECK_FALSE(result.ok);
     CHECK(result.results.perfect_count == 0);
     CHECK(result.results.good_count == 0);
     CHECK(result.results.ok_count == 0);

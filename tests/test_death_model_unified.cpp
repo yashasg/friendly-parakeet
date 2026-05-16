@@ -79,7 +79,7 @@ TEST_CASE("death_model: timing recovery can preserve survival margin", "[death_m
 
     auto scored = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<ScoredTag>(scored);
-    reg.emplace<TimingGrade>(scored, TimingTier::Perfect, 1.0f);
+    emplace_timing_perfect(reg, scored, 1.0f);
     scoring_system(reg, 0.016f);
     energy_system(reg, 0.016f);
 

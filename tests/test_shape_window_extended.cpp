@@ -208,7 +208,7 @@ TEST_CASE("shape_window regression #223: Perfect scale (0.50) collapses window t
 
     // Simulate what collision_system does on a Perfect hit at t=0 of the Active window.
     // At that instant window_timer == 0, remaining == window_duration.
-    float scale = window_scale_for_tier(TimingTier::Perfect);
+    float scale = window_scale_from_delta_abs(0.0f);  // delta=0 → Perfect band
     CHECK(scale == 0.50f);
 
     set_window_phase_active(reg, player);
@@ -232,7 +232,7 @@ TEST_CASE("shape_window regression #223: Ok scale (1.00) leaves window duration 
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
 
-    float scale = window_scale_for_tier(TimingTier::Ok);
+    float scale = window_scale_from_delta_abs(kTimingGoodSeconds + 0.001f);  // Ok band
     CHECK(scale == 1.00f);
 
     set_window_phase_active(reg, player);

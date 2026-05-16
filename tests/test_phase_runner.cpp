@@ -141,7 +141,7 @@ TEST_CASE("tick_fixed_systems: popup_feedback and energy run in score-feedback c
     // Pre-seed a popup request directly (bypasses scoring_system path; tests
     // that popup_feedback_system is wired and consumes the queue).
     auto& queue = reg.ctx().emplace<ScorePopupRequestQueue>();
-    queue.requests.push_back({100.0f, 200.0f, 10, false, TimingTier::Ok});
+    queue.untimed.push_back({100.0f, 200.0f, 10});
 
     // Pre-seed a pending energy effect to verify energy_system is wired.
     auto& pending = reg.ctx().emplace<PendingEnergyEffects>();
@@ -153,7 +153,11 @@ TEST_CASE("tick_fixed_systems: popup_feedback and energy run in score-feedback c
     tick_fixed_systems(reg, 0.016f);
 
     // popup_feedback_system must have consumed the queue and spawned an entity.
-    CHECK(queue.requests.empty());
+    CHECK(queue.untimed.empty());
+    CHECK(queue.perfect.empty());
+    CHECK(queue.good.empty());
+    CHECK(queue.ok.empty());
+    CHECK(queue.bad.empty());
     const auto popup_view = reg.view<ScorePopup>();
     CHECK_FALSE(popup_view.empty());
 

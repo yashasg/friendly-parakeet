@@ -501,8 +501,8 @@ TEST_CASE("collision: timing grade PERFECT on press-at-arrival", "[rhythm][colli
     reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
     REQUIRE(reg.all_of<ScoredTag>(obs));
-    REQUIRE(reg.all_of<TimingGrade>(obs));
-    CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Perfect);
+    REQUIRE(has_any_timing_tier_tag(reg, obs));
+    CHECK(reg.all_of<TimingPerfectTag>(obs));
 }
 
 TEST_CASE("collision: HUD perfect cue distance maps to PERFECT timing", "[rhythm][collision][hud]") {
@@ -531,8 +531,8 @@ TEST_CASE("collision: HUD perfect cue distance maps to PERFECT timing", "[rhythm
     collision_system(reg, 0.016f);
 
     REQUIRE(reg.all_of<ScoredTag>(obs));
-    REQUIRE(reg.all_of<TimingGrade>(obs));
-    CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Perfect);
+    REQUIRE(has_any_timing_tier_tag(reg, obs));
+    CHECK(reg.all_of<TimingPerfectTag>(obs));
 }
 
 TEST_CASE("collision: timing grade GOOD at 50pct", "[rhythm][collision]") {
@@ -548,8 +548,8 @@ TEST_CASE("collision: timing grade GOOD at 50pct", "[rhythm][collision]") {
     // arrival_time offset by 50% of half_window (~75ms) -> Good
     reg.emplace<BeatInfo>(obs, 0, 5.0f + song.half_window * 0.5f, 0.0f);
     collision_system(reg, 0.016f);
-    REQUIRE(reg.all_of<TimingGrade>(obs));
-    CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Good);
+    REQUIRE(has_any_timing_tier_tag(reg, obs));
+    CHECK(reg.all_of<TimingGoodTag>(obs));
 }
 
 TEST_CASE("collision: timing grade OK at 80pct", "[rhythm][collision]") {
@@ -565,8 +565,8 @@ TEST_CASE("collision: timing grade OK at 80pct", "[rhythm][collision]") {
     // arrival_time offset by 80% of half_window (~120ms) -> Ok
     reg.emplace<BeatInfo>(obs, 0, 5.0f + song.half_window * 0.8f, 0.0f);
     collision_system(reg, 0.016f);
-    REQUIRE(reg.all_of<TimingGrade>(obs));
-    CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Ok);
+    REQUIRE(has_any_timing_tier_tag(reg, obs));
+    CHECK(reg.all_of<TimingOkTag>(obs));
 }
 
 TEST_CASE("collision: timing grade BAD beyond window", "[rhythm][collision]") {
@@ -582,8 +582,8 @@ TEST_CASE("collision: timing grade BAD beyond window", "[rhythm][collision]") {
     // arrival_time offset by 120% of half_window (>150ms) -> Bad
     reg.emplace<BeatInfo>(obs, 0, 5.0f + song.half_window * 1.2f, 0.0f);
     collision_system(reg, 0.016f);
-    REQUIRE(reg.all_of<TimingGrade>(obs));
-    CHECK(reg.get<TimingGrade>(obs).tier == TimingTier::Bad);
+    REQUIRE(has_any_timing_tier_tag(reg, obs));
+    CHECK(reg.all_of<TimingBadTag>(obs));
 }
 
 TEST_CASE("collision: stale press from previous beat does not get Perfect", "[rhythm][collision]") {
@@ -611,9 +611,9 @@ TEST_CASE("collision: stale press from previous beat does not get Perfect", "[rh
 
     collision_system(reg, 0.016f);
 
-    REQUIRE(reg.all_of<TimingGrade>(obs));
+    REQUIRE(has_any_timing_tier_tag(reg, obs));
     // press_time (2.0) is far from arrival (3.5) -> not Perfect
-    CHECK(reg.get<TimingGrade>(obs).tier != TimingTier::Perfect);
+    CHECK_FALSE(reg.all_of<TimingPerfectTag>(obs));
 }
 
 TEST_CASE("collision: PERFECT clears obstacle without game over", "[rhythm][collision]") {
@@ -687,7 +687,7 @@ TEST_CASE("scoring: timing_mult applied to scored obstacle", "[rhythm][scoring]"
     reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<Obstacle>(obs, int16_t{200});
     reg.emplace<ScoredTag>(obs);
-    reg.emplace<TimingGrade>(obs, TimingTier::Perfect, 1.0f);
+    emplace_timing_perfect(reg, obs, 1.0f);
     int prev = score.score;
     scoring_system(reg, 0.016f);
     int gained = score.score - prev;
@@ -699,18 +699,21 @@ TEST_CASE("scoring: timing_mult applied to scored obstacle", "[rhythm][scoring]"
 
 
 TEST_CASE("timing: timing_multiplier values", "[rhythm][timing]") {
-    CHECK(timing_multiplier(TimingTier::Perfect) == 1.50f);
-    CHECK(timing_multiplier(TimingTier::Good) == 1.00f);
-    CHECK(timing_multiplier(TimingTier::Ok) == 0.50f);
-    CHECK(timing_multiplier(TimingTier::Bad) == 0.25f);
+    // Per #1202/#1204: TimingTier eradicated; multiplier is now derived from
+    // a delta-seconds threshold ladder. Each canonical delta below sits
+    // squarely inside the corresponding former-tier band.
+    CHECK(timing_multiplier_from_delta_abs(0.0f)                              == 1.50f);
+    CHECK(timing_multiplier_from_delta_abs(kTimingPerfectSeconds + 0.001f)    == 1.00f);
+    CHECK(timing_multiplier_from_delta_abs(kTimingGoodSeconds    + 0.001f)    == 0.50f);
+    CHECK(timing_multiplier_from_delta_abs(kTimingOkSeconds      + 0.001f)    == 0.25f);
 }
 
-TEST_CASE("timing: window_scale_for_tier values", "[rhythm][timing]") {
+TEST_CASE("timing: window_scale_from_delta_abs values", "[rhythm][timing]") {
     // Post-#223 inversion: smaller scale = better timing = faster window collapse.
-    CHECK(window_scale_for_tier(TimingTier::Perfect) == 0.50f);
-    CHECK(window_scale_for_tier(TimingTier::Good) == 0.75f);
-    CHECK(window_scale_for_tier(TimingTier::Ok) == 1.00f);
-    CHECK(window_scale_for_tier(TimingTier::Bad) == 1.00f);
+    CHECK(window_scale_from_delta_abs(0.0f)                              == 0.50f);
+    CHECK(window_scale_from_delta_abs(kTimingPerfectSeconds + 0.001f)    == 0.75f);
+    CHECK(window_scale_from_delta_abs(kTimingGoodSeconds    + 0.001f)    == 1.00f);
+    CHECK(window_scale_from_delta_abs(kTimingOkSeconds      + 0.001f)    == 1.00f);
 }
 
 // Window Scaling
