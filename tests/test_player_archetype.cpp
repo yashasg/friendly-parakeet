@@ -37,16 +37,14 @@ TEST_CASE("player_entity: initial shape is Hexagon", "[archetype][player]") {
     auto reg = make_registry();
     auto p = create_player_entity(reg);
 
-    auto& ps = reg.get<PlayerShape>(p);
-    CHECK(ps.current  == Shape::Hexagon);
+    CHECK(current_player_shape(reg, p) == Shape::Hexagon);
 }
 
 TEST_CASE("player_entity: ShapeWindow starts Idle targeting Hexagon", "[archetype][player]") {
     auto reg = make_registry();
     auto p = create_player_entity(reg);
 
-    auto& sw = reg.get<ShapeWindow>(p);
-    CHECK(sw.target_shape == Shape::Hexagon);
+    CHECK(current_target_shape(reg, p) == Shape::Hexagon);
     CHECK(window_phase_is_idle(reg, p));
 }
 

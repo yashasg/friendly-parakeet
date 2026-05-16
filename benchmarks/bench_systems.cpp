@@ -17,6 +17,7 @@
 #include "constants.h"
 #include "systems/all_systems.h"
 #include "systems/input_routing.h"
+#include "util/shape_tag.h"
 
 // ── Helpers ─────────────────────────────────────────────────
 
@@ -58,7 +59,7 @@ static void spawn_obstacles(entt::registry& reg, int count) {
         reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
         auto shape = static_cast<Shape>(i % 3);
         reg.emplace<Obstacle>(obs, int16_t{200});
-        reg.emplace<RequiredShape>(obs, shape);
+        set_required_shape_tag(reg, obs, shape);
         reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
         reg.emplace<Color>(obs, Color{255, 255, 255, 255});
     }
@@ -123,7 +124,7 @@ TEST_CASE("Bench: collision_system", "[!benchmark][bench]") {
         reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
         reg.emplace<Vector2>(obs, Vector2{0.0f, 400.0f});
         reg.emplace<Obstacle>(obs, int16_t{200});
-        reg.emplace<RequiredShape>(obs, Shape::Circle);
+        set_required_shape_tag(reg, obs, Shape::Circle);
         meter.measure([&] {
             if (reg.all_of<ScoredTag>(obs)) reg.remove<ScoredTag>(obs);
             reg.ctx().get<GameState>().transition_pending = false;

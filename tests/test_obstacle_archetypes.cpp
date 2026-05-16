@@ -52,12 +52,13 @@ TEST_CASE("entity: ShapeGate Circle - correct components and color", "[archetype
     entt::registry reg;
     auto e = spawn_shape_gate_obstacle(reg, {360.0f, -120.0f, Shape::Circle});
 
-    REQUIRE(reg.all_of<ObstacleTag, Vector2, WorldTransform, Obstacle, RequiredShape, ShapeGateLane, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, Vector2, WorldTransform, Obstacle, ShapeGateLane, DrawSize, Color>(e));
+    REQUIRE(has_required_shape_tag(reg, e));
     CHECK(!reg.all_of<uint8_t>(e));
     CHECK(!reg.all_of<RequiredLane>(e));
 
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_SHAPE_GATE});
-    CHECK(reg.get<RequiredShape>(e).shape == Shape::Circle);
+    CHECK(current_required_shape(reg, e) == Shape::Circle);
     CHECK(reg.get<ShapeGateLane>(e).lane == int8_t{1});
     CHECK(reg.get<WorldTransform>(e).position.x == 360.0f);
     CHECK(reg.get<WorldTransform>(e).position.y == -120.0f);
@@ -100,7 +101,7 @@ TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[a
     reg.emplace<Obstacle>(parent, int16_t{constants::PTS_SHAPE_GATE});
     reg.emplace<DrawSize>(parent, constants::SCREEN_W_F, 80.0f);
     reg.emplace<Color>(parent, Color{80, 200, 255, 255});
-    reg.emplace<RequiredShape>(parent, Shape::Circle);
+    set_required_shape_tag(reg, parent, Shape::Circle);
 
     auto& children = reg.emplace<ObstacleChildren>(parent);
     for (int i = 0; i < ObstacleChildren::MAX; ++i) {
@@ -139,7 +140,7 @@ TEST_CASE("entity: obstacle mesh lifetime helper cleans factory children", "[arc
 TEST_CASE("entity: direct mesh factory cleanup does not depend on ObstacleTag order", "[archetype][render][cleanup]") {
     entt::registry reg;
     auto parent = make_mesh_factory_obstacle(reg);
-    reg.emplace<RequiredShape>(parent, Shape::Circle);
+    set_required_shape_tag(reg, parent, Shape::Circle);
     reg.emplace<ObstacleTag>(parent);
     reg.emplace<ShapeGateTag>(parent);
 
@@ -151,36 +152,11 @@ TEST_CASE("entity: direct mesh factory cleanup does not depend on ObstacleTag or
     CHECK(count_mesh_children(reg) == 0);
 }
 
-TEST_CASE("entity: mesh factory rejects invalid RequiredShape before children", "[archetype][render][validation]") {
-    const Shape invalid_shape = static_cast<Shape>(255);
-
-    SECTION("ShapeGate") {
-        entt::registry reg;
-        auto parent = make_mesh_factory_obstacle(reg);
-        reg.emplace<RequiredShape>(parent, invalid_shape);
-        reg.emplace<ShapeGateTag>(parent);
-
-        CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
-        check_no_mesh_children(reg, parent);
-    }
-
-    SECTION("SplitPath") {
-        entt::registry reg;
-        auto parent = make_mesh_factory_obstacle(reg);
-        reg.emplace<RequiredShape>(parent, invalid_shape);
-        reg.emplace<RequiredLane>(parent, int8_t{1});
-        reg.emplace<SplitPathTag>(parent);
-
-        CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
-        check_no_mesh_children(reg, parent);
-    }
-}
-
 TEST_CASE("entity: mesh factory rejects invalid RequiredLane before children", "[archetype][render][validation]") {
     SECTION("negative lane") {
         entt::registry reg;
         auto parent = make_mesh_factory_obstacle(reg);
-        reg.emplace<RequiredShape>(parent, Shape::Square);
+        set_required_shape_tag(reg, parent, Shape::Square);
         reg.emplace<RequiredLane>(parent, int8_t{-1});
         reg.emplace<SplitPathTag>(parent);
 
@@ -191,7 +167,7 @@ TEST_CASE("entity: mesh factory rejects invalid RequiredLane before children", "
     SECTION("lane beyond lane table") {
         entt::registry reg;
         auto parent = make_mesh_factory_obstacle(reg);
-        reg.emplace<RequiredShape>(parent, Shape::Square);
+        set_required_shape_tag(reg, parent, Shape::Square);
         reg.emplace<RequiredLane>(parent, int8_t{3});
         reg.emplace<SplitPathTag>(parent);
 
@@ -243,11 +219,12 @@ TEST_CASE("entity: SplitPath - RequiredShape and RequiredLane", "[archetype]") {
     auto e = spawn_split_path_obstacle(reg, {360.0f, -120.0f,
                                               Shape::Square, int8_t{2}});
 
-    REQUIRE(reg.all_of<ObstacleTag, Vector2, WorldTransform, Obstacle, RequiredShape, RequiredLane, DrawSize, Color>(e));
+    REQUIRE(reg.all_of<ObstacleTag, Vector2, WorldTransform, Obstacle, RequiredLane, DrawSize, Color>(e));
+    REQUIRE(has_required_shape_tag(reg, e));
     CHECK(!reg.all_of<uint8_t>(e));
 
     CHECK(reg.get<Obstacle>(e).base_points == int16_t{constants::PTS_SPLIT_PATH});
-    CHECK(reg.get<RequiredShape>(e).shape == Shape::Square);
+    CHECK(current_required_shape(reg, e) == Shape::Square);
     CHECK(reg.get<RequiredLane>(e).lane == int8_t{2});
 }
 

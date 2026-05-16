@@ -3,6 +3,7 @@
 #include "../components/rhythm.h"
 #include "../components/scoring.h"
 #include "../tags/tags.h"
+#include "../util/shape_tag.h"
 
 #include <cstdarg>
 #include <cmath>
@@ -116,7 +117,7 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
     auto* beat = reg.try_get<BeatInfo>(entity);
     int beat_idx = beat ? beat->beat_index : -1;
 
-    auto* req = reg.try_get<RequiredShape>(entity);
+    const bool has_req = has_required_shape_tag(reg, entity);
 
     int8_t lane = 1;
     auto* rlane = reg.try_get<RequiredLane>(entity);
@@ -124,7 +125,9 @@ void session_log_on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
 
     float arrival = beat ? beat->arrival_time : 0.0f;
     const std::string_view kind_name = obstacle_kind_label(reg, entity);
-    const std::string_view shape_name = req ? enum_name_or_unknown(req->shape) : std::string_view{"-"};
+    const std::string_view shape_name =
+        has_req ? enum_name_or_unknown(current_required_shape(reg, entity))
+                : std::string_view{"-"};
 
     session_log_write(*log, t, "GAME",
         "OBSTACLE_SPAWN beat=%d arrival=%.3f kind=%.*s shape=%.*s lane=%d",

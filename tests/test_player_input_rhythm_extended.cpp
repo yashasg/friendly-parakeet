@@ -17,19 +17,18 @@ TEST_CASE("player_input_rhythm: shape press in Idle begins MorphIn window", "[pl
     run_semantic_input_tick(reg);
 
     CHECK(window_phase_is_morph_in(reg, player));
-    CHECK(sw.target_shape == Shape::Circle);
+    CHECK(reg.all_of<TargetShapeCircleTag>(player));
     CHECK(sw.window_start == song.song_time);
 }
 
 TEST_CASE("player_input_rhythm: different shape in Active restarts window", "[player][rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
 
     // Already Active as Circle
-    ps.current = Shape::Circle;
+    set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
     sw.window_start = song.song_time - 0.5f;
 
@@ -40,17 +39,16 @@ TEST_CASE("player_input_rhythm: different shape in Active restarts window", "[pl
 
     // Should restart as MorphIn for Square.
     CHECK(window_phase_is_morph_in(reg, player));
-    CHECK(sw.target_shape == Shape::Square);
+    CHECK(reg.all_of<TargetShapeSquareTag>(player));
 }
 
 TEST_CASE("player_input_rhythm: same shape in Active is no-op", "[player][rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& ps = reg.get<PlayerShape>(player);
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
 
-    ps.current = Shape::Circle;
+    set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
     sw.window_start = song.song_time - 0.5f;
     sw.window_timer = 0.5f;
@@ -157,7 +155,7 @@ TEST_CASE("player_input: non-rhythm shape press changes immediately", "[player]"
 
     auto view = reg.view<PlayerTag, PlayerShape>();
     for (auto [e, ps] : view.each()) {
-        CHECK(ps.current == Shape::Square);
+        CHECK(reg.all_of<ShapeSquareTag>(e));
         CHECK(ps.morph_t == 1.0f);
     }
 
@@ -211,8 +209,7 @@ TEST_CASE("player_input_rhythm: circle press in lane 0 does not force mismatch b
     lane.lerp_t = 1.0f;
     transform.position.x = constants::LANE_X[0];
 
-    auto& ps = reg.get<PlayerShape>(player);
-    ps.current = Shape::Hexagon;
+    set_player_shape_tag(reg, player, Shape::Hexagon);
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.get<WorldTransform>(obs).position.x = constants::LANE_X[0];

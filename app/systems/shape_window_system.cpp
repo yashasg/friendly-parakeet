@@ -5,6 +5,7 @@
 #include "../components/rhythm.h"
 #include "../constants.h"
 #include "../util/shape_lane_mapping.h"
+#include "../util/shape_tag.h"
 
 namespace {
 
@@ -35,10 +36,10 @@ void transition_to_idle(entt::registry& reg, entt::entity e) {
 
 void on_morph_in_failure(entt::registry& reg,
                          entt::entity entity,
-                         PlayerShape& pshape,
-                         ShapeWindow& swindow) {
-    pshape.current = Shape::Hexagon;
-    swindow.target_shape = Shape::Hexagon;
+                         PlayerShape& /*pshape*/,
+                         ShapeWindow& /*swindow*/) {
+    set_player_shape_tag(reg, entity, Shape::Hexagon);
+    set_target_shape_tag(reg, entity, Shape::Hexagon);
     transition_to_idle<ShapeWindowMorphInTag>(reg, entity);
 }
 
@@ -49,17 +50,18 @@ void advance_morph_in(entt::registry& reg,
                       const SongState& song) {
     const float elapsed = song.song_time - swindow.window_start;
     swindow.window_timer = elapsed;
+    const Shape target = current_target_shape(reg, entity);
     if (song.morph_duration <= 0.0f) {
         TraceLog(LOG_WARNING, "shape_window_system completed MorphIn immediately: invalid morph_duration %.3f",
                  song.morph_duration);
         pshape.morph_t = 1.0f;
         swindow.window_start = song.song_time;
         swindow.window_timer = 0.0f;
-        if (!apply_shape_color(reg, entity, swindow.target_shape)) {
+        if (!apply_shape_color(reg, entity, target)) {
             on_morph_in_failure(reg, entity, pshape, swindow);
             return;
         }
-        pshape.current = swindow.target_shape;
+        set_player_shape_tag(reg, entity, target);
         transition_phase<ShapeWindowMorphInTag, ShapeWindowActiveTag>(reg, entity);
         return;
     }
@@ -69,11 +71,11 @@ void advance_morph_in(entt::registry& reg,
         pshape.morph_t = 1.0f;
         swindow.window_start = swindow.window_start + song.morph_duration;
         swindow.window_timer = 0.0f;
-        if (!apply_shape_color(reg, entity, swindow.target_shape)) {
+        if (!apply_shape_color(reg, entity, target)) {
             on_morph_in_failure(reg, entity, pshape, swindow);
             return;
         }
-        pshape.current = swindow.target_shape;
+        set_player_shape_tag(reg, entity, target);
         transition_phase<ShapeWindowMorphInTag, ShapeWindowActiveTag>(reg, entity);
     }
 }
@@ -105,8 +107,8 @@ void advance_morph_out(entt::registry& reg,
         TraceLog(LOG_WARNING, "shape_window_system completed MorphOut immediately: invalid morph_duration %.3f",
                  song.morph_duration);
         pshape.morph_t = 1.0f;
-        pshape.current = Shape::Hexagon;
-        swindow.target_shape = Shape::Hexagon;
+        set_player_shape_tag(reg, entity, Shape::Hexagon);
+        set_target_shape_tag(reg, entity, Shape::Hexagon);
         swindow.window_timer = 0.0f;
         swindow.press_time = -1.0f;
         swindow.graded = false;
@@ -117,8 +119,8 @@ void advance_morph_out(entt::registry& reg,
     pshape.morph_t = morph_elapsed / song.morph_duration;
     if (pshape.morph_t >= 1.0f) {
         pshape.morph_t = 1.0f;
-        pshape.current = Shape::Hexagon;
-        swindow.target_shape = Shape::Hexagon;
+        set_player_shape_tag(reg, entity, Shape::Hexagon);
+        set_target_shape_tag(reg, entity, Shape::Hexagon);
         swindow.window_timer = 0.0f;
         swindow.press_time = -1.0f;
         swindow.graded = false;

@@ -15,7 +15,8 @@ TEST_CASE("player_action: shape change on button press", "[player]") {
 
     auto view = reg.view<PlayerTag, PlayerShape>();
     for (auto [e, ps] : view.each()) {
-        CHECK(ps.current  == Shape::Triangle);
+        (void)ps;
+        CHECK(current_player_shape(reg, e) == Shape::Triangle);
         CHECK(ps.morph_t  == 1.0f);
     }
     // Should have pushed ShapeShift SFX
@@ -34,7 +35,8 @@ TEST_CASE("player_action: no shape change when same shape pressed", "[player]") 
 
     auto view = reg.view<PlayerTag, PlayerShape>();
     for (auto [e, ps] : view.each()) {
-        CHECK(ps.current == Shape::Circle);
+        (void)ps;
+        CHECK(current_player_shape(reg, e) == Shape::Circle);
         CHECK(ps.morph_t == 1.0f);  // unchanged
     }
     CHECK(drain_sfx_events(reg).count == 0);

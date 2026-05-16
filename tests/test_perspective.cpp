@@ -174,24 +174,6 @@ TEST_CASE("game_camera_system rejects invalid MeshChild shape index", "[camera3d
     CHECK_FALSE(reg.all_of<ModelTransform>(child));
 }
 
-TEST_CASE("game_camera_system rejects invalid PlayerShape before mesh lookup", "[camera3d][player][validation]") {
-    entt::registry reg;
-    reg.ctx().emplace<ShapeMeshConfig>();
-    reg.ctx().emplace<FloorParams>();
-    auto player = reg.create();
-    reg.emplace<PlayerTag>(player);
-    reg.emplace<WorldTransform>(player, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
-    reg.emplace<PlayerShape>(player, PlayerShape{static_cast<Shape>(255), 1.0f});
-    // Vertical motion: grounded = absence of Jumping/Sliding (#1202/#1204).
-    reg.emplace<Color>(player, WHITE);
-    reg.emplace<ModelTransform>(player, ModelTransform{MatrixIdentity(), WHITE});
-    reg.emplace<MeshKindShape>(player, MeshKindShape{255});
-    reg.emplace<TagWorldPass>(player);
-
-    REQUIRE_NOTHROW(game_camera_system(reg, 0.0f));
-    CHECK_FALSE(reg.all_of<ModelTransform>(player));
-}
-
 // #1089 — MeshChildCleanupScratch::capacity_exceeded_count must stay at zero
 // when a dense stale-parent cleanup pass fits inside the reserved
 // stale_children buffer. runtime_system_scratch_reserve sizes the buffer at

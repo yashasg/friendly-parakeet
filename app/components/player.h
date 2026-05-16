@@ -11,8 +11,11 @@ enum class Shape : uint8_t {
 };
 
 // Hot render data — read by game_camera_system, player_movement_system every frame.
+// The player's current shape identity lives as one of `ShapeCircleTag` /
+// `ShapeSquareTag` / `ShapeTriangleTag` / `ShapeHexagonTag` on the player
+// entity (issue #1202/#1204); see `app/util/shape_tag.h` for the helper
+// dispatch and the rationale for the per-tag table mechanic.
 struct PlayerShape {
-    Shape current  = Shape::Circle;
     float morph_t  = 1.0f;
 };
 
@@ -21,8 +24,10 @@ struct PlayerShape {
 // (Idle/MorphIn/Active/MorphOut) lives as a per-phase tag on the player
 // entity (`ShapeWindowMorphInTag` / `ShapeWindowActiveTag` /
 // `ShapeWindowMorphOutTag` in `tags/tags.h`); Idle = absence of all three.
+// The target shape the press is morphing toward lives as one of
+// `TargetShapeCircleTag` / `TargetShapeSquareTag` / `TargetShapeTriangleTag` /
+// `TargetShapeHexagonTag` on the same entity (issue #1202/#1204).
 struct ShapeWindow {
-    Shape       target_shape  = Shape::Circle;
     bool        graded        = false;
     float       window_timer  = 0.0f;
     float       window_start  = 0.0f;

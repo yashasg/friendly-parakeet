@@ -13,9 +13,13 @@ struct Obstacle {
     constexpr explicit Obstacle(int16_t points) : base_points(points) {}
 };
 
-struct RequiredShape {
-    Shape shape = Shape::Circle;
-};
+// `RequiredShape` (formerly a single-column `{ Shape shape; }` row) was
+// eradicated in issue #1202/#1204; the obstacle's required shape lives as
+// one of `RequiredShapeCircleTag` / `RequiredShapeSquareTag` /
+// `RequiredShapeTriangleTag` / `RequiredShapeHexagonTag` on the obstacle
+// entity. Use `set_required_shape_tag()` from `app/util/shape_tag.h` to
+// emplace it, and `current_required_shape()` / `has_required_shape_tag()`
+// to read it back.
 
 struct ShapeGateLane {
     int8_t lane = 0;

@@ -9,6 +9,7 @@
 #include "../constants.h"
 #include "../util/lane_utils.h"
 #include "../util/shape_lane_mapping.h"
+#include "../util/shape_tag.h"
 
 namespace {
 
@@ -72,7 +73,7 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
     }
 
     auto begin_shape_window = [&](entt::entity entity, PlayerShape& ps, ShapeWindow& sw) {
-        sw.target_shape = pressed_shape;
+        set_target_shape_tag(reg, entity, pressed_shape);
         sw.window_timer = 0.0f;
         sw.window_start = song->song_time;
         sw.press_time = song->song_time;
@@ -98,14 +99,14 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
             const bool is_morph_out = reg.all_of<ShapeWindowMorphOutTag>(entity);
             if (is_idle) {
                 begin_shape_window(entity, pshape, swindow);
-            } else if (is_active && pressed_shape != pshape.current) {
+            } else if (is_active && pressed_shape != current_player_shape(reg, entity)) {
                 begin_shape_window(entity, pshape, swindow);
             } else if (is_morph_out) {
                 begin_shape_window(entity, pshape, swindow);
             }
         } else {
-            if (pressed_shape != pshape.current) {
-                pshape.current  = pressed_shape;
+            if (pressed_shape != current_player_shape(reg, entity)) {
+                set_player_shape_tag(reg, entity, pressed_shape);
                 pshape.morph_t  = 1.0f;
                 const auto& sc = constants::SHAPE_COLORS[pressed_shape_index];
                 reg.replace<Color>(entity, sc);
@@ -116,5 +117,6 @@ void player_input_handle_press(entt::registry& reg, const ButtonPressEvent& evt)
             }
         }
         (void)lane;
+        (void)swindow;
     }
 }

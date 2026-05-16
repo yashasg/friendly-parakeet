@@ -13,6 +13,33 @@
 // ── Player ───────────────────────────────────────────────────
 struct PlayerTag {};
 
+// ── Player current shape (per-tag table; exactly one per player entity) ──
+// Replaces the former `PlayerShape::current` Shape-typed field (issue
+// #1202/#1204). Per Fabian's existential processing, each former enum value
+// becomes its own zero-column table on the player entity. Shape changes are
+// table operations (remove old tag, emplace new tag) — no `switch` on a
+// discriminator, no `if (x == Shape::Bar)` branches.
+//
+// Maintenance invariant: exactly one `Shape*Tag` is present on any player
+// entity. Use `set_player_shape_tag()` in `app/util/shape_tag.h` to keep
+// the invariant; it removes all four tags before emplacing the matching one.
+struct ShapeCircleTag   {};
+struct ShapeSquareTag   {};
+struct ShapeTriangleTag {};
+struct ShapeHexagonTag  {};
+
+// ── Shape Window target shape (per-tag table; exactly one when window open) ──
+// Replaces the former `ShapeWindow::target_shape` Shape-typed field (issue
+// #1202/#1204). The "which shape does the player intend to morph into?" data
+// is presence of one of these tags on the player entity during a shape
+// window. When the window closes (MorphOut completes → all `ShapeWindow*Tag`
+// removed), the target tag is reset to Hexagon to match the legacy
+// `target_shape = Shape::Hexagon` reset.
+struct TargetShapeCircleTag   {};
+struct TargetShapeSquareTag   {};
+struct TargetShapeTriangleTag {};
+struct TargetShapeHexagonTag  {};
+
 // ── Shape Window phase (per-tag table; absence of all three = Idle) ──
 // Replaces the former WindowPhase enum (issue #1202/#1204).
 // The shape-window state machine on the player advances through
@@ -27,11 +54,23 @@ struct ShapeWindowMorphOutTag {};
 // ── Obstacles ────────────────────────────────────────────────
 struct ObstacleTag {};
 
+// ── Obstacle required shape (per-tag table; ShapeGate/SplitPath obstacles) ──
+// Replaces the former `RequiredShape::shape` Shape-typed field (issue
+// #1202/#1204). The whole `RequiredShape` struct was a single-column table;
+// per Fabian's relational-database mechanic the column collapses into the
+// tag set itself. Each ShapeGate / SplitPath obstacle carries exactly one
+// `RequiredShape*Tag`; obstacle factories emplace it via
+// `set_required_shape_tag()` in `app/util/shape_tag.h`.
+struct RequiredShapeCircleTag   {};
+struct RequiredShapeSquareTag   {};
+struct RequiredShapeTriangleTag {};
+struct RequiredShapeHexagonTag  {};
+
 // ── Obstacle kind (per-tag table; exactly one per obstacle entity) ──
 // Replaces the former ObstacleKind enum (issue #1202/#1204). Each
 // former enum value is its own per-kind table:
 //   - ShapeGateTag / SplitPathTag  → zero-column tag; the per-instance
-//     data (`RequiredShape`, `RequiredLane`, `ShapeGateLane`) lives in
+//     data (`RequiredShape*Tag`, `RequiredLane`, `ShapeGateLane`) lives in
 //     its own component table per the schema-per-kind mechanic in #1204.
 //   - OnsetMarkerTag → zero-column tag (no per-instance data).
 // Spawn helpers in `entities/obstacle_entity.h` emplace exactly one

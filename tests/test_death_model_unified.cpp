@@ -104,10 +104,11 @@ TEST_CASE("death_model: close hit banks points without instant GameOver", "[deat
 
     auto obstacle = reg.create();
     reg.emplace<ObstacleTag>(obstacle);
+    reg.emplace<ShapeGateTag>(obstacle);
     reg.emplace<WorldTransform>(obstacle, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<Vector2>(obstacle, Vector2{0.0f, 0.0f});
     reg.emplace<Obstacle>(obstacle, int16_t{constants::PTS_SHAPE_GATE});
-    reg.emplace<RequiredShape>(obstacle, Shape::Circle);
+    set_required_shape_tag(reg, obstacle, Shape::Circle);
 
     collision_system(reg, 0.016f);
     energy_system(reg, 0.016f);
@@ -123,10 +124,11 @@ TEST_CASE("death_model: close miss drains energy instead of instant GameOver", "
 
     auto obstacle = reg.create();
     reg.emplace<ObstacleTag>(obstacle);
+    reg.emplace<ShapeGateTag>(obstacle);
     reg.emplace<WorldTransform>(obstacle, WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y}});
     reg.emplace<Vector2>(obstacle, Vector2{0.0f, 0.0f});
     reg.emplace<Obstacle>(obstacle, int16_t{constants::PTS_SHAPE_GATE});
-    reg.emplace<RequiredShape>(obstacle, Shape::Triangle);
+    set_required_shape_tag(reg, obstacle, Shape::Triangle);
 
     collision_system(reg, 0.016f);
     // collision_system stamps MissTag; verify before scoring_system removes it.

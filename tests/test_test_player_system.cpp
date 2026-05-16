@@ -170,7 +170,7 @@ TEST_CASE("test_player: ignores visual obstacle leftovers without Obstacle paylo
     reg.emplace<ObstacleTag>(visual_leftover);
     reg.emplace<WorldTransform>(visual_leftover,
                                 WorldTransform{{constants::LANE_X[1], constants::PLAYER_Y - 200.0f}});
-    reg.emplace<RequiredShape>(visual_leftover, Shape::Circle);
+    set_required_shape_tag(reg, visual_leftover, Shape::Circle);
 
     test_player_system(reg, 0.016f);
 

@@ -13,6 +13,7 @@
 #include "../../entities/settings.h"
 #include "../../util/rhythm_math.h"
 #include "../../util/shape_lane_mapping.h"
+#include "../../util/shape_tag.h"
 #include "screen_controller_base.h"
 #include "gameplay_hud_screen_controller.h"
 #include <entt/entt.hpp>
@@ -118,39 +119,51 @@ void render_shape_buttons(const entt::registry& reg,
         Shape shape;
         float cx;
         float cy;
+        bool  is_active;
     };
     std::array<ButtonVisual, 3> buttons{};
     const auto circle_bounds = GameplayHudLayout_CircleButtonBounds(&ui_state);
     const auto square_bounds = GameplayHudLayout_SquareButtonBounds(&ui_state);
     const auto triangle_bounds = GameplayHudLayout_TriangleButtonBounds(&ui_state);
+
+    // Per-button active flag derived from the player's current-shape tag
+    // (issue #1202/#1204). Each button corresponds to exactly one
+    // `Shape*Tag`; tag presence on the player IS the "active" data — no
+    // `==` on a Shape discriminator value.
+    bool circle_active   = false;
+    bool square_active   = false;
+    bool triangle_active = false;
+    for (auto entity : reg.view<PlayerTag, PlayerShape>()) {
+        circle_active   = reg.all_of<ShapeCircleTag>(entity);
+        square_active   = reg.all_of<ShapeSquareTag>(entity);
+        triangle_active = reg.all_of<ShapeTriangleTag>(entity);
+    }
     buttons[0] = ButtonVisual{Shape::Circle,
                               circle_bounds.x + circle_bounds.width * 0.5f,
-                              circle_bounds.y + circle_bounds.height * 0.5f};
+                              circle_bounds.y + circle_bounds.height * 0.5f,
+                              circle_active};
     buttons[1] = ButtonVisual{Shape::Square,
                               square_bounds.x + square_bounds.width * 0.5f,
-                              square_bounds.y + square_bounds.height * 0.5f};
+                              square_bounds.y + square_bounds.height * 0.5f,
+                              square_active};
     buttons[2] = ButtonVisual{Shape::Triangle,
                               triangle_bounds.x + triangle_bounds.width * 0.5f,
-                              triangle_bounds.y + triangle_bounds.height * 0.5f};
+                              triangle_bounds.y + triangle_bounds.height * 0.5f,
+                              triangle_active};
 
     float btn_radius = circle_bounds.width / 2.8f;
 
-    Shape active_shape = Shape::Hexagon;
-    for (auto [entity, player_shape] : reg.view<PlayerTag, PlayerShape>().each()) {
-        active_shape = player_shape.current;
-        (void)entity;
-    }
-
     std::array<float, 4> nearest_dist = {-1.0f, -1.0f, -1.0f, -1.0f};
-    for (auto [entity, obstacle, obstacle_pos, required_shape] :
-         reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape>(entt::exclude<ScoredTag>).each()) {
+    for (auto [entity, obstacle, obstacle_pos] :
+         reg.view<ObstacleTag, Obstacle, WorldTransform>(entt::exclude<ScoredTag>).each()) {
         (void)entity;
         (void)obstacle;
-        int shape_index = static_cast<int>(required_shape.shape);
-        if (shape_index < 0 || shape_index >= static_cast<int>(nearest_dist.size())) continue;
+        if (!has_required_shape_tag(reg, entity)) continue;
+        const int req_idx = shape_index(current_required_shape(reg, entity));
+        if (req_idx < 0 || req_idx >= static_cast<int>(nearest_dist.size())) continue;
         float dist = constants::PLAYER_Y - obstacle_pos.position.y;
-        if (dist > 0.0f && (nearest_dist[shape_index] < 0.0f || dist < nearest_dist[shape_index])) {
-            nearest_dist[shape_index] = dist;
+        if (dist > 0.0f && (nearest_dist[req_idx] < 0.0f || dist < nearest_dist[req_idx])) {
+            nearest_dist[req_idx] = dist;
         }
     }
 
@@ -167,22 +180,21 @@ void render_shape_buttons(const entt::registry& reg,
     const bool reduce_motion = settings_ptr && settings_ptr->reduce_motion;
 
     for (const auto& button : buttons) {
-        bool is_active = (active_shape == button.shape);
-        Color bg = is_active ? style.active_bg : style.inactive_bg;
-        Color border = is_active ? style.active_border : style.inactive_border;
-        Color icon = is_active ? style.active_icon : style.inactive_icon;
+        Color bg = button.is_active ? style.active_bg : style.inactive_bg;
+        Color border = button.is_active ? style.active_border : style.inactive_border;
+        Color icon = button.is_active ? style.active_icon : style.inactive_icon;
         DrawCircleV({button.cx, button.cy}, btn_radius, bg);
         DrawCircleLinesV({button.cx, button.cy}, btn_radius, border);
         draw_shape_flat(button.shape, button.cx, button.cy, btn_radius * 1.2f, icon);
 
-        int shape_index = static_cast<int>(button.shape);
-        if (shape_index < 0 || shape_index >= static_cast<int>(nearest_dist.size())) continue;
-        const auto cue = gameplay_hud_ring_cue(nearest_dist[shape_index],
+        int btn_shape_index = shape_index(button.shape);
+        if (btn_shape_index < 0 || btn_shape_index >= static_cast<int>(nearest_dist.size())) continue;
+        const auto cue = gameplay_hud_ring_cue(nearest_dist[btn_shape_index],
                                                perfect_dist,
                                                good_dist,
                                                ring_appear_dist);
         if (!cue.visible) continue;
-        float ratio = gameplay_hud_ring_ratio(nearest_dist[shape_index], perfect_dist, ring_appear_dist);
+        float ratio = gameplay_hud_ring_ratio(nearest_dist[btn_shape_index], perfect_dist, ring_appear_dist);
 
         const auto envelope = approach_ring_envelope(ratio, btn_radius,
                                                      max_ring_radius, reduce_motion);

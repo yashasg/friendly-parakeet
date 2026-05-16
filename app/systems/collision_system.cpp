@@ -6,6 +6,7 @@
 #include "../components/game_state.h"
 #include "../components/rhythm.h"
 #include "../util/rhythm_math.h"
+#include "../util/shape_tag.h"
 #include "../components/song_state.h"
 #include "gameplay_intents.h"
 #include "../constants.h"
@@ -14,36 +15,49 @@
 
 namespace {
 
-bool player_matches_required_shape(entt::registry& reg,
-                                    entt::entity player_entity,
-                                    const PlayerShape& p_shape,
-                                    const ShapeWindow& p_window,
-                                    Shape required,
-                                    bool rhythm_mode) {
-    if (required == Shape::Hexagon) {
-        return false;
-    }
-
+template <typename RequiredTag, typename ShapeTag, typename TargetTag>
+bool shape_row_match(entt::registry& reg,
+                     entt::entity player_entity,
+                     entt::entity obstacle_entity,
+                     bool rhythm_mode) {
+    if (!reg.all_of<RequiredTag>(obstacle_entity)) return false;
     if (rhythm_mode) {
-        // Per-tag dispatch (issue #1202/#1204). Idle = no phase tag.
         if (reg.all_of<ShapeWindowMorphInTag>(player_entity)) {
-            return p_window.press_time >= 0.0f && p_window.target_shape == required;
+            auto& sw = reg.get<ShapeWindow>(player_entity);
+            return sw.press_time >= 0.0f && reg.all_of<TargetTag>(player_entity);
         }
         if (reg.all_of<ShapeWindowActiveTag>(player_entity)) {
-            return p_shape.current == required || p_window.target_shape == required;
+            return reg.any_of<ShapeTag, TargetTag>(player_entity);
         }
-        // ShapeWindowMorphOutTag and Idle both reject.
+        // ShapeWindowMorphOutTag and Idle both reject in rhythm mode.
         return false;
     }
-
-    if (p_shape.current == required) {
-        return true;
-    }
-
+    if (reg.all_of<ShapeTag>(player_entity)) return true;
     const bool window_open = reg.any_of<ShapeWindowMorphInTag,
                                         ShapeWindowActiveTag,
                                         ShapeWindowMorphOutTag>(player_entity);
-    return window_open && p_window.target_shape == required;
+    return window_open && reg.all_of<TargetTag>(player_entity);
+}
+
+bool player_matches_required_shape(entt::registry& reg,
+                                    entt::entity player_entity,
+                                    entt::entity obstacle_entity,
+                                    bool rhythm_mode) {
+    if (reg.all_of<RequiredShapeHexagonTag>(obstacle_entity)) {
+        // No Hexagon-required obstacles are spawned in production; preserve
+        // the legacy "Hexagon-required → unclearable" contract by short-
+        // circuiting here regardless of player state.
+        return false;
+    }
+
+    // Per-shape match check: each row of the shape table is its own
+    // per-shape table-join (issue #1202/#1204), so we probe the three
+    // playable rows by tag-presence. No `switch`, no `if (x == Shape::Bar)`
+    // — each `shape_row_match` instantiation IS the per-row transform.
+    if (shape_row_match<RequiredShapeCircleTag,   ShapeCircleTag,   TargetShapeCircleTag>  (reg, player_entity, obstacle_entity, rhythm_mode)) return true;
+    if (shape_row_match<RequiredShapeSquareTag,   ShapeSquareTag,   TargetShapeSquareTag>  (reg, player_entity, obstacle_entity, rhythm_mode)) return true;
+    if (shape_row_match<RequiredShapeTriangleTag, ShapeTriangleTag, TargetShapeTriangleTag>(reg, player_entity, obstacle_entity, rhythm_mode)) return true;
+    return false;
 }
 
 bool shape_gate_lane_match(int8_t obstacle_lane, int player_lane) {
@@ -60,6 +74,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     auto [p_transform, p_shape, p_window, p_lane] =
         player_view.get<WorldTransform, PlayerShape, ShapeWindow, Lane>(player_entity);
     lane_utils::normalize(p_lane, &p_transform);
+    (void)p_shape;
 
     auto& song = reg.ctx().get<SongState>();
     const bool rhythm_mode = song.playing || song.finished;
@@ -117,7 +132,6 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
 
     auto resolve_shape_obstacle = [&](entt::entity entity,
                                       const WorldTransform& wt,
-                                      Shape required_shape,
                                       bool lane_ok,
                                       const BeatInfo* timing_info) {
         if (!lane_ok) {
@@ -126,7 +140,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
         }
 
         const bool shape_ok =
-            player_matches_required_shape(reg, player_entity, p_shape, p_window, required_shape, rhythm_mode);
+            player_matches_required_shape(reg, player_entity, entity, rhythm_mode);
         if (shape_ok && timing_info && can_grade_shape) {
             grade_shape_timing(entity, timing_info->arrival_time);
         }
@@ -135,58 +149,61 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
 
     // Per-kind structural views — each loop touches only entities that actually
     // carry the required components, eliminating per-entity try_get branches.
+    // The required-shape data lives as a per-shape tag (issue #1202/#1204),
+    // so the views below filter on `ShapeGateTag` / `SplitPathTag` and the
+    // resolver dispatches per-shape via `player_matches_required_shape`.
 
-    // ShapeGate: RequiredShape only (no RequiredLane)
+    // ShapeGate: ShapeGateTag (carries RequiredShape*Tag, no RequiredLane)
     {
-        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, ShapeGateLane, BeatInfo>(
+        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, ShapeGateTag, ShapeGateLane, BeatInfo>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane>);
-        for (auto [e, obstacle, wt, req, lane, info] : rhythm_view.each()) {
+        for (auto [e, obstacle, wt, lane, info] : rhythm_view.each()) {
             (void)obstacle;
             const bool lane_ok = shape_gate_lane_match(lane.lane, player_lane);
-            resolve_shape_obstacle(e, wt, req.shape, lane_ok, &info);
+            resolve_shape_obstacle(e, wt, lane_ok, &info);
         }
 
-        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, ShapeGateLane>(
+        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, ShapeGateTag, ShapeGateLane>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane, BeatInfo>);
-        for (auto [e, obstacle, wt, req, lane] : view.each()) {
+        for (auto [e, obstacle, wt, lane] : view.each()) {
             (void)obstacle;
             const bool lane_ok = shape_gate_lane_match(lane.lane, player_lane);
-            resolve_shape_obstacle(e, wt, req.shape, lane_ok, nullptr);
+            resolve_shape_obstacle(e, wt, lane_ok, nullptr);
         }
 
-        auto fallback_rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, BeatInfo>(
+        auto fallback_rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, ShapeGateTag, BeatInfo>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane, ShapeGateLane>);
-        for (auto [e, obstacle, wt, req, info] : fallback_rhythm_view.each()) {
+        for (auto [e, obstacle, wt, info] : fallback_rhythm_view.each()) {
             (void)obstacle;
             const bool lane_ok = lane_utils::nearest_lane_for_x(wt.position.x) == player_lane;
-            resolve_shape_obstacle(e, wt, req.shape, lane_ok, &info);
+            resolve_shape_obstacle(e, wt, lane_ok, &info);
         }
 
-        auto fallback_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape>(
+        auto fallback_view = reg.view<ObstacleTag, Obstacle, WorldTransform, ShapeGateTag>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, RequiredLane, BeatInfo, ShapeGateLane>);
-        for (auto [e, obstacle, wt, req] : fallback_view.each()) {
+        for (auto [e, obstacle, wt] : fallback_view.each()) {
             (void)obstacle;
             const bool lane_ok = lane_utils::nearest_lane_for_x(wt.position.x) == player_lane;
-            resolve_shape_obstacle(e, wt, req.shape, lane_ok, nullptr);
+            resolve_shape_obstacle(e, wt, lane_ok, nullptr);
         }
     }
 
-    // SplitPath: RequiredShape + RequiredLane
+    // SplitPath: SplitPathTag (carries RequiredShape*Tag + RequiredLane)
     {
-        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, RequiredLane, BeatInfo>(
+        auto rhythm_view = reg.view<ObstacleTag, Obstacle, WorldTransform, SplitPathTag, RequiredLane, BeatInfo>(
             entt::exclude<ScoredTag, ResolvedObstacleTag>);
-        for (auto [e, obstacle, wt, req, rlane, info] : rhythm_view.each()) {
+        for (auto [e, obstacle, wt, rlane, info] : rhythm_view.each()) {
             (void)obstacle;
             const bool lane_ok = player_lane == rlane.lane;
-            resolve_shape_obstacle(e, wt, req.shape, lane_ok, &info);
+            resolve_shape_obstacle(e, wt, lane_ok, &info);
         }
 
-        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, RequiredShape, RequiredLane>(
+        auto view = reg.view<ObstacleTag, Obstacle, WorldTransform, SplitPathTag, RequiredLane>(
             entt::exclude<ScoredTag, ResolvedObstacleTag, BeatInfo>);
-        for (auto [e, obstacle, wt, req, rlane] : view.each()) {
+        for (auto [e, obstacle, wt, rlane] : view.each()) {
             (void)obstacle;
             const bool lane_ok = player_lane == rlane.lane;
-            resolve_shape_obstacle(e, wt, req.shape, lane_ok, nullptr);
+            resolve_shape_obstacle(e, wt, lane_ok, nullptr);
         }
     }
 

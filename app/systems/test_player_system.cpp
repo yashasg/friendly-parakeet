@@ -10,6 +10,7 @@
 #include "session_logger_system.h"
 #include "../util/lane_utils.h"
 #include "../util/shape_lane_mapping.h"
+#include "../util/shape_tag.h"
 #include "../constants.h"
 
 #include <raylib.h>
@@ -139,9 +140,8 @@ static TestPlayerAction determine_action(
     }
 
     // Shape requirement
-    auto* req_shape = reg.try_get<RequiredShape>(entity);
-    if (req_shape) {
-        action.target_shape = req_shape->shape;
+    if (has_required_shape_tag(reg, entity)) {
+        action.target_shape = current_required_shape(reg, entity);
 
         // ShapeGate: player must also be in the lane where the shape hole is.
         // The hole is at obs_pos.x — find which lane that corresponds to.
@@ -463,8 +463,7 @@ void test_player_system(entt::registry& reg, float dt) {
                     move_would_fail_closer = true;
                     break;
                 }
-                auto* oshape = reg.try_get<RequiredShape>(oe);
-                if (oshape) {
+                if (has_required_shape_tag(reg, oe)) {
                     float lane_x = constants::LANE_X[next_lane];
                     if (!lane_centers_overlap(owt.position.x, lane_x)) {
                         move_would_fail_closer = true;

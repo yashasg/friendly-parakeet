@@ -12,6 +12,7 @@
 #include "../entities/settings.h"
 #include "../platform_display.h"
 #include "../util/shape_lane_mapping.h"
+#include "../util/shape_tag.h"
 #include <raylib.h>
 #include <raymath.h>
 #include <rlgl.h>
@@ -297,14 +298,16 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
     {
         auto view = reg.view<PlayerTag, WorldTransform, PlayerShape, Color>();
         for (auto [entity, transform, pshape, col] : view.each()) {
+            (void)pshape;
             const auto* jump = reg.try_get<Jumping>(entity);
             float y_3d = jump ? -jump->y_offset : 0.0f;
             float sz = constants::PLAYER_SIZE;
             if (reg.all_of<Sliding>(entity)) sz *= 0.5f;
-            const int shape_idx = shape_index(pshape.current);
+            const Shape current = current_player_shape(reg, entity);
+            const int shape_idx = shape_index(current);
             if (shape_idx < 0) {
                 TraceLog(LOG_WARNING, "game_camera_system skipped invalid PlayerShape %d",
-                         static_cast<int>(pshape.current));
+                         static_cast<int>(current));
                 reg.remove<ModelTransform>(entity);
                 reg.remove<MeshKindShape>(entity);
                 continue;

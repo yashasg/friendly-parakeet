@@ -148,7 +148,6 @@ TEST_CASE("pipeline: semantic shape press triggers shape change in same pipeline
           "[input_pipeline]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
     REQUIRE(window_phase_is_idle(reg, player));
 
     reg.ctx().get<entt::dispatcher>().enqueue<ButtonPressEvent>(
@@ -156,7 +155,7 @@ TEST_CASE("pipeline: semantic shape press triggers shape change in same pipeline
     run_pipeline(reg);
 
     CHECK(window_phase_is_morph_in(reg, player));
-    CHECK(sw.target_shape == Shape::Square);
+    CHECK(current_target_shape(reg, player) == Shape::Square);
 }
 
 TEST_CASE("pipeline: semantic shape press does not change lane target",
@@ -185,7 +184,6 @@ TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input
           "[input_pipeline][hud]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
     auto& lane = reg.get<Lane>(player);
     REQUIRE(window_phase_is_idle(reg, player));
     REQUIRE(lane.current == 1);
@@ -198,7 +196,7 @@ TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input
     run_pipeline(reg);
 
     CHECK(window_phase_is_morph_in(reg, player));
-    CHECK(sw.target_shape == Shape::Square);
+    CHECK(current_target_shape(reg, player) == Shape::Square);
     CHECK(lane.target == 1);
 }
 
@@ -207,7 +205,6 @@ TEST_CASE("pipeline: gameplay HUD pointer release is collected before the fixed 
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& input = reg.ctx().get<InputState>();
-    auto& sw = reg.get<ShapeWindow>(player);
     REQUIRE(window_phase_is_idle(reg, player));
 
     const auto square_bounds = gameplay_hud_square_input_bounds();
@@ -219,7 +216,7 @@ TEST_CASE("pipeline: gameplay HUD pointer release is collected before the fixed 
     run_pipeline(reg);
 
     CHECK(window_phase_is_morph_in(reg, player));
-    CHECK(sw.target_shape == Shape::Square);
+    CHECK(current_target_shape(reg, player) == Shape::Square);
 }
 
 TEST_CASE("pipeline: mobile button-zone touch release is collected independently of swipe release",
@@ -228,7 +225,6 @@ TEST_CASE("pipeline: mobile button-zone touch release is collected independently
     auto player = make_rhythm_player(reg);
     auto& input = reg.ctx().get<InputState>();
     auto& lane = reg.get<Lane>(player);
-    auto& sw = reg.get<ShapeWindow>(player);
     REQUIRE(window_phase_is_idle(reg, player));
     REQUIRE(lane.current == 1);
 
@@ -245,7 +241,7 @@ TEST_CASE("pipeline: mobile button-zone touch release is collected independently
     run_pipeline(reg);
 
     CHECK(window_phase_is_morph_in(reg, player));
-    CHECK(sw.target_shape == Shape::Square);
+    CHECK(current_target_shape(reg, player) == Shape::Square);
     CHECK(lane.target == 2);
 }
 
@@ -314,7 +310,6 @@ TEST_CASE("pipeline: pending phase transition blocks queued shape input",
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& gs = reg.ctx().get<GameState>();
-    auto& sw = reg.get<ShapeWindow>(player);
     auto& lane = reg.get<Lane>(player);
 
     REQUIRE(gs.phase == GamePhase::Playing);
@@ -333,7 +328,7 @@ TEST_CASE("pipeline: pending phase transition blocks queued shape input",
     CHECK(gs.phase == GamePhase::Paused);
     CHECK_FALSE(gs.transition_pending);
     CHECK(window_phase_is_idle(reg, player));
-    CHECK(sw.target_shape == Shape::Hexagon);
+    CHECK(current_target_shape(reg, player) == Shape::Hexagon);
     CHECK(lane.target == 1);
 }
 
@@ -442,7 +437,6 @@ TEST_CASE("pipeline: mixed swipe and tap both take effect within a single pipeli
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
     auto& lane = reg.get<Lane>(player);
-    auto& sw   = reg.get<ShapeWindow>(player);
     REQUIRE(lane.current == 1);
     REQUIRE(window_phase_is_idle(reg, player));
 
@@ -454,7 +448,7 @@ TEST_CASE("pipeline: mixed swipe and tap both take effect within a single pipeli
 
     CHECK(lane.target     == 2);                  // explicit swipe moves lanes
     CHECK(window_phase_is_morph_in(reg, player)); // tap processed
-    CHECK(sw.target_shape == Shape::Triangle);
+    CHECK(current_target_shape(reg, player) == Shape::Triangle);
 }
 
 TEST_CASE("pipeline: same-frame shape tap drains before movement",

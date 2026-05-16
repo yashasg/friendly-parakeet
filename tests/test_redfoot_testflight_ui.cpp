@@ -25,6 +25,7 @@
 #include "components/transform.h"
 #include "constants.h"
 #include "systems/all_systems.h"
+#include "util/shape_tag.h"
 
 namespace {
 struct RglRect {
@@ -87,8 +88,9 @@ void spawn_aligned_player(entt::registry& reg, float y) {
     auto p = reg.create();
     reg.emplace<PlayerTag>(p);
     reg.emplace<WorldTransform>(p, WorldTransform{{constants::LANE_X[1], y}});
-    PlayerShape ps; ps.current = Shape::Hexagon;
+    PlayerShape ps;
     reg.emplace<PlayerShape>(p, ps);
+    set_player_shape_tag(reg, p, Shape::Hexagon);
     ShapeWindow sw{};
     reg.emplace<ShapeWindow>(p, sw);
     // Idle phase = absence of all ShapeWindow*Tag (#1202/#1204).
@@ -120,7 +122,7 @@ TEST_CASE("redfoot/#168: collision miss is non-terminal cause context",
 
     spawn_aligned_player(reg, constants::PLAYER_Y);
     auto gate = spawn_obstacle(reg, constants::PLAYER_Y);
-    reg.emplace<RequiredShape>(gate, Shape::Circle);
+    set_required_shape_tag(reg, gate, Shape::Circle);
 
     collision_system(reg, 0.016f);
     scoring_system(reg, 0.016f);
