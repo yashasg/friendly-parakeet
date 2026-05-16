@@ -36,7 +36,8 @@ struct WebInputPolicy {
     //  • A USB/Bluetooth mouse plugged into a touch-capable device is
     //    not silently ignored for the rest of the session.
     // Per-frame routing between mouse and touch is handled by the
-    // active_source guard inside input_system.
+    // InputSourceMouse / InputSourceTouch ctx-tag mutex inside
+    // input_system (issues #1202 / #1204).
     bool touch_capable = false;
 };
 
@@ -139,6 +140,37 @@ void release_touch_slot(TouchSlot& slot,
     slot = TouchSlot{};
 }
 
+// ── Input-source ctx-tag mutex helpers (issues #1202 / #1204) ──────────────
+// The former InputSource enum tracked which input device "owns" the
+// current gesture as a 3-state mutex on InputState. Per Fabian's
+// existential-processing canon, each former value is now its own ctx
+// table (InputSourceMouse / InputSourceTouch); absence of both = the
+// former `None`. These helpers maintain the mutex invariant so callers
+// don't have to duplicate the erase-the-other pattern.
+
+void set_input_source_mouse(entt::registry& reg) {
+    reg.ctx().insert_or_assign(InputSourceMouse{});
+    if (reg.ctx().find<InputSourceTouch>()) {
+        reg.ctx().erase<InputSourceTouch>();
+    }
+}
+
+void set_input_source_touch(entt::registry& reg) {
+    reg.ctx().insert_or_assign(InputSourceTouch{});
+    if (reg.ctx().find<InputSourceMouse>()) {
+        reg.ctx().erase<InputSourceMouse>();
+    }
+}
+
+void clear_input_source(entt::registry& reg) {
+    if (reg.ctx().find<InputSourceMouse>()) {
+        reg.ctx().erase<InputSourceMouse>();
+    }
+    if (reg.ctx().find<InputSourceTouch>()) {
+        reg.ctx().erase<InputSourceTouch>();
+    }
+}
+
 } // namespace
 
 void input_system_init(entt::registry& reg) {
@@ -168,12 +200,12 @@ void input_system_clear_pointer_state(entt::registry& reg) {
         input->click = false;
         input->button_touch_up = false;
         input->touching = false;
-        input->active_source = InputSource::None;
         input->duration = 0.0f;
         for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
             input->touch_slots[i] = TouchSlot{};
         }
     }
+    clear_input_source(reg);
     if (auto* priv = reg.ctx().find<InputSystemPrivate>()) {
         priv->suppress_mouse_release = false;
     }
@@ -196,8 +228,9 @@ void input_system(entt::registry& reg, float raw_dt) {
 #if defined(PLATFORM_WEB) && defined(__EMSCRIPTEN__)
     const auto& web_policy = reg.ctx().get<WebInputPolicy>();
     // Mouse is always allowed on web. Touch is allowed whenever the
-    // browser reports a touch surface. The active_source guard below
-    // prevents a single gesture from being routed through both paths.
+    // browser reports a touch surface. The InputSourceMouse /
+    // InputSourceTouch ctx-tag mutex below prevents a single gesture
+    // from being routed through both paths.
     const bool allow_mouse_input = true;
     const bool allow_touch_input = web_policy.touch_capable;
 #else
@@ -213,22 +246,32 @@ void input_system(entt::registry& reg, float raw_dt) {
         priv.suppress_mouse_release = false;
     }
 
+    // Read live each call — the mouse and touch blocks below mutate the
+    // mutex (set_input_source_mouse / _touch / clear_input_source) so a
+    // cached snapshot would race against the very same frame's writes.
+    const auto touch_owns_gesture = [&]() {
+        return reg.ctx().find<InputSourceTouch>() != nullptr;
+    };
+    const auto mouse_owns_gesture = [&]() {
+        return reg.ctx().find<InputSourceMouse>() != nullptr;
+    };
+
     // ── Mouse (desktop) — click-only semantics ─
     if (allow_mouse_input &&
-        input.active_source != InputSource::Touch &&
+        !touch_owns_gesture() &&
         !priv.suppress_mouse_release &&
         touch_point_count == 0 &&
         IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        input.active_source = InputSource::Mouse;
+        set_input_source_mouse(reg);
         priv.suppress_mouse_release = false;
     }
     if (allow_mouse_input &&
-        input.active_source != InputSource::Touch &&
+        !touch_owns_gesture() &&
         mouse_released) {
         const bool suppress_this_release = priv.suppress_mouse_release;
         input.click      = !suppress_this_release;
         input.touching   = false;
-        input.active_source = InputSource::None;
+        clear_input_source(reg);
         priv.suppress_mouse_release = false;
         const Vector2 mouse_pos = GetMousePosition();
         const Vector2 pos = screen_to_virtual({mouse_pos.x, mouse_pos.y}, st);
@@ -239,7 +282,7 @@ void input_system(entt::registry& reg, float raw_dt) {
 
     // ── Touch (mobile / web) — up to one swipe-zone and one button-zone contact ─
     if (allow_touch_input &&
-        input.active_source != InputSource::Mouse &&
+        !mouse_owns_gesture() &&
         touch_point_count > 0) {
         const float zone_y = constants::SCREEN_H_F * constants::SWIPE_ZONE_SPLIT;
         Direction latest_swipe_dir = Direction::Up;
@@ -310,7 +353,7 @@ void input_system(entt::registry& reg, float raw_dt) {
             }
         }
         if (input.touching) {
-            input.active_source = InputSource::Touch;
+            set_input_source_touch(reg);
         }
         input.duration = 0.0f;
         for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
@@ -319,15 +362,15 @@ void input_system(entt::registry& reg, float raw_dt) {
             }
         }
     } else if (allow_touch_input &&
-               input.active_source != InputSource::Mouse &&
-               input.touching && input.active_source == InputSource::Touch) {
+               !mouse_owns_gesture() &&
+               input.touching && touch_owns_gesture()) {
         Direction latest_swipe_dir = Direction::Up;
         bool has_latest_swipe = false;
         bool had_swipe_zone_release = false;
         input.touch_up  = true;
         input.touching  = false;
         priv.suppress_mouse_release = true;
-        input.active_source = InputSource::None;
+        clear_input_source(reg);
         for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
             auto& slot = input.touch_slots[i];
             if (!slot.active) {
@@ -396,7 +439,7 @@ void input_system(entt::registry& reg, float raw_dt) {
         priv.was_focused = focused;
     }
 
-    if (input.active_source != InputSource::Mouse &&
+    if (!mouse_owns_gesture() &&
         !input.touching &&
         !input.touch_up) {
         Direction gesture_dir = Direction::Up;
