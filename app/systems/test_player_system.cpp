@@ -9,9 +9,11 @@
 #include "../components/scoring.h"
 #include "session_logger_system.h"
 #include "../util/lane_utils.h"
+#include "../util/shape_lane_mapping.h"
 #include "../constants.h"
 
 #include <raylib.h>
+#include <array>
 #include <cmath>
 #include <random>
 #include <string_view>
@@ -30,13 +32,21 @@ static bool lane_centers_overlap(float lhs_x, float rhs_x) {
     return CheckCollisionRecs(lane_overlap_rect(lhs_x), lane_overlap_rect(rhs_x));
 }
 
+// Per-shape key-name lookup (issue #1202/#1204). The former
+// `switch (s)` is replaced by a constexpr string column indexed by
+// `shape_index(s)`; Hexagon's slot doubles as the invalid-shape fallback
+// since the player never directly presses a Hexagon key.
+static constexpr std::array<const char*, kShapeCount> kShapeKeyNames{
+    "key_1(Circle)",
+    "key_2(Square)",
+    "key_3(Triangle)",
+    "key_?(?)",
+};
+
 static const char* shape_key_name(Shape s) {
-    switch (s) {
-        case Shape::Circle:   return "key_1(Circle)";
-        case Shape::Square:   return "key_2(Square)";
-        case Shape::Triangle: return "key_3(Triangle)";
-        default:              return "key_?(?)";
-    }
+    const int idx = shape_index(s);
+    if (idx < 0 || idx >= kShapeCount) return "key_?(?)";
+    return kShapeKeyNames[static_cast<size_t>(idx)];
 }
 
 static bool test_player_shape_done(const TestPlayerAction& action) {

@@ -12,6 +12,7 @@
 #include "../../constants.h"
 #include "../../entities/settings.h"
 #include "../../util/rhythm_math.h"
+#include "../../util/shape_lane_mapping.h"
 #include "screen_controller_base.h"
 #include "gameplay_hud_screen_controller.h"
 #include <entt/entt.hpp>
@@ -29,28 +30,37 @@ using GameplayHudController = RGuiScreenController<GameplayHudLayoutState,
                                                     &GameplayHudLayout_Init,
                                                     &GameplayHudLayout_Render>;
 
+// Per-shape flat draw functions (issue #1202/#1204). Each former
+// `switch (shape)` case becomes its own row in a fn-ptr column indexed by
+// `shape_index(shape)`; the dispatcher reads the column directly rather than
+// branching on the discriminator. Same mechanic as ProceduralWave PR #1254.
+void draw_circle_flat(float cx, float cy, float size, Color color) {
+    DrawCircleV({cx, cy}, size / 2.0f, color);
+}
+void draw_square_flat(float cx, float cy, float size, Color color) {
+    const float half = size / 2.0f;
+    DrawRectangleRec({cx - half, cy - half, size, size}, color);
+}
+void draw_triangle_flat(float cx, float cy, float size, Color color) {
+    const float half = size / 2.0f;
+    DrawTriangle({cx, cy - half}, {cx - half, cy + half}, {cx + half, cy + half}, color);
+}
+void draw_hexagon_flat(float cx, float cy, float size, Color color) {
+    DrawPoly({cx, cy}, 6, size * 0.6f, -90.0f, color);
+}
+
+using ShapeFlatDrawFn = void (*)(float, float, float, Color);
+constexpr std::array<ShapeFlatDrawFn, kShapeCount> kShapeFlatDrawFns{
+    &draw_circle_flat,
+    &draw_square_flat,
+    &draw_triangle_flat,
+    &draw_hexagon_flat,
+};
+
 void draw_shape_flat(Shape shape, float cx, float cy, float size, Color color) {
-    switch (shape) {
-        case Shape::Circle: {
-            DrawCircleV({cx, cy}, size / 2.0f, color);
-            break;
-        }
-        case Shape::Square: {
-            float half = size / 2.0f;
-            DrawRectangleRec({cx - half, cy - half, size, size}, color);
-            break;
-        }
-        case Shape::Triangle: {
-            float half = size / 2.0f;
-            DrawTriangle({cx, cy - half}, {cx - half, cy + half}, {cx + half, cy + half}, color);
-            break;
-        }
-        case Shape::Hexagon: {
-            float radius = size * 0.6f;
-            DrawPoly({cx, cy}, 6, radius, -90.0f, color);
-            break;
-        }
-    }
+    const int idx = shape_index(shape);
+    if (idx < 0) return;
+    kShapeFlatDrawFns[static_cast<size_t>(idx)](cx, cy, size, color);
 }
 
 struct GameplayHudVisualStyle {

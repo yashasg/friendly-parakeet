@@ -6,8 +6,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include "entities/beat_map.h"
 #include "components/obstacle.h"
+#include "util/shape_lane_mapping.h"
 
 #include <algorithm>
+#include <array>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -28,14 +30,20 @@ static std::vector<std::string> find_shipped_beatmaps() {
     return paths;
 }
 
+// Per-shape motif lane column (issue #1202/#1204). The former
+// `switch (shape)` is replaced by a constexpr int column indexed by
+// `shape_index(shape)`; Hexagon's slot is -1 (no motif lane).
+static constexpr std::array<int, kShapeCount> kMotifLaneForShape{
+    0,   // Circle
+    1,   // Square
+    2,   // Triangle
+    -1,  // Hexagon — not lane-mapped
+};
+
 static int expected_lane_for_shape(Shape shape) {
-    switch (shape) {
-        case Shape::Circle: return 0;
-        case Shape::Square: return 1;
-        case Shape::Triangle: return 2;
-        case Shape::Hexagon: return -1;
-    }
-    return -1;
+    const int idx = shape_index(shape);
+    if (idx < 0 || idx >= kShapeCount) return -1;
+    return kMotifLaneForShape[static_cast<size_t>(idx)];
 }
 
 TEST_CASE("medium balance: content directory is reachable",
