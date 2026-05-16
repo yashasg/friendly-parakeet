@@ -11,9 +11,7 @@
 namespace {
 
 bool obstacle_kind_requires_shape(ObstacleKind kind) {
-    return kind == ObstacleKind::ShapeGate
-        || kind == ObstacleKind::ComboGate
-        || kind == ObstacleKind::SplitPath;
+    return kind == ObstacleKind::ShapeGate || kind == ObstacleKind::SplitPath;
 }
 
 entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams& params) {
@@ -41,9 +39,6 @@ entt::entity spawn_obstacle_base(entt::registry& reg, const ObstacleSpawnParams&
             reg.emplace<Color>(e, constants::SHAPE_COLORS[shape_index(params.shape)]);
             break;
         }
-        case ObstacleKind::LaneBlock:
-        case ObstacleKind::ComboGate:
-            throw std::logic_error("Deprecated obstacle kind is not spawnable at runtime");
         case ObstacleKind::SplitPath: {
             reg.emplace<Obstacle>(e, int16_t{constants::PTS_SPLIT_PATH});
             reg.emplace<RequiredShape>(e, params.shape);

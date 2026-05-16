@@ -118,7 +118,6 @@ struct BeatEntry {
     ObstacleKind kind         = ObstacleKind::ShapeGate;  // 1B
     Shape        shape        = Shape::Circle;            // 1B
     int8_t       lane         = 1;       //  1B
-    uint8_t      blocked_mask = 0;       //  1B
     float        time_sec     = 0.0f;    // optional authored timestamp
     bool         has_time_sec = false;
 };
@@ -198,8 +197,6 @@ The current obstacle components already match the beatmap schema:
 
 ```
   ObstacleKind::ShapeGate      → "shape_gate"       ✓  required shipped obstacle
-  ObstacleKind::LaneBlock      → "lane_block"       ✗  legacy component fixture only; parser/scheduler/factories reject
-  ObstacleKind::ComboGate      → "combo_gate"       ✗  legacy component fixture only; parser/scheduler/factories reject
   ObstacleKind::SplitPath      → "split_path"       ✓  runtime-supported, not generated today
   ObstacleKind::OnsetMarker    → "onset_marker"     ✓  non-blocking shipped metadata
 
@@ -542,8 +539,7 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
   STEP 3 — Beat Map Loader                         ✅ DONE
   ─────────────────────────────
   • app/entities/beat_map.h/.cpp: JSON → BeatMap with validation
-  • Parser supports ShapeGate, SplitPath, and onset_marker only. LaneBlock
-    and ComboGate are legacy component fixtures rejected by active beatmaps.
+  • Parser supports ShapeGate, SplitPath, and onset_marker only.
   • init_song_state() computes derived fields from BPM
 
   STEP 4 — Song Playback + Beat Scheduler          ✅ DONE

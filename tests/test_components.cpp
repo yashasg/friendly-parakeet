@@ -271,22 +271,6 @@ TEST_CASE("components: ParticleData construction", "[components]") {
     CHECK(pd.size == 10.0f);
 }
 
-TEST_CASE("ecs: make_combo_gate creates proper entity", "[ecs]") {
-    auto reg = make_registry();
-    auto obs = make_combo_gate(reg, Shape::Circle, 0b101, 500.0f);
-
-    CHECK(reg.all_of<ObstacleTag>(obs));
-    CHECK(reg.all_of<WorldTransform>(obs));
-    CHECK(reg.all_of<Obstacle>(obs));
-    CHECK(reg.all_of<RequiredShape>(obs));
-    CHECK(reg.all_of<uint8_t>(obs));
-    CHECK(obstacle_kind_from_components(reg.all_of<RequiredShape>(obs),
-                                        reg.all_of<uint8_t>(obs),
-                                        reg.all_of<RequiredLane>(obs)) == ObstacleKind::ComboGate);
-    CHECK(reg.get<RequiredShape>(obs).shape == Shape::Circle);
-    CHECK(reg.get<uint8_t>(obs) == 0b101);
-}
-
 TEST_CASE("ecs: make_split_path creates proper entity", "[ecs]") {
     auto reg = make_registry();
     auto obs = make_split_path(reg, Shape::Triangle, 2, 500.0f);
@@ -296,7 +280,6 @@ TEST_CASE("ecs: make_split_path creates proper entity", "[ecs]") {
     CHECK(reg.all_of<RequiredShape>(obs));
     CHECK(reg.all_of<RequiredLane>(obs));
     CHECK(obstacle_kind_from_components(reg.all_of<RequiredShape>(obs),
-                                        reg.all_of<uint8_t>(obs),
                                         reg.all_of<RequiredLane>(obs)) == ObstacleKind::SplitPath);
     CHECK(reg.get<RequiredShape>(obs).shape == Shape::Triangle);
     CHECK(reg.get<RequiredLane>(obs).lane == 2);

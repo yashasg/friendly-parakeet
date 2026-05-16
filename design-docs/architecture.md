@@ -234,8 +234,6 @@ struct ObstacleTag {};
 /// LowBar/HighBar were removed from the runtime obstacle enum and remain archival only.
 enum class ObstacleKind : uint8_t {
     ShapeGate,   // must match shape
-    LaneBlock,   // legacy component fixture only; active beatmaps/factories reject
-    ComboGate,   // legacy component fixture only; active beatmaps/factories reject
     SplitPath,   // shape + specific lane
     OnsetMarker, // visual beat/onset marker; no collision/scoring
 };
@@ -248,16 +246,10 @@ struct Obstacle {
 };
 
 constexpr ObstacleKind obstacle_kind_from_components(bool has_required_shape,
-                                                     bool has_blocked_lanes,
                                                      bool has_required_lane) {
+    (void)has_required_shape;
     if (has_required_lane) {
         return ObstacleKind::SplitPath;
-    }
-    if (has_required_shape && has_blocked_lanes) {
-        return ObstacleKind::ComboGate;
-    }
-    if (has_blocked_lanes) {
-        return ObstacleKind::LaneBlock;
     }
     return ObstacleKind::ShapeGate;
 }
@@ -292,15 +284,9 @@ struct OnsetMarkerTag {};
 ```cpp
 // components/obstacle.h
 
-/// For ShapeGate / SplitPath, plus legacy ComboGate fixtures: which shape is required. 1 byte.
+/// For ShapeGate / SplitPath: which shape is required. 1 byte.
 struct RequiredShape {
     Shape shape;
-};
-
-/// For legacy LaneBlock / ComboGate fixtures: bit mask of blocked lanes
-/// (bit 0 = left, bit 1 = center, bit 2 = right).
-struct BlockedLanes {
-    uint8_t mask = 0;
 };
 
 /// For SplitPath: which lane has the opening. 1 byte.
@@ -325,10 +311,8 @@ truth for runtime obstacle kind:
 | Runtime kind | Required components | Notes |
 | --- | --- | --- |
 | `ShapeGate` | `RequiredShape` + `ShapeGateLane` | Also the fallback for no action components; avoid using the helper for visual-only markers. |
-| `LaneBlock` | `BlockedLanes` only | Legacy component fixture only; parser, scheduler, and runtime factories reject it for active gameplay. |
-| `ComboGate` | `RequiredShape` + `BlockedLanes` | Legacy component fixture only; parser, scheduler, and runtime factories reject it for active gameplay. |
 | `SplitPath` | `RequiredLane` (+ `RequiredShape` on spawned entities) | `RequiredLane` takes precedence in the helper. |
-| `OnsetMarker` | `OnsetMarkerTag` + `NonScorableTag`, no `RequiredShape`/`BlockedLanes`/`RequiredLane`/`ShapeGateLane` | Authored kind only; normal beat scheduling skips these entries, and spawned markers are visual-only/non-scoring. |
+| `OnsetMarker` | `OnsetMarkerTag` + `NonScorableTag`, no `RequiredShape`/`RequiredLane`/`ShapeGateLane` | Authored kind only; normal beat scheduling skips these entries, and spawned markers are visual-only/non-scoring. |
 
 ### 2.5 — HOT: Fixed-lifetime FX timers
 
@@ -624,7 +608,6 @@ VerticalState       12     HOT        collision, render, player_action
 ObstacleTag          0     HOT        scroll, collision, cleanup
 Obstacle             4     WARM       collision, miss_detection, scoring
 RequiredShape        1     WARM       collision, scoring
-BlockedLanes         1     WARM       collision
 RequiredLane         1     WARM       collision
 ShapeGateLane        1     WARM       collision (ShapeGate lane match)
 ScoredTag            0     WARM       scoring (consumes), collision/miss exclusions
@@ -904,48 +887,18 @@ Total: ~43 bytes per entity (5–15 active)
 `ShapeGateLane.lane` is captured at spawn from the authored x-position and
 read by `collision_system` so a player must be in the gate's lane to clear it.
 
-### 5.3 Legacy Lane Block Fixture
+### 5.3 Archived Lane Block / Combo Gate Fixtures
 
-```
-┌─ Lane Block ──────────────────────────────────────────────┐
-│ ObstacleTag        (tag, 0 bytes)                         │
-│ WorldTransform     { position: {360.0, -120.0} }          │
-│ MotionVelocity     { value: {0.0, 400.0} }                │
-│ Obstacle           { base_points: 100 }                    │
-│ BlockedLanes       { mask: 0b010 }                         │
-│ Color              { r: 255, g: 60, b: 60, a: 255 }       │
-│ DrawSize           { w: 240, h: 80 }                       │
-│ TagWorldPass       (tag, 0 bytes)                         │
-└───────────────────────────────────────────────────────────┘
-Total: ~41 bytes per entity
-```
-
-`BlockedLanes::mask` is retained for legacy component-level tests only.
-The parser, scheduler, and obstacle factories reject LaneBlock and ComboGate
-for active gameplay; `SplitPath` uses `RequiredLane` for shipped lane routing.
+LaneBlock and ComboGate were removed from the runtime obstacle enum
+(#1202). Authoring, parsing, scheduling, factories, and tests no longer
+recognise these kinds; consult archived design docs if this design space
+is reconsidered.
 
 ### 5.4 Archived Vertical Bar Entity (Low Bar / High Bar)
 
 LowBar/HighBar entity archetypes are historical only. The current runtime enum, components, and beatmap editor do not expose them as authorable obstacle kinds; use archived design docs if this future design space is reconsidered.
 
-### 5.5 Legacy Combo Gate Fixture (Shape + Lane)
-
-```
-┌─ Combo Gate ──────────────────────────────────────────────┐
-│ ObstacleTag        (tag, 0 bytes)                         │
-│ WorldTransform     { position: {360.0, -120.0} }         │
-│ MotionVelocity     { value: {0.0, 400.0} }               │
-│ Obstacle           { base_points: 200 }                    │
-│ RequiredShape      { shape: Square }                       │
-│ BlockedLanes       { mask: 0b110 }                         │
-│ Color              { r: 200, g: 100, b: 255, a: 255 }    │
-│ DrawSize           { w: 720, h: 80 }                       │
-│ TagWorldPass       (tag, 0 bytes)                          │
-└───────────────────────────────────────────────────────────┘
-Total: ~43 bytes per entity
-```
-
-### 5.6 Split Path Entity (Shape + Specific Lane)
+### 5.5 Split Path Entity (Shape + Specific Lane)
 
 ```
 ┌─ Split Path ──────────────────────────────────────────────┐
@@ -962,7 +915,7 @@ Total: ~43 bytes per entity
 Total: ~44 bytes per entity
 ```
 
-### 5.7 Onset Marker Entity
+### 5.6 Onset Marker Entity
 
 ```
 ┌─ Onset Marker ────────────────────────────────────────────┐
@@ -980,7 +933,7 @@ Total: ~40 bytes per entity
 ```
 
 Onset markers are visual beat/onset aids. They have no `RequiredShape`,
-`BlockedLanes`, `RequiredLane`, or `ShapeGateLane`, so collision views do
+`RequiredLane`, or `ShapeGateLane`, so collision views do
 not resolve them; the `NonScorableTag` excludes them from score, chain,
 popup, miss, and energy effects. `OnsetMarkerTag` is the explicit kind
 marker used by `obstacle_render_entity` and `session_logger` to identify
@@ -988,7 +941,7 @@ onset cues without scanning the rest of the obstacle data. The active beat
 scheduler currently skips `OnsetMarker` entries rather than spawning them
 during normal play.
 
-### 5.8 Score Popup Entity
+### 5.7 Score Popup Entity
 
 ```
 ┌─ Score Popup ─────────────────────────────────────────────┐
@@ -1001,7 +954,7 @@ during normal play.
 Total: ~33 bytes per entity (0–5 active)
 ```
 
-### 5.9 Particle Entity
+### 5.8 Particle Entity
 
 ```
 ┌─ Particle ────────────────────────────────────────────────┐
@@ -1373,7 +1326,7 @@ This entire game state fits in L1 cache (~32-64 KB).
   │  □ Obstacle        (collision + scoring, every frame, R)
   │
   │  ○ RequiredShape   (collision + scoring, per-obstacle, R)
-  │  ○ BlockedLanes    (collision, per-obstacle, R)
+  │  ○ RequiredLane    (collision, per-obstacle, R)
   │  ○ Color           (render only, R)
   │  ○ DrawSize        (render only, R)
   │
@@ -1494,23 +1447,11 @@ bool check_obstacle_cleared(entt::registry& reg, entt::entity e,
 
     const ObstacleKind kind = obstacle_kind_from_components(
         reg.all_of<RequiredShape>(e),
-        reg.all_of<BlockedLanes>(e),
         reg.all_of<RequiredLane>(e));
 
     switch (kind) {
         case ObstacleKind::ShapeGate:
             return shape.current == reg.get<RequiredShape>(e).shape;
-
-        case ObstacleKind::LaneBlock:
-            return true;   // legacy fixture only; not spawned by active runtime
-
-        case ObstacleKind::ComboGate: {
-            // legacy fixture only; not spawned by active runtime
-            bool shape_ok = shape.current == reg.get<RequiredShape>(e).shape;
-            uint8_t mask  = reg.get<BlockedLanes>(e).mask;
-            bool lane_ok  = !((mask >> lane.current) & 1);
-            return shape_ok && lane_ok;
-        }
 
         case ObstacleKind::SplitPath: {
             bool shape_ok = shape.current == reg.get<RequiredShape>(e).shape;
@@ -1656,8 +1597,7 @@ app/
 │   ├── obstacle.h               ← obstacle tags (ScoredTag, MissTag,
 │   │                              ResolvedObstacleTag, NonScorableTag,
 │   │                              OnsetMarkerTag) and requirements
-│   │                              (RequiredShape, RequiredLane, ShapeGateLane,
-│   │                              BlockedLanes)
+│   │                              (RequiredShape, RequiredLane, ShapeGateLane)
 │   ├── scoring.h                ← ScoreState, ScorePopup
 │   ├── input_events.h           ← Direction, ButtonPressEvent, GoEvent, MenuActionKind (in systems/)
 │   ├── game_state.h             ← GameState, GamePhase, LevelSelectState

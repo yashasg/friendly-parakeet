@@ -160,16 +160,6 @@ TEST_CASE("entity: mesh factory rejects invalid RequiredShape before children", 
         check_no_mesh_children(reg, parent);
     }
 
-    SECTION("ComboGate") {
-        entt::registry reg;
-        auto parent = make_mesh_factory_obstacle(reg);
-        reg.emplace<RequiredShape>(parent, invalid_shape);
-        reg.emplace<uint8_t>(parent, uint8_t{0b101});
-
-        CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
-        check_no_mesh_children(reg, parent);
-    }
-
     SECTION("SplitPath") {
         entt::registry reg;
         auto parent = make_mesh_factory_obstacle(reg);
@@ -218,7 +208,7 @@ TEST_CASE("entity: spawn_obstacle rejects invalid SplitPath lane before creating
     entt::registry reg;
 
     CHECK_THROWS_AS(spawn_obstacle(reg, {ObstacleKind::SplitPath, 360.0f, -120.0f,
-                                         Shape::Square, uint8_t{0}, int8_t{3}}),
+                                         Shape::Square, int8_t{3}}),
                     std::logic_error);
     CHECK(reg.view<ObstacleTag>().begin() == reg.view<ObstacleTag>().end());
     CHECK(reg.view<WorldTransform>().begin() == reg.view<WorldTransform>().end());
@@ -241,23 +231,10 @@ TEST_CASE("entity: ShapeGate Triangle - green color", "[archetype]") {
     CHECK(c.r == 100); CHECK(c.g == 255); CHECK(c.b == 100);
 }
 
-TEST_CASE("entity: deprecated lane obstacles are rejected by runtime factory",
-          "[archetype][legacy][issue1027]") {
-    entt::registry reg;
-
-    CHECK_THROWS_AS(spawn_obstacle(reg, {ObstacleKind::LaneBlock, 60.0f, -120.0f,
-                                         Shape::Circle, uint8_t{0b010}}),
-                    std::logic_error);
-    CHECK_THROWS_AS(spawn_obstacle(reg, {ObstacleKind::ComboGate, 360.0f, -120.0f,
-                                         Shape::Triangle, uint8_t{0b101}}),
-                    std::logic_error);
-    CHECK(reg.view<ObstacleTag>().begin() == reg.view<ObstacleTag>().end());
-}
-
 TEST_CASE("entity: SplitPath - RequiredShape and RequiredLane", "[archetype]") {
     entt::registry reg;
     auto e = spawn_obstacle(reg, {ObstacleKind::SplitPath, 360.0f, -120.0f,
-                                   Shape::Square, uint8_t{0}, int8_t{2}});
+                                   Shape::Square, int8_t{2}});
 
     REQUIRE(reg.all_of<ObstacleTag, Vector2, WorldTransform, Obstacle, RequiredShape, RequiredLane, DrawSize, Color>(e));
     CHECK(!reg.all_of<uint8_t>(e));

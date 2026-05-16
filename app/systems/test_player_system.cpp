@@ -106,23 +106,6 @@ static void test_player_remove_action(TestPlayerState& state, int idx) {
     }
 }
 
-// Find nearest unblocked lane to current position.
-static int8_t nearest_unblocked_lane(uint8_t blocked_mask, int8_t current) {
-    current = lane_utils::valid_or_default(current);
-
-    // Try current lane first
-    if (!((blocked_mask >> current) & 1)) return current;
-
-    // Expand outward from current
-    for (int dist = 1; dist < constants::LANE_COUNT; ++dist) {
-        int8_t left  = current - static_cast<int8_t>(dist);
-        int8_t right = current + static_cast<int8_t>(dist);
-        if (left >= 0 && !((blocked_mask >> left) & 1))  return left;
-        if (right < constants::LANE_COUNT && !((blocked_mask >> right) & 1)) return right;
-    }
-    return current; // all blocked — shouldn't happen in valid beatmaps
-}
-
 // Determine the required action for an obstacle.
 static TestPlayerAction determine_action(
     entt::registry& reg, entt::entity entity,
@@ -153,7 +136,7 @@ static TestPlayerAction determine_action(
         // ShapeGate: player must also be in the lane where the shape hole is.
         // The hole is at obs_pos.x — find which lane that corresponds to.
         auto* obs_wt = reg.try_get<WorldTransform>(entity);
-        if (obs_wt && !reg.all_of<uint8_t>(entity) && !reg.all_of<RequiredLane>(entity)) {
+        if (obs_wt && !reg.all_of<RequiredLane>(entity)) {
             for (int i = 0; i < constants::LANE_COUNT; ++i) {
                 if (!lane_centers_overlap(obs_wt->position.x, constants::LANE_X[i])) continue;
                 if (i != player_lane) {
@@ -161,15 +144,6 @@ static TestPlayerAction determine_action(
                 }
                 break;
             }
-        }
-    }
-
-    // Lane requirement (BlockedLanes — find unblocked)
-    auto* blocked = reg.try_get<uint8_t>(entity);
-    if (blocked) {
-        int8_t safe = nearest_unblocked_lane(*blocked, player_lane);
-        if (safe != player_lane) {
-            action.target_lane = safe;
         }
     }
 
@@ -324,7 +298,6 @@ void test_player_system(entt::registry& reg, float dt) {
             int beat_num = beat_info ? beat_info->beat_index : -1;
             const ObstacleKind kind = obstacle_kind_from_components(
                 reg.all_of<RequiredShape>(entity),
-                reg.all_of<uint8_t>(entity),
                 reg.all_of<RequiredLane>(entity));
             const std::string_view kind_name = enum_name_or_unknown(kind);
             const std::string_view shape_name = enum_name_or_unknown(action.target_shape);

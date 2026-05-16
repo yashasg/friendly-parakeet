@@ -270,40 +270,6 @@ inline entt::entity make_shape_gate(entt::registry& reg, Shape shape, float y) {
     return obs;
 }
 
-// Creates a legacy lane-block component fixture. Active beatmaps and runtime
-// obstacle factories reject LaneBlock; tests use this to cover old ECS data.
-inline entt::entity make_lane_block(entt::registry& reg, uint8_t mask, float y) {
-    const auto& song = reg.ctx().get<SongState>();
-    auto obs = reg.create();
-    reg.emplace<ObstacleTag>(obs);
-    reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
-    reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
-    reg.emplace<Obstacle>(obs, int16_t{constants::PTS_LANE_BLOCK});
-    reg.emplace<uint8_t>(obs, mask);
-    reg.emplace<DrawSize>(obs, float(constants::SCREEN_W / 3), 80.0f);
-    reg.emplace<TagWorldPass>(obs);
-    reg.emplace<Color>(obs, Color{255, 60, 60, 255});
-    return obs;
-}
-
-
-// Creates a legacy combo-gate component fixture. Active beatmaps and runtime
-// obstacle factories reject ComboGate; tests use this to cover old ECS data.
-inline entt::entity make_combo_gate(entt::registry& reg, Shape shape, uint8_t blocked_mask, float y) {
-    const auto& song = reg.ctx().get<SongState>();
-    auto obs = reg.create();
-    reg.emplace<ObstacleTag>(obs);
-    reg.emplace<WorldTransform>(obs, WorldTransform{{constants::LANE_X[1], y}});
-    reg.emplace<Vector2>(obs, Vector2{0.0f, song.scroll_speed});
-    reg.emplace<Obstacle>(obs, int16_t{constants::PTS_COMBO_GATE});
-    reg.emplace<RequiredShape>(obs, shape);
-    reg.emplace<uint8_t>(obs, blocked_mask);
-    reg.emplace<DrawSize>(obs, float(constants::SCREEN_W), 80.0f);
-    reg.emplace<TagWorldPass>(obs);
-    reg.emplace<Color>(obs, Color{200, 100, 255, 255});
-    return obs;
-}
-
 // Creates a split path requiring shape AND specific lane
 inline entt::entity make_split_path(entt::registry& reg, Shape shape, int8_t lane, float y) {
     const auto& song = reg.ctx().get<SongState>();
