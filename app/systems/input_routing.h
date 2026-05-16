@@ -3,16 +3,23 @@
 #include <entt/entt.hpp>
 
 struct GoEvent;
-struct MenuPressEvent;
+struct MenuConfirmEvent;
+struct MenuRestartEvent;
+struct MenuGoLevelSelectEvent;
+struct MenuGoMainMenuEvent;
 struct ShapePressCircleEvent;
 struct ShapePressSquareEvent;
 struct ShapePressTriangleEvent;
 
 // Semantic listeners: events -> game/player state.
-// Per issue #1202/#1204, the press-event handler tree is identity-encoded
-// in the event type — no `switch (kind)` at consumers; the type IS the choice.
+// Per issue #1202/#1204/#1277, the press-event handler tree is identity-
+// encoded in the event type — no `switch (kind)` / `if (evt.action == X)`
+// at consumers; the type IS the choice.
 void game_state_handle_go(entt::registry& reg, const GoEvent& evt);
-void game_state_handle_press_menu(entt::registry& reg, const MenuPressEvent& evt);
+void game_state_handle_confirm         (entt::registry& reg, const MenuConfirmEvent&);
+void game_state_handle_restart         (entt::registry& reg, const MenuRestartEvent&);
+void game_state_handle_go_level_select (entt::registry& reg, const MenuGoLevelSelectEvent&);
+void game_state_handle_go_main_menu    (entt::registry& reg, const MenuGoMainMenuEvent&);
 
 void player_input_handle_go(entt::registry& reg, const GoEvent& evt);
 void player_input_handle_press_circle  (entt::registry& reg, const ShapePressCircleEvent&   evt);

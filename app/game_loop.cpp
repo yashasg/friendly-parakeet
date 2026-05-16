@@ -101,27 +101,45 @@ void unload_text_fonts(TextContext& ctx) {
     ctx.release();
 }
 
+// Status → (log_level, message_template) lookup table. Per Fabian's
+// existential processing (issue #1277), behavior dispatch on the `Status`
+// discriminator is replaced with a value→data lookup — same shape as the
+// `to_string(Shape)` / `HapticEvent → TriggerPattern` lookups that the
+// issue lists as doctrinally OK.
+struct PersistenceLogRow {
+    persistence::Status status;
+    int log_level;            // raylib TraceLogLevel (LOG_INFO / LOG_WARNING)
+    const char* message_fmt;  // "%s: …" — operation name interpolates as 1st arg
+};
+
+constexpr PersistenceLogRow kPersistenceLogTable[] = {
+    {persistence::Status::Success,     LOG_INFO,    "%s: success"},
+    {persistence::Status::MissingFile, LOG_INFO,    "%s: missing file (defaults in use)"},
+    {persistence::Status::CorruptData, LOG_WARNING, "%s: corrupt data (defaults in use)"},
+};
+
+const PersistenceLogRow* find_persistence_log_row(persistence::Status status) {
+    for (const auto& row : kPersistenceLogTable) {
+        if (row.status == status) return &row;
+    }
+    return nullptr;
+}
+
 void log_persistence_result(const char* operation, const persistence::Result& result) {
-    switch (result.status) {
-        case persistence::Status::Success:
-            TraceLog(LOG_INFO, "%s: success", operation);
-            break;
-        case persistence::Status::MissingFile:
-            TraceLog(LOG_INFO, "%s: missing file (defaults in use)", operation);
-            break;
-        case persistence::Status::CorruptData:
-            TraceLog(LOG_WARNING, "%s: corrupt data (defaults in use)", operation);
-            break;
-        default:
-            if (result.error) {
-                TraceLog(LOG_WARNING, "%s: %s (%s)", operation,
-                         persistence::status_name(result.status),
-                         result.error.message().c_str());
-            } else {
-                TraceLog(LOG_WARNING, "%s: %s", operation,
-                         persistence::status_name(result.status));
-            }
-            break;
+    if (const auto* row = find_persistence_log_row(result.status)) {
+        TraceLog(row->log_level, row->message_fmt, operation);
+        return;
+    }
+    // Fallback for statuses not in the table (any failure status that isn't
+    // CorruptData) — stringify via persistence::status_name and include the
+    // OS error code message when available.
+    if (result.error) {
+        TraceLog(LOG_WARNING, "%s: %s (%s)", operation,
+                 persistence::status_name(result.status),
+                 result.error.message().c_str());
+    } else {
+        TraceLog(LOG_WARNING, "%s: %s", operation,
+                 persistence::status_name(result.status));
     }
 }
 

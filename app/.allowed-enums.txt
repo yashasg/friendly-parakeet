@@ -5,8 +5,7 @@
 # with per-case component tables (real structs) or empty tags. Enums
 # survive in this codebase only as:
 #
-#   - input event labels / keybindings  (Direction, MenuActionKind,
-#                                        KeyboardShapeSlot)
+#   - input event labels / keybindings  (Direction, KeyboardShapeSlot)
 #   - playback IDs                      (HapticEvent, ImpactStyle, SFX)
 #   - finite return codes               (Status)
 #   - UI layout labels                  (FontSize)
@@ -30,7 +29,6 @@
 
 # --- Keep set: label / lookup / return code (Fabian "enums that make sense")
 Direction          # input event label
-MenuActionKind     # input event label
 KeyboardShapeSlot  # keybinding lookup key
 HapticEvent        # playback ID
 ImpactStyle        # playback ID

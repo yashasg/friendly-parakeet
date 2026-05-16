@@ -81,17 +81,34 @@ struct PressCapture {
     int circle = 0;
     int square = 0;
     int triangle = 0;
-    MenuPressEvent menu_buf[8] = {};
-    int menu_count = 0;
+    int confirm = 0;
+    int restart = 0;
+    int go_level_select = 0;
+    int go_main_menu = 0;
+    MenuSelectLevelEvent select_level_buf[4] = {};
+    int select_level_count = 0;
+    MenuSelectDiffEvent select_diff_buf[4] = {};
+    int select_diff_count = 0;
 
     int shape_count() const { return circle + square + triangle; }
-    int count() const { return shape_count() + menu_count; }
+    int menu_count() const {
+        return confirm + restart + go_level_select + go_main_menu +
+               select_level_count + select_diff_count;
+    }
+    int count() const { return shape_count() + menu_count(); }
 
     void on_circle  (const ShapePressCircleEvent&)   { ++circle;   }
     void on_square  (const ShapePressSquareEvent&)   { ++square;   }
     void on_triangle(const ShapePressTriangleEvent&) { ++triangle; }
-    void on_menu(const MenuPressEvent& e) {
-        if (menu_count < 8) menu_buf[menu_count++] = e;
+    void on_confirm        (const MenuConfirmEvent&)        { ++confirm; }
+    void on_restart        (const MenuRestartEvent&)        { ++restart; }
+    void on_go_level_select(const MenuGoLevelSelectEvent&)  { ++go_level_select; }
+    void on_go_main_menu   (const MenuGoMainMenuEvent&)     { ++go_main_menu; }
+    void on_select_level   (const MenuSelectLevelEvent& e)  {
+        if (select_level_count < 4) select_level_buf[select_level_count++] = e;
+    }
+    void on_select_diff    (const MenuSelectDiffEvent& e)   {
+        if (select_diff_count < 4) select_diff_buf[select_diff_count++] = e;
     }
 };
 
@@ -119,30 +136,52 @@ inline GoCapture drain_go_events(entt::registry& reg) {
 inline PressCapture drain_press_events(entt::registry& reg) {
     PressCapture cap;
     auto& disp = reg.ctx().get<entt::dispatcher>();
-    disp.sink<ShapePressCircleEvent>().connect<&PressCapture::on_circle>(cap);
-    disp.sink<ShapePressSquareEvent>().connect<&PressCapture::on_square>(cap);
+    disp.sink<ShapePressCircleEvent>()  .connect<&PressCapture::on_circle>(cap);
+    disp.sink<ShapePressSquareEvent>()  .connect<&PressCapture::on_square>(cap);
     disp.sink<ShapePressTriangleEvent>().connect<&PressCapture::on_triangle>(cap);
-    disp.sink<MenuPressEvent>().connect<&PressCapture::on_menu>(cap);
+    disp.sink<MenuConfirmEvent>()       .connect<&PressCapture::on_confirm>(cap);
+    disp.sink<MenuRestartEvent>()       .connect<&PressCapture::on_restart>(cap);
+    disp.sink<MenuGoLevelSelectEvent>() .connect<&PressCapture::on_go_level_select>(cap);
+    disp.sink<MenuGoMainMenuEvent>()    .connect<&PressCapture::on_go_main_menu>(cap);
+    disp.sink<MenuSelectLevelEvent>()   .connect<&PressCapture::on_select_level>(cap);
+    disp.sink<MenuSelectDiffEvent>()    .connect<&PressCapture::on_select_diff>(cap);
     disp.update<ShapePressCircleEvent>();
     disp.update<ShapePressSquareEvent>();
     disp.update<ShapePressTriangleEvent>();
-    disp.update<MenuPressEvent>();
-    disp.sink<ShapePressCircleEvent>().disconnect<&PressCapture::on_circle>(cap);
-    disp.sink<ShapePressSquareEvent>().disconnect<&PressCapture::on_square>(cap);
+    disp.update<MenuConfirmEvent>();
+    disp.update<MenuRestartEvent>();
+    disp.update<MenuGoLevelSelectEvent>();
+    disp.update<MenuGoMainMenuEvent>();
+    disp.update<MenuSelectLevelEvent>();
+    disp.update<MenuSelectDiffEvent>();
+    disp.sink<ShapePressCircleEvent>()  .disconnect<&PressCapture::on_circle>(cap);
+    disp.sink<ShapePressSquareEvent>()  .disconnect<&PressCapture::on_square>(cap);
     disp.sink<ShapePressTriangleEvent>().disconnect<&PressCapture::on_triangle>(cap);
-    disp.sink<MenuPressEvent>().disconnect<&PressCapture::on_menu>(cap);
+    disp.sink<MenuConfirmEvent>()       .disconnect<&PressCapture::on_confirm>(cap);
+    disp.sink<MenuRestartEvent>()       .disconnect<&PressCapture::on_restart>(cap);
+    disp.sink<MenuGoLevelSelectEvent>() .disconnect<&PressCapture::on_go_level_select>(cap);
+    disp.sink<MenuGoMainMenuEvent>()    .disconnect<&PressCapture::on_go_main_menu>(cap);
+    disp.sink<MenuSelectLevelEvent>()   .disconnect<&PressCapture::on_select_level>(cap);
+    disp.sink<MenuSelectDiffEvent>()    .disconnect<&PressCapture::on_select_diff>(cap);
     return cap;
 }
 
-// Drains all press-event queues (per-shape ShapePress* + MenuPressEvent) in
-// the same order game_state_system uses (issue #1202/#1204). Use in tests
-// that previously called `disp.update<ButtonPressEvent>()` directly.
+// Drains all press-event queues (per-shape ShapePress* + per-action menu
+// events) in the same order game_state_system uses (issue #1202/#1204/#1277).
+// Use in tests that previously called `disp.update<ButtonPressEvent>()` or
+// `disp.update<MenuPressEvent>()` directly (both eradicated by the per-event-
+// type split).
 inline void update_press_events(entt::registry& reg) {
     auto& disp = reg.ctx().get<entt::dispatcher>();
     disp.update<ShapePressCircleEvent>();
     disp.update<ShapePressSquareEvent>();
     disp.update<ShapePressTriangleEvent>();
-    disp.update<MenuPressEvent>();
+    disp.update<MenuConfirmEvent>();
+    disp.update<MenuRestartEvent>();
+    disp.update<MenuGoLevelSelectEvent>();
+    disp.update<MenuGoMainMenuEvent>();
+    disp.update<MenuSelectLevelEvent>();
+    disp.update<MenuSelectDiffEvent>();
 }
 
 // Flush the dispatcher PlaySfxEvent queue and return all events that were pending.
@@ -189,16 +228,21 @@ struct TestShapeButtonData {
     Shape shape = Shape::Circle;
 };
 
+// Per-action menu-button tag for tests. Mirrors the per-event-type split
+// (#1277) on the producer side — the function pointer captures which event
+// type to enqueue when the button is "pressed". The `index` field is only
+// consulted for `MenuSelectLevelEvent` / `MenuSelectDiffEvent`.
 struct TestMenuButtonData {
-    MenuActionKind kind = MenuActionKind::Confirm;
+    void (*enqueue)(entt::dispatcher&, uint8_t index) = nullptr;
     uint8_t index = 0;
 };
 
 // ── Button-press injection helper ──────────────────────────────────────────
-// Per #1202/#1204: enqueues the per-shape ShapePress*Event (or MenuPressEvent
-// for menu buttons) corresponding to the button's TestShapeButtonData /
-// TestMenuButtonData. The per-shape table mirrors the same function-pointer-
-// per-row mechanic used by `kEnqueueShapePress` in test_player_system.cpp.
+// Per #1202/#1204/#1277: enqueues the per-shape ShapePress*Event (or one of
+// the per-action Menu*Event types for menu buttons) corresponding to the
+// button's TestShapeButtonData / TestMenuButtonData. The per-shape table
+// mirrors the same function-pointer-per-row mechanic used by
+// `kEnqueueShapePress` in test_player_system.cpp.
 inline void press_button(entt::registry& reg, entt::entity btn) {
     auto& disp = reg.ctx().get<entt::dispatcher>();
     if (reg.all_of<TestShapeButtonData>(btn)) {
@@ -214,8 +258,8 @@ inline void press_button(entt::registry& reg, entt::entity btn) {
         };
         kEnqueueFns[idx](disp);
     } else if (reg.all_of<TestMenuButtonData>(btn)) {
-        const auto& ma = reg.get<TestMenuButtonData>(btn);
-        disp.enqueue<MenuPressEvent>({ma.kind, ma.index});
+        const auto& mb = reg.get<TestMenuButtonData>(btn);
+        if (mb.enqueue) mb.enqueue(disp, mb.index);
     }
 }
 
@@ -356,9 +400,53 @@ inline entt::entity make_shape_button(entt::registry& reg, Shape shape) {
     return btn;
 }
 
-inline entt::entity make_menu_button(entt::registry& reg, MenuActionKind kind,
-                                      uint8_t index = 0) {
+// Per-action menu-button factories (#1277). Each factory wires up the
+// corresponding per-event-type enqueue so `press_button(reg, btn)` produces
+// the right event type with no enum discriminator.
+inline entt::entity make_menu_confirm_button(entt::registry& reg) {
     auto btn = reg.create();
-    reg.emplace<TestMenuButtonData>(btn, kind, index);
+    reg.emplace<TestMenuButtonData>(btn,
+        +[](entt::dispatcher& d, uint8_t){ d.enqueue<MenuConfirmEvent>({}); },
+        uint8_t{0});
+    return btn;
+}
+
+inline entt::entity make_menu_restart_button(entt::registry& reg) {
+    auto btn = reg.create();
+    reg.emplace<TestMenuButtonData>(btn,
+        +[](entt::dispatcher& d, uint8_t){ d.enqueue<MenuRestartEvent>({}); },
+        uint8_t{0});
+    return btn;
+}
+
+inline entt::entity make_menu_go_level_select_button(entt::registry& reg) {
+    auto btn = reg.create();
+    reg.emplace<TestMenuButtonData>(btn,
+        +[](entt::dispatcher& d, uint8_t){ d.enqueue<MenuGoLevelSelectEvent>({}); },
+        uint8_t{0});
+    return btn;
+}
+
+inline entt::entity make_menu_go_main_menu_button(entt::registry& reg) {
+    auto btn = reg.create();
+    reg.emplace<TestMenuButtonData>(btn,
+        +[](entt::dispatcher& d, uint8_t){ d.enqueue<MenuGoMainMenuEvent>({}); },
+        uint8_t{0});
+    return btn;
+}
+
+inline entt::entity make_menu_select_level_button(entt::registry& reg, uint8_t index) {
+    auto btn = reg.create();
+    reg.emplace<TestMenuButtonData>(btn,
+        +[](entt::dispatcher& d, uint8_t i){ d.enqueue<MenuSelectLevelEvent>({i}); },
+        index);
+    return btn;
+}
+
+inline entt::entity make_menu_select_diff_button(entt::registry& reg, uint8_t index) {
+    auto btn = reg.create();
+    reg.emplace<TestMenuButtonData>(btn,
+        +[](entt::dispatcher& d, uint8_t i){ d.enqueue<MenuSelectDiffEvent>({i}); },
+        index);
     return btn;
 }

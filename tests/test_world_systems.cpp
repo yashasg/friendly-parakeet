@@ -103,7 +103,7 @@ TEST_CASE("cleanup: non-obstacle entities are untouched", "[cleanup]") {
 TEST_CASE("game_state: title to level select on touch", "[gamestate]") {
     auto reg = make_registry();
     set_test_phase<GamePhaseTitleTag>(reg);
-    auto btn = make_menu_button(reg, MenuActionKind::Confirm);
+    auto btn = make_menu_confirm_button(reg);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
@@ -117,7 +117,7 @@ TEST_CASE("game_state: game over button choice after delay", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.5f;
-    auto btn = make_menu_button(reg, MenuActionKind::GoLevelSelect);
+    auto btn = make_menu_go_level_select_button(reg);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
@@ -132,8 +132,7 @@ TEST_CASE("game_state: game over keyboard confirm routes to restart", "[gamestat
     set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.5f;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
-        {MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<MenuConfirmEvent>({});
 
     game_state_system(reg, 0.016f);
 
@@ -146,8 +145,7 @@ TEST_CASE("game_state: song complete keyboard confirm routes to restart", "[game
     set_test_phase<GamePhaseSongCompleteTag>(reg);
     gs.phase_timer = constants::SONG_COMPLETE_INPUT_DELAY + 0.1f;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
-        {MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<MenuConfirmEvent>({});
 
     game_state_system(reg, 0.016f);
 
@@ -161,8 +159,7 @@ TEST_CASE("game_state: song complete keyboard confirm waits for button debounce"
     set_test_phase<GamePhaseSongCompleteTag>(reg);
     gs.phase_timer = 0.45f;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
-        {MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<MenuConfirmEvent>({});
 
     game_state_system(reg, 0.0f);
 
@@ -177,7 +174,7 @@ TEST_CASE("game_state: game over ignores touch during delay", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     set_test_phase<GamePhaseGameOverTag>(reg);
     gs.phase_timer = 0.2f;  // within GAME_OVER_INPUT_DELAY
-    auto btn = make_menu_button(reg, MenuActionKind::Confirm);
+    auto btn = make_menu_confirm_button(reg);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
@@ -192,8 +189,7 @@ TEST_CASE("game_state: paused menu input waits for entry debounce", "[gamestate]
     gs.phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.1f;
     gs.phase_timer = 0.1f;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
-        {MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<MenuConfirmEvent>({});
 
     game_state_system(reg, 0.0f);
 
@@ -206,8 +202,7 @@ TEST_CASE("game_state: paused menu input resumes after entry debounce", "[gamest
     set_test_phase<GamePhasePausedTag>(reg);
     gs.phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.1f;
 
-    reg.ctx().get<entt::dispatcher>().enqueue<MenuPressEvent>(
-        {MenuActionKind::Confirm, 0});
+    reg.ctx().get<entt::dispatcher>().enqueue<MenuConfirmEvent>({});
 
     game_state_system(reg, 0.0f);
 
@@ -303,7 +298,7 @@ TEST_CASE("game_state: paused to playing on touch", "[gamestate]") {
     auto& gs = reg.ctx().get<GameState>();
     set_test_phase<GamePhasePausedTag>(reg);
     gs.phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.1f;
-    auto btn = make_menu_button(reg, MenuActionKind::Confirm);
+    auto btn = make_menu_confirm_button(reg);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);
@@ -335,7 +330,7 @@ TEST_CASE("game_state: paused resume preserves active play session state", "[gam
     song.playing = true;
     song.restart_music = false;
 
-    auto btn = make_menu_button(reg, MenuActionKind::Confirm);
+    auto btn = make_menu_confirm_button(reg);
     press_button(reg, btn);
 
     game_state_system(reg, 0.016f);

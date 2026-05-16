@@ -2,8 +2,9 @@
 //
 // End-to-end input pipeline behavioral tests.
 //
-// The pipeline: semantic GoEvent + per-shape ShapePress*Event + MenuPressEvent
-// producers → game_state_system drain (authoritative) → player_input listeners.
+// The pipeline: semantic GoEvent + per-shape ShapePress*Event + per-action
+// menu events (#1277) — producers → game_state_system drain (authoritative)
+// → player_input listeners.
 //
 // All assertions are on player component state (Lane::target, ShapeWindow::phase,
 // PlayerShape::current) — never on raw event queues.

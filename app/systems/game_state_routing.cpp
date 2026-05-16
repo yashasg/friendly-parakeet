@@ -9,46 +9,38 @@
 #include "../constants.h"
 
 namespace {
-// Per Fabian's existential processing (issue #1202/#1204, PR G): the former
-// `gs.phase == GamePhase::X` consumers dispatch on the per-phase ctx-tag
-// mirror; the former `gs.transition_pending = true; gs.next_phase = X` pair
-// is now `request_phase_transition<NextPhase*Tag>()` — presence of the tag
-// IS the pending request, and `game_state_system` swaps phases on the next
-// tick (deferred-transition pattern per #482).
-bool game_state_handle_end_screen_press(entt::registry& reg, const MenuPressEvent& evt) {
-    auto& gs = reg.ctx().get<GameState>();
+// Per Fabian's existential processing (issue #1202/#1204/#1277): each former
+// `gs.phase == GamePhase::X` arm dispatches on the per-phase ctx-tag mirror;
+// each former `MenuActionKind::Y` arm is now its own event type. The handlers
+// below contain no enum-typed discriminator — the dispatcher sink for each
+// event type routes straight to the matching handler.
+
+// Returns true once a press on the active end screen has cleared the per-
+// phase debounce window. Common gate for Restart / GoLevelSelect / GoMainMenu
+// (which only make sense on the GameOver / SongComplete screens) and for the
+// Confirm-on-end-screen passthrough below.
+bool end_screen_press_unlocked(entt::registry& reg) {
+    auto& gs  = reg.ctx().get<GameState>();
     auto& ctx = reg.ctx();
     const bool game_over_phase     = ctx.contains<GamePhaseGameOverTag>();
     const bool song_complete_phase = ctx.contains<GamePhaseSongCompleteTag>();
-    if (!game_over_phase && !song_complete_phase) {
-        return false;
-    }
+    if (!game_over_phase && !song_complete_phase) return false;
 
     const float input_delay = song_complete_phase
         ? constants::SONG_COMPLETE_INPUT_DELAY
         : constants::GAME_OVER_INPUT_DELAY;
-    if (gs.phase_timer <= input_delay) {
-        return false;
-    }
+    return gs.phase_timer > input_delay;
+}
 
-    const MenuActionKind action =
-        (evt.action == MenuActionKind::Confirm) ? MenuActionKind::Restart
-                                                : evt.action;
-
-    if (auto* disp = ctx.find<entt::dispatcher>()) {
-        disp->enqueue<PlayHapticEvent>({action == MenuActionKind::Restart
-                                           ? HapticEvent::RetryTap
-                                           : HapticEvent::UIButtonTap});
+void enqueue_ui_haptic(entt::registry& reg, HapticEvent which) {
+    if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
+        disp->enqueue<PlayHapticEvent>({which});
     }
+}
 
-    if (action == MenuActionKind::Restart) {
-        ctx.insert_or_assign(EndChoiceRestart{});
-    } else if (action == MenuActionKind::GoLevelSelect) {
-        ctx.insert_or_assign(EndChoiceLevelSelect{});
-    } else if (action == MenuActionKind::GoMainMenu) {
-        ctx.insert_or_assign(EndChoiceMainMenu{});
-    }
-    return true;
+void latch_end_choice_restart(entt::registry& reg) {
+    enqueue_ui_haptic(reg, HapticEvent::RetryTap);
+    reg.ctx().insert_or_assign(EndChoiceRestart{});
 }
 } // namespace
 
@@ -60,31 +52,24 @@ void game_state_handle_go(entt::registry& reg, const GoEvent& /*evt*/) {
     request_phase_transition<NextPhasePlayingTag>(reg);
 }
 
-void game_state_handle_press_menu(entt::registry& reg, const MenuPressEvent& evt) {
-    auto& gs = reg.ctx().get<GameState>();
+void game_state_handle_confirm(entt::registry& reg, const MenuConfirmEvent&) {
+    auto& gs  = reg.ctx().get<GameState>();
     auto& ctx = reg.ctx();
 
     if (ctx.contains<GamePhaseTitleTag>()) {
-        if (auto* disp = ctx.find<entt::dispatcher>()) {
-            disp->enqueue<PlayHapticEvent>({HapticEvent::UIButtonTap});
-        }
-        if (evt.action == MenuActionKind::Exit) {
-#ifndef PLATFORM_WEB
-            ctx.get<InputState>().quit_requested = true;
-#endif
-        } else if (evt.action == MenuActionKind::Confirm) {
-            request_phase_transition<NextPhaseLevelSelectTag>(reg);
-        }
+        enqueue_ui_haptic(reg, HapticEvent::UIButtonTap);
+        request_phase_transition<NextPhaseLevelSelectTag>(reg);
         return;
     }
 
-    if (game_state_handle_end_screen_press(reg, evt)) {
+    // Confirm on an end screen is the keyboard Enter shortcut for Restart.
+    if (end_screen_press_unlocked(reg)) {
+        latch_end_choice_restart(reg);
         return;
     }
 
     if (ctx.contains<GamePhaseTutorialTag>()) {
         if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
-        if (evt.action != MenuActionKind::Confirm) return;
         if (auto* settings_state = find_settings_state(reg)) {
             settings::mark_ftue_complete(*settings_state);
             if (auto* persistence = find_settings_persistence(reg)) {
@@ -101,4 +86,21 @@ void game_state_handle_press_menu(entt::registry& reg, const MenuPressEvent& evt
         request_phase_transition<NextPhasePlayingTag>(reg);
         return;
     }
+}
+
+void game_state_handle_restart(entt::registry& reg, const MenuRestartEvent&) {
+    if (!end_screen_press_unlocked(reg)) return;
+    latch_end_choice_restart(reg);
+}
+
+void game_state_handle_go_level_select(entt::registry& reg, const MenuGoLevelSelectEvent&) {
+    if (!end_screen_press_unlocked(reg)) return;
+    enqueue_ui_haptic(reg, HapticEvent::UIButtonTap);
+    reg.ctx().insert_or_assign(EndChoiceLevelSelect{});
+}
+
+void game_state_handle_go_main_menu(entt::registry& reg, const MenuGoMainMenuEvent&) {
+    if (!end_screen_press_unlocked(reg)) return;
+    enqueue_ui_haptic(reg, HapticEvent::UIButtonTap);
+    reg.ctx().insert_or_assign(EndChoiceMainMenu{});
 }

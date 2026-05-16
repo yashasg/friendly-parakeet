@@ -413,7 +413,7 @@ void input_system(entt::registry& reg, float raw_dt) {
         disp.enqueue<ShapePressTriangleEvent>({});
     }
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
-        disp.enqueue<MenuPressEvent>({MenuActionKind::Confirm, 0});
+        disp.enqueue<MenuConfirmEvent>({});
     }
 #endif
 
