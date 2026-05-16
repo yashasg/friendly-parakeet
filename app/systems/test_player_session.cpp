@@ -30,7 +30,7 @@ int difficulty_index_or_default(const char* difficulty) {
 }
 }
 
-void test_player_init(entt::registry& reg, TestPlayerSkill skill,
+void test_player_init(entt::registry& reg, SkillConfig skill,
                       const char* difficulty,
                       int selected_level) {
     auto& lss = reg.ctx().get<LevelSelectState>();
@@ -54,11 +54,10 @@ void test_player_init(entt::registry& reg, TestPlayerSkill skill,
     }
     tp_state.rng.seed(seed);
 
-    static const char* skill_names[] = { "pro", "good", "bad" };
     const char* level_key = content_config::LEVEL_KEYS[lss.selected_level];
     const char* difficulty_key = content_config::DIFFICULTY_KEYS[lss.selected_difficulty];
     TraceLog(LOG_INFO, "TEST PLAYER: skill=%s level=%s difficulty=%s",
-             skill_names[static_cast<int>(skill)], level_key, difficulty_key);
+             skill.name, level_key, difficulty_key);
 
     auto& slog = reg.ctx().get<SessionLog>();
     session_log_close(slog);
@@ -70,14 +69,14 @@ void test_player_init(entt::registry& reg, TestPlayerSkill skill,
     std::snprintf(log_filename, sizeof(log_filename),
         "%ssession_%s_%s_%s_rt%010llu_n%04u.log",
         GetApplicationDirectory(),
-        skill_names[static_cast<int>(skill)],
+        skill.name,
         level_key,
         difficulty_key,
         runtime_millis, sequence);
     session_log_open(slog, log_filename);
     if (slog.file) {
         std::fprintf(slog.file, "skill=%s level=%s difficulty=%s seed=%u\n\n",
-                     skill_names[static_cast<int>(skill)], level_key,
+                     skill.name, level_key,
                      difficulty_key, seed);
         std::fflush(slog.file);
     }

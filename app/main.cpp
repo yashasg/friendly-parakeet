@@ -38,7 +38,7 @@ bool missing_option_value(int argc, char* argv[], int option_index) {
 int main(int argc, char* argv[]) {
 
     // ── Parse CLI args ───────────────────────────────────────
-    TestPlayerSkill test_skill = TestPlayerSkill::Pro;
+    SkillConfig test_skill = SKILL_PRO;
     bool test_player_mode = false;
     const char* difficulty = "medium";
     int selected_level = content_config::DEFAULT_LEVEL_INDEX;
@@ -50,9 +50,9 @@ int main(int argc, char* argv[]) {
             }
             test_player_mode = true;
             ++i;
-            if (std::strcmp(argv[i], "pro") == 0)       test_skill = TestPlayerSkill::Pro;
-            else if (std::strcmp(argv[i], "good") == 0)  test_skill = TestPlayerSkill::Good;
-            else if (std::strcmp(argv[i], "bad") == 0)   test_skill = TestPlayerSkill::Bad;
+            if (std::strcmp(argv[i], "pro") == 0)       test_skill = SKILL_PRO;
+            else if (std::strcmp(argv[i], "good") == 0)  test_skill = SKILL_GOOD;
+            else if (std::strcmp(argv[i], "bad") == 0)   test_skill = SKILL_BAD;
             else {
                 std::fprintf(stderr, "Unknown skill: %s (use pro|good|bad)\n", argv[i]);
                 return 1;

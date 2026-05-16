@@ -14,6 +14,6 @@ struct TestPlayerSessionState {
     uint32_t log_sequence = 0;
 };
 
-void test_player_init(entt::registry& reg, TestPlayerSkill skill,
+void test_player_init(entt::registry& reg, SkillConfig skill,
                       const char* difficulty,
                       int selected_level = content_config::DEFAULT_LEVEL_INDEX);
