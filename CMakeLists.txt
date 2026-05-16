@@ -131,6 +131,54 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)song_playback_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)camera_system\\.cpp$")
 list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)raygui_impl\\.cpp$")
 
+# ── rguilayout codegen (issue #1193) ─────────────────────────
+# Each .rgl in content/ui/screens/ produces a <stem>_screen.cpp under
+# app/ui/generated/ via tools/rguilayout/codegen.py. Generated sources are
+# committed for deterministic CI / fresh-checkout builds; the custom_command
+# below only re-runs codegen when a .rgl (or the script) changes.
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+set(RGUILAYOUT_CODEGEN_SCRIPT ${CMAKE_SOURCE_DIR}/tools/rguilayout/codegen.py)
+set(RGUILAYOUT_ACTIONS_HEADER ${CMAKE_SOURCE_DIR}/app/components/actions.h)
+set(RGUILAYOUT_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/app/ui/generated)
+set(RGUILAYOUT_RGL_FILES
+    ${CMAKE_SOURCE_DIR}/content/ui/screens/title.rgl
+    ${CMAKE_SOURCE_DIR}/content/ui/screens/level_select.rgl
+    ${CMAKE_SOURCE_DIR}/content/ui/screens/tutorial.rgl
+    ${CMAKE_SOURCE_DIR}/content/ui/screens/gameplay.rgl
+    ${CMAKE_SOURCE_DIR}/content/ui/screens/paused.rgl
+    ${CMAKE_SOURCE_DIR}/content/ui/screens/game_over.rgl
+    ${CMAKE_SOURCE_DIR}/content/ui/screens/song_complete.rgl
+    ${CMAKE_SOURCE_DIR}/content/ui/screens/settings.rgl
+)
+set(RGUILAYOUT_GENERATED_SOURCES
+    ${RGUILAYOUT_OUTPUT_DIR}/title_screen.cpp
+    ${RGUILAYOUT_OUTPUT_DIR}/level_select_screen.cpp
+    ${RGUILAYOUT_OUTPUT_DIR}/tutorial_screen.cpp
+    ${RGUILAYOUT_OUTPUT_DIR}/gameplay_screen.cpp
+    ${RGUILAYOUT_OUTPUT_DIR}/paused_screen.cpp
+    ${RGUILAYOUT_OUTPUT_DIR}/game_over_screen.cpp
+    ${RGUILAYOUT_OUTPUT_DIR}/song_complete_screen.cpp
+    ${RGUILAYOUT_OUTPUT_DIR}/settings_screen.cpp
+)
+add_custom_command(
+    OUTPUT ${RGUILAYOUT_GENERATED_SOURCES}
+    COMMAND ${Python3_EXECUTABLE} ${RGUILAYOUT_CODEGEN_SCRIPT}
+            --output-dir ${RGUILAYOUT_OUTPUT_DIR}
+            --actions-header ${RGUILAYOUT_ACTIONS_HEADER}
+            ${RGUILAYOUT_RGL_FILES}
+    DEPENDS ${RGUILAYOUT_RGL_FILES}
+            ${RGUILAYOUT_CODEGEN_SCRIPT}
+            ${RGUILAYOUT_ACTIONS_HEADER}
+    COMMENT "Generating rguilayout screen spawners"
+    VERBATIM
+)
+# Generated sources are not yet referenced by any consumer. Compile them
+# into the game library so the build catches drift between the codegen and
+# the component/tag headers. Consumer systems land in follow-up PRs (see
+# #1193 "Out of scope").
+set_source_files_properties(${RGUILAYOUT_GENERATED_SOURCES}
+    PROPERTIES GENERATED TRUE)
+
 # raygui is header-only and requires one implementation owner TU.
 set_source_files_properties(
     app/ui/screen_controllers/title_screen_controller.cpp
@@ -172,7 +220,7 @@ set(SHAPESHIFTER_MACOS_FRAMEWORKS
     "-framework CoreVideo"
 )
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${UTIL_SOURCES} ${UI_SOURCES} ${UI_SCREEN_CONTROLLER_SOURCES} ${ENTITY_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${UTIL_SOURCES} ${UI_SOURCES} ${UI_SCREEN_CONTROLLER_SOURCES} ${ENTITY_SOURCES} ${RGUILAYOUT_GENERATED_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated
