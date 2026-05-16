@@ -1,9 +1,10 @@
 #pragma once
 
 #include <cstdint>
-#include <magic_enum/magic_enum.hpp>
 #include <raylib.h>
 
+// `Count` is a sentinel (always last); `static_cast<int>(SFX::Count)` replaces
+// the former `magic_enum::enum_count<SFX>()` lookup (issue #1204 bonus).
 enum class SFX : uint8_t {
     ShapeShift = 0,
     Crash,
@@ -11,18 +12,19 @@ enum class SFX : uint8_t {
     ChainBonus,
     ScorePopup,
     GameStart,
+    Count,
 };
 
 // Compile-time guard: SFX values must be contiguous and zero-based so that
 // static arrays indexed by static_cast<int>(sfx) are always in-bounds.
-static_assert(magic_enum::enum_count<SFX>() == 6,
+static_assert(static_cast<int>(SFX::Count) == 6,
               "SFX enum changed — update systems/sfx_bank.cpp SFX_SPECS and this guard");
 static_assert(static_cast<int>(SFX::ShapeShift) == 0,
               "SFX enum must be zero-based for array indexing");
 
 // Resident sound bank initialised by sfx_bank_init (app/systems/sfx_bank.cpp).
 struct SFXBank {
-    static constexpr int SFX_COUNT = static_cast<int>(magic_enum::enum_count<SFX>());
+    static constexpr int SFX_COUNT = static_cast<int>(SFX::Count);
     Sound sounds[SFX_COUNT]       = {};
     bool  sound_loaded[SFX_COUNT] = {};
     bool  loaded                  = false;

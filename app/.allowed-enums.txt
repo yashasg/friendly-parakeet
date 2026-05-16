@@ -48,3 +48,11 @@ Shape              # lookup key — perfect-hash index into per-shape function-p
 # Each row below is a control-flow enum awaiting migration to per-case tags
 # or component tables. Removing a row here = the migration landed.
 # Adding a row here would be drift; eradicate instead.
+#
+# Status (post-#1271): the pending set is now EMPTY — every former
+# control-flow enum (Shape, GamePhase, GamePhaseBit, ObstacleKind,
+# WindowPhase, MeshType, Layer, TimingTier, VMode, EndScreenChoice,
+# TestPlayerSkill, ActionDoneBit, DeathCause) has been eradicated or
+# (Shape only) promoted to the Keep set above. New enums in `app/` are
+# rejected by `tools/check_enum_allowlist.py`; any future entry must
+# either justify the Keep set or open an eradication issue.

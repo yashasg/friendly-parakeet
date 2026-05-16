@@ -7,7 +7,6 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
-#include <magic_enum/magic_enum.hpp>
 #include <vector>
 
 namespace {
@@ -26,7 +25,7 @@ struct SfxSpec {
 
 constexpr float kPi = 3.14159265358979323846f;
 constexpr int SAMPLE_RATE = 44100;
-constexpr int SFX_COUNT = static_cast<int>(magic_enum::enum_count<SFX>());
+constexpr int SFX_COUNT = static_cast<int>(SFX::Count);
 
 float next_noise(std::uint32_t& state) {
     state = state * 1664525u + 1013904223u;
@@ -53,7 +52,7 @@ constexpr std::array<SfxSpec, SFX_COUNT> SFX_SPECS{{
     {587.0f, 0.180f, 0.35f, sample_sine,  10u},      // GameStart
 }};
 
-static_assert(SFX_SPECS.size() == magic_enum::enum_count<SFX>(),
+static_assert(SFX_SPECS.size() == static_cast<std::size_t>(SFX::Count),
               "SFX_SPECS entry count must match SFX enum count");
 
 float envelope_at(int frame, int frame_count) {

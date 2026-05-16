@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string_view>
 #include "tags/tags.h"
 
 enum class Shape : uint8_t {
@@ -9,6 +10,20 @@ enum class Shape : uint8_t {
     Triangle,
     Hexagon,
 };
+
+// Stringification for trace/log lines. Pure label lookup, doctrinally fine
+// per Fabian's Existential Processing chapter (see issue #1204 — "Bonus:
+// drop the magic_enum dependency"). Replaces the former
+// `magic_enum::enum_name(Shape)` lookup used by the session logger and tests.
+constexpr std::string_view to_string(Shape shape) noexcept {
+    switch (shape) {
+        case Shape::Circle:   return "Circle";
+        case Shape::Square:   return "Square";
+        case Shape::Triangle: return "Triangle";
+        case Shape::Hexagon:  return "Hexagon";
+    }
+    return {};
+}
 
 // Hot render data — read by game_camera_system, player_movement_system every frame.
 // The player's current shape identity lives as one of `ShapeCircleTag` /

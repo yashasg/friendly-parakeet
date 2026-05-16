@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include <magic_enum/magic_enum.hpp>
 #include "test_helpers.h"
 #include "ui/screen_controllers/screen_controller_base.h"
 #include "util/rhythm_math.h"
@@ -138,10 +137,10 @@ TEST_CASE("song_state_derived: fixed window independent of song BPM", "[song_sta
 // ── enum name helpers ────────────────────────────────────────
 
 TEST_CASE("ToString: Shape covers all shapes", "[ToString]") {
-    CHECK(magic_enum::enum_name(Shape::Circle)   == "Circle");
-    CHECK(magic_enum::enum_name(Shape::Square)   == "Square");
-    CHECK(magic_enum::enum_name(Shape::Triangle) == "Triangle");
-    CHECK(magic_enum::enum_name(Shape::Hexagon)  == "Hexagon");
+    CHECK(to_string(Shape::Circle)   == "Circle");
+    CHECK(to_string(Shape::Square)   == "Square");
+    CHECK(to_string(Shape::Triangle) == "Triangle");
+    CHECK(to_string(Shape::Hexagon)  == "Hexagon");
 }
 
 // ObstacleKind enum was eradicated in issue #1202/#1204 (per Fabian's

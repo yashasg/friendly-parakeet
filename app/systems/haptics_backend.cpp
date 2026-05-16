@@ -2,7 +2,6 @@
 
 #include "haptics_ios_bridge.h"
 
-#include <magic_enum/magic_enum.hpp>
 #include <raylib.h>
 
 namespace platform::haptics {
@@ -15,7 +14,7 @@ struct HapticsRuntimeState {
 #endif
 
 void trace_haptic_event(const char* prefix, HapticEvent event) {
-    const auto event_name = magic_enum::enum_name(event);
+    const auto event_name = to_string(event);
     if (event_name.empty()) {
         TraceLog(LOG_DEBUG, "%sUnknown", prefix);
         return;
