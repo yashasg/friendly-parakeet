@@ -411,10 +411,13 @@ TEST_CASE("pipeline: gameplay HUD proximity ring progresses through far near per
     CHECK(appear_dist > 59.99f);
     CHECK(appear_dist < 60.01f);
 
-    CHECK(gameplay_hud_ring_cue(900.0f, perfect_dist, good_dist, appear_dist) == GameplayHudRingCue::Hidden);
-    CHECK(gameplay_hud_ring_cue(50.0f, perfect_dist, good_dist, appear_dist) == GameplayHudRingCue::Far);
-    CHECK(gameplay_hud_ring_cue(good_dist, perfect_dist, good_dist, appear_dist) == GameplayHudRingCue::Near);
-    CHECK(gameplay_hud_ring_cue(perfect_dist, perfect_dist, good_dist, appear_dist) == GameplayHudRingCue::Perfect);
+    CHECK_FALSE(gameplay_hud_ring_cue(900.0f, perfect_dist, good_dist, appear_dist).visible);
+    CHECK(gameplay_hud_ring_cue(50.0f, perfect_dist, good_dist, appear_dist)
+          == GameplayHudRingCue{true, kGameplayHudRingFarColor});
+    CHECK(gameplay_hud_ring_cue(good_dist, perfect_dist, good_dist, appear_dist)
+          == GameplayHudRingCue{true, kGameplayHudRingNearColor});
+    CHECK(gameplay_hud_ring_cue(perfect_dist, perfect_dist, good_dist, appear_dist)
+          == GameplayHudRingCue{true, kGameplayHudRingPerfectColor});
 }
 
 TEST_CASE("pipeline: gameplay HUD raygui shape presses ignored outside Playing",
