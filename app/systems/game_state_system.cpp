@@ -143,8 +143,9 @@ void game_state_system(entt::registry& reg, float dt) {
         }
         if (ctx.contains<NextPhaseLevelSelectTag>()) {
             enter_phase<GamePhaseLevelSelectTag>(reg);
-            auto& lss = reg.ctx().get<LevelSelectState>();
-            lss.confirmed = false;
+            if (reg.ctx().find<LevelSelectConfirmedTag>()) {
+                reg.ctx().erase<LevelSelectConfirmedTag>();
+            }
         }
         if (ctx.contains<NextPhaseSettingsTag>()) {
             enter_phase<GamePhaseSettingsTag>(reg);
@@ -165,9 +166,8 @@ void game_state_system(entt::registry& reg, float dt) {
     // LevelSelect input handling
     if (reg.ctx().contains<GamePhaseLevelSelectTag>() &&
         gs.phase_timer > constants::UI_ENTRY_DEBOUNCE) {
-        auto& lss = reg.ctx().get<LevelSelectState>();
-        if (lss.confirmed) {
-            lss.confirmed = false;
+        if (reg.ctx().find<LevelSelectConfirmedTag>()) {
+            reg.ctx().erase<LevelSelectConfirmedTag>();
             const auto* settings_ptr = find_settings_state(reg);
             if (settings_ptr && !settings::ftue_complete(*settings_ptr)) {
                 request_phase_transition<NextPhaseTutorialTag>(reg);

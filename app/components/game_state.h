@@ -59,8 +59,18 @@ struct EndChoiceMainMenu {};
 struct LevelSelectState {
     int selected_level      = 0;
     int selected_difficulty  = 1;  // default medium
-    bool confirmed          = false;
 };
+
+// ── Level-select confirmation latch (singleton ctx tag) ──────
+// Per Fabian's existential processing / relational normalization
+// (issues #1194, #1203): the former `LevelSelectState::confirmed` bool was a
+// one-shot latch with a different lifecycle than the selection bundle
+// (selection persists across phases; confirmation is a per-frame intent set
+// by UI on START and drained by game_state_system after the entry debounce).
+// Existence of this ctx tag is the data; absence is "not confirmed yet".
+// Matches the precedent set for `EndChoiceRestart` / `EndChoiceLevelSelect` /
+// `EndChoiceMainMenu` (player-choice latches on the end screens).
+struct LevelSelectConfirmedTag {};
 
 // ── Game-over cause (per-cause ctx tables) ──────────────────
 // Per Fabian's existential processing, each former DeathCause value is its

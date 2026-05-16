@@ -122,7 +122,7 @@ TEST_CASE("Play session: missing selected beatmap returns to level select withou
     high_score::set_score(high_scores, "1_stomper|medium", 4321);
     auto& session = reg.ctx().get<HighScoreSession>();
     session.key_hash = high_score::make_key_hash("1_stomper", "medium");
-    lss.confirmed = true;
+    reg.ctx().insert_or_assign(LevelSelectConfirmedTag{});
 
     reg.ctx().emplace<PlaySessionContentOverride>(
         PlaySessionContentOverride{"content/beatmaps/does_not_exist_835.json", "medium"});
@@ -130,7 +130,7 @@ TEST_CASE("Play session: missing selected beatmap returns to level select withou
     setup_play_session(reg);
 
     CHECK(reg.ctx().contains<GamePhaseLevelSelectTag>());
-    CHECK_FALSE(lss.confirmed);
+    CHECK_FALSE(reg.ctx().contains<LevelSelectConfirmedTag>());
     {
         const auto& bm = beat_map(reg);
         CHECK(beat_map_empty(bm));
@@ -143,7 +143,7 @@ TEST_CASE("Play session: missing selected beatmap returns to level select withou
     reg.ctx().erase<PlaySessionContentOverride>();
     lss.selected_level = content_config::DEFAULT_LEVEL_INDEX;
     lss.selected_difficulty = content_config::DEFAULT_DIFFICULTY_INDEX;
-    lss.confirmed = true;
+    reg.ctx().insert_or_assign(LevelSelectConfirmedTag{});
 
     REQUIRE_NOTHROW(setup_play_session(reg));
     CHECK(reg.ctx().find<SongState>() != nullptr);

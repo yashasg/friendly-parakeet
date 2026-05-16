@@ -27,7 +27,7 @@ void level_select_handle_press_menu(entt::registry& reg, const MenuPressEvent& e
 
     switch (evt.action) {
         case MenuActionKind::Confirm:
-            lss.confirmed = true;
+            reg.ctx().insert_or_assign(LevelSelectConfirmedTag{});
             break;
         case MenuActionKind::SelectLevel:
             if (content_config::is_valid_level_index(evt.index)) {

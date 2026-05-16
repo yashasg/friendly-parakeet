@@ -164,5 +164,7 @@ void render_level_select_screen_ui(entt::registry& reg) {
     
     GuiSetStyle(DEFAULT, TEXT_SIZE, saved_text_size);
 
-    if (state.StartButtonPressed && gs.phase_timer > constants::UI_ENTRY_DEBOUNCE) lss.confirmed = true;
+    if (state.StartButtonPressed && gs.phase_timer > constants::UI_ENTRY_DEBOUNCE) {
+        reg.ctx().insert_or_assign(LevelSelectConfirmedTag{});
+    }
 }
