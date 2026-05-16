@@ -4,6 +4,9 @@
 
 #include <raylib.h>
 
+#include <array>
+#include <cstddef>
+
 namespace platform::haptics {
 namespace {
 
@@ -42,21 +45,30 @@ platform::ios::HapticsIOSState* ensure_ios_state(HapticsRuntimeState& state) {
 }  // namespace
 
 TriggerPattern pattern_for_event(HapticEvent event) noexcept {
-    switch (event) {
-        case HapticEvent::LaneSwitch:
-        case HapticEvent::UIButtonTap:
-            return {ImpactStyle::Light, 1};
-        case HapticEvent::ShapeShift:
-        case HapticEvent::JumpLand:
-        case HapticEvent::RetryTap:
-            return {ImpactStyle::Light, 1};
-        case HapticEvent::NewHighScore:
-            return {ImpactStyle::Medium, 1};
-        case HapticEvent::DeathCrash:
-            return {ImpactStyle::Heavy, 2};
-        default:
-            return {ImpactStyle::Light, 1};
-    }
+    // Fabian Principle 1 / issue #1288: enum-as-lookup-key into a static
+    // table. The former `switch` mapped each `HapticEvent` value to per-row
+    // data; that data table is now indexed by the enum ordinal directly so
+    // there is no central switch on the discriminator.
+    //
+    // Row order must match the `HapticEvent` declaration in
+    // `app/systems/haptics.h`; a static_assert below pins the table size to
+    // the trailing enumerator (`UIButtonTap`).
+    constexpr std::array<TriggerPattern, 7> kPatternByEvent{{
+        /* ShapeShift   */ TriggerPattern{ImpactStyle::Light,  1},
+        /* LaneSwitch   */ TriggerPattern{ImpactStyle::Light,  1},
+        /* JumpLand     */ TriggerPattern{ImpactStyle::Light,  1},
+        /* DeathCrash   */ TriggerPattern{ImpactStyle::Heavy,  2},
+        /* NewHighScore */ TriggerPattern{ImpactStyle::Medium, 1},
+        /* RetryTap     */ TriggerPattern{ImpactStyle::Light,  1},
+        /* UIButtonTap  */ TriggerPattern{ImpactStyle::Light,  1},
+    }};
+    static_assert(kPatternByEvent.size() ==
+                  static_cast<std::size_t>(HapticEvent::UIButtonTap) + 1,
+                  "kPatternByEvent must cover every HapticEvent enumerator");
+
+    const auto idx = static_cast<std::size_t>(event);
+    if (idx >= kPatternByEvent.size()) return TriggerPattern{ImpactStyle::Light, 1};
+    return kPatternByEvent[idx];
 }
 
 void warmup(entt::registry& reg) noexcept {
