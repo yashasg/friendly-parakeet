@@ -631,6 +631,11 @@ if(NOT EMSCRIPTEN AND NOT SHAPESHIFTER_IOS)
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/check_shape_change_gap.py
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
+    add_test(
+        NAME check_enum_allowlist
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/check_enum_allowlist.py
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    )
     find_program(NODE_EXECUTABLE node)
     if(NODE_EXECUTABLE)
         file(GLOB _beatmap_editor_node_test_files CONFIGURE_DEPENDS

@@ -1,0 +1,50 @@
+# Enum allowlist for app/ (issue #1204).
+#
+# Per Fabian's Existential Processing chapter (DoD), enums that drive
+# `switch` statements or virtual dispatch must be eradicated and replaced
+# with per-case component tables (real structs) or empty tags. Enums
+# survive in this codebase only as:
+#
+#   - input event labels / keybindings  (Direction, MenuActionKind,
+#                                        ButtonPressKind, KeyboardShapeSlot)
+#   - playback IDs                      (HapticEvent, ImpactStyle, SFX)
+#   - finite return codes               (Status)
+#   - UI layout labels                  (FontSize)
+#
+# See .squad/decisions.md § "DoD source-text grounding (Fabian) Principle 1"
+# and the per-enum schema table in issue #1204.
+#
+# How to add an enum:
+#   - Add the bare name on its own line (inline `#` comment for the reason).
+#   - Justify with one of the Keep categories above, or open a discussion
+#     issue first if it does not fit any of them.
+#
+# How to remove an enum:
+#   - When a migration lands and the enum declaration is deleted, also
+#     delete its line here. `check_enum_allowlist.py` rejects stale entries
+#     symmetrically with unlisted ones, so the file stays accurate.
+#
+# Mechanism: tools/check_enum_allowlist.py greps
+# `^\s*enum(\s+class)?\s+<Name>\b` across app/*.{h,hpp,cpp,cc,cxx} and
+# fails CI on any name not present in this file.
+
+# --- Keep set: label / lookup / return code (Fabian "enums that make sense")
+Direction          # input event label
+MenuActionKind     # input event label
+ButtonPressKind    # input event label
+KeyboardShapeSlot  # keybinding lookup key
+HapticEvent        # playback ID
+ImpactStyle        # playback ID
+SFX                # playback ID
+Status             # persistence return code (Fabian "collision response" exemplar)
+FontSize           # UI layout label
+
+# --- Pending eradication per #1202 / #1204 (set must shrink, never grow) ----
+# Each row below is a control-flow enum awaiting migration to per-case tags
+# or component tables. Removing a row here = the migration landed.
+# Adding a row here would be drift; eradicate instead.
+Shape                 # #1202: per-shape tags; player identity, 4 cases
+GamePhase             # #1202: per-phase tag/struct mix; blocked on game_state.h split
+InputSource           # #1202 re-triage: 3-state mutex in InputState ctx singleton
+GameplayHudShapeSlot  # #1202 re-triage: switch in app/ui/screen_controllers/gameplay_hud_screen_controller.cpp
+GameplayHudRingCue    # #1202 re-triage: switch in app/ui/screen_controllers/gameplay_hud_screen_controller.cpp
