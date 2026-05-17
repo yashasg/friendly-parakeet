@@ -104,21 +104,16 @@ See `rhythm-design.md` for the full timing-window grading table and `rhythm-spec
 
 | Obstacle        | Status          | Player Action Required    | Timed? | Base Points |
 |-----------------|-----------------|---------------------------|--------|-------------|
-| Shape Gate      | Shipped         | Tap correct shape button  | YES    | 200         |
-| Lane Block      | Legacy/back-compat | Avoid blocked lane     | NO     | 100 (unused legacy) |
-| Combo Gate      | Future design   | Shape + swipe (2 actions) | YES    | TBD         |
-| Split Path      | Future design   | Shape + correct lane      | YES    | TBD         |
+| Shape Gate      | Shipped         | Tap correct shape button  | YES    | `PTS_SHAPE_GATE = 200` |
+| Split Path      | Future design   | Shape + correct lane      | YES    | `PTS_SPLIT_PATH = 300` |
 
 Shipped beatmaps currently use required `shape_gate` obstacles only. They may also include non-blocking `onset_marker` rows for authored onset metadata; runtime skips those rows and they do not score, block, or count as required obstacles.
 
-Lane Block remains a legacy runtime enum/constant for backward compatibility
-(`PTS_LANE_BLOCK = 100`) but is not parsed from active beatmaps and is not
-current shipped content. Vertical bars, Combo Gates, and Split Paths are
-archived/future-only design space and have no live shipped content.
+`PTS_SPLIT_PATH` exists in `app/constants.h` so that future split-path content can ship without re-tuning, but no split-path archetype is currently parsed from beatmaps. Earlier archetypes from pre-shipped design drafts are not present in code or content, and their associated scoring constants have been removed.
 
-### Future Combo / Split-Path Obstacles
+### Future Split-Path Obstacles
 
-If combo or split-path obstacles return, their timing and scoring rules need a new committed design pass before content ships. Older drafts treated combo obstacles as two timed actions (for example, switch to ● and swipe left) with independent timing grades, but that is not current shipped behavior.
+If split-path obstacles return, their timing and scoring rules need a new committed design pass before content ships. Earlier drafts also explored combo obstacles (two timed actions, e.g. switch to ● and swipe left, with independent timing grades) but that archetype is not on the current roadmap.
 
 ---
 
