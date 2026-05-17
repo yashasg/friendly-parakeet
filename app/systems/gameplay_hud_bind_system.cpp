@@ -58,9 +58,7 @@ void bind_score(const GameplayHudBindContext& ctx, entt::registry& reg, entt::en
     if (ctx.display == nullptr) {
         ui_label_set(label, "");
     } else {
-        char buf[32];
-        std::snprintf(buf, sizeof(buf), "%d", ctx.display->displayed);
-        ui_label_set(label, buf);
+        ui_label_set_int(label, ctx.display->displayed);
     }
     reg.emplace_or_replace<UiLabelFontSize>(e, UiLabelFontSize{kScoreFontSize});
     reg.emplace_or_replace<UiLabelAlpha>(e, UiLabelAlpha{1.0f});
