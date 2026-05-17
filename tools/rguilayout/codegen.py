@@ -82,6 +82,15 @@ NAME_EXTRA_TAGS: Dict[str, Tuple[str, ...]] = {
     # from `SettingsState`.
     "HapticsToggle":      ("UiToggleTag",),
     "ReduceMotionToggle": ("UiToggleTag",),
+    # Gameplay HUD lane buttons (#1297). Each shape button carries the
+    # per-shape icon tag (drives the flat 2D icon row inside the lane
+    # button render pass) plus `LaneButtonTag` which distinguishes them
+    # from the Title-screen shape preview icons (which use only the
+    # `UiShapeIcon*Tag` and render via the generic icon pass). The lane
+    # button render pass excludes the generic icon pass via the marker.
+    "ShapeButtonCircle":   ("LaneButtonTag", "UiShapeIconCircleTag"),
+    "ShapeButtonSquare":   ("LaneButtonTag", "UiShapeIconSquareTag"),
+    "ShapeButtonTriangle": ("LaneButtonTag", "UiShapeIconTriangleTag"),
 }
 
 

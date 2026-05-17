@@ -10,6 +10,7 @@
 #include "game_phase_transition.h"
 #include "haptics_backend.h"
 #include "input.h"
+#include "input_events.h"
 #include "settings_system.h"
 
 #include <array>
@@ -208,6 +209,16 @@ void apply_difficulty_action(entt::registry& reg, entt::entity entity) {
     lss.selected_difficulty = diff_idx->value;
 }
 
+// Gameplay HUD pause action (issue #1297). Replaces the legacy
+// `gameplay_hud_apply_button_presses` Pause branch, which called
+// `request_phase_transition<NextPhasePausedTag>` directly. Per
+// `gameplay_hud_apply_button_presses`, the legacy controller silently
+// skipped Pause outside `GamePhasePlayingTag`; the same guard lives here.
+void pause_button_action(entt::registry& reg, entt::entity /*entity*/) {
+    if (!reg.ctx().contains<GamePhasePlayingTag>()) return;
+    request_phase_transition<NextPhasePausedTag>(reg);
+}
+
 // ── Dispatch table ──────────────────────────────────────────────────
 //
 // Order must match the `ActionId` enumerator order in
@@ -227,7 +238,7 @@ constexpr std::array<ActionHandler, 18> kActionHandlers = {
     /* HapticsToggle        */ &haptics_toggle_action,
     /* LevelSelectButton    */ &level_select_button_action,
     /* MenuButton           */ &menu_button_action,
-    /* PauseButton          */ &noop_action_handler,
+    /* PauseButton          */ &pause_button_action,
     /* ReduceMotionToggle   */ &reduce_motion_toggle_action,
     /* RestartButton        */ &restart_button_action,
     /* ResumeButton         */ &resume_button_action,
@@ -277,11 +288,48 @@ float effective_debounce(const entt::registry& reg) {
     return constants::UI_ENTRY_DEBOUNCE;
 }
 
+// ── Lane button hit-test (issue #1297) ──────────────────────────────
+//
+// Per Fabian Principle 1, each (shape-tag, event) pairing is its own
+// row in the dispatch table; the loop iterates the table instead of
+// switching on a Shape enum. Adding a new shape: append one row.
+struct LaneButtonRow {
+    bool (*try_dispatch)(entt::registry&, Vector2);
+};
+
+template <typename ShapeTag, typename Event>
+bool try_lane_button_for(entt::registry& reg, Vector2 pointer) {
+    auto view = reg.view<LaneButtonTag, UiPosition, UiBounds, ShapeTag>();
+    for (auto entity : view) {
+        const auto& pos = view.template get<UiPosition>(entity);
+        const auto& sz  = view.template get<UiBounds>(entity);
+        const Rectangle rect{pos.x, pos.y, sz.w, sz.h};
+        if (!CheckCollisionPointRec(pointer, rect)) continue;
+        auto& disp = reg.ctx().get<entt::dispatcher>();
+        disp.enqueue<Event>(Event{});
+        return true;
+    }
+    return false;
+}
+
+constexpr std::array<LaneButtonRow, 3> kLaneButtonRows = {{
+    {&try_lane_button_for<UiShapeIconCircleTag,   ShapePressCircleEvent>},
+    {&try_lane_button_for<UiShapeIconSquareTag,   ShapePressSquareEvent>},
+    {&try_lane_button_for<UiShapeIconTriangleTag, ShapePressTriangleEvent>},
+}};
+
+bool try_dispatch_lane_button(entt::registry& reg, Vector2 pointer) {
+    for (const auto& row : kLaneButtonRows) {
+        if (row.try_dispatch(reg, pointer)) return true;
+    }
+    return false;
+}
+
 }  // namespace
 
 void ui_update_system(entt::registry& reg) {
     const auto& input = reg.ctx().get<InputState>();
-    if (!(input.click || input.touch_up)) return;
+    if (!(input.click || input.touch_up || input.button_touch_up)) return;
 
     // Debounce: ignore button presses inside the active phase's input-delay
     // window so a click that opened the phase does not also dismiss it,
@@ -290,6 +338,42 @@ void ui_update_system(entt::registry& reg) {
     // `paused_screen_controller.cpp` and `song_complete_screen_controller.cpp`).
     const auto& gs = reg.ctx().get<GameState>();
     if (gs.phase_timer <= effective_debounce(reg)) return;
+
+    // ── Pass D — Gameplay HUD lane buttons (issue #1297) ─────────────
+    //
+    // The three shape buttons (Circle / Square / Triangle) live in the
+    // touch button zone (y >= SCREEN_H * SWIPE_ZONE_SPLIT). A touch that
+    // started inside that zone produces `button_touch_up` on release
+    // with the release coordinates in `button_end_x/y`; a desktop mouse
+    // click produces `click` with the release coordinates in `end_x/y`.
+    // A swipe-zone touch release (`touch_up && !button_touch_up`) must
+    // NOT trigger a shape press even if it ends over the lane button
+    // bounds — that case is a directional swipe whose endpoint happens
+    // to land on the HUD (legacy guard in #986).
+    //
+    // Per Fabian Principle 1 (existential processing): each shape's
+    // sub-view + matching `ShapePress*Event` is its own row in the
+    // implicit table; there is no `switch (Shape)` anywhere here.
+    //
+    // Button-zone touches that miss every shape button are consumed
+    // anyway (the `return` below): legacy semantics in
+    // `gameplay_hud_process_button_input` checked only shape buttons on
+    // `button_touch_up`, so a missed shape press must not fall through
+    // and accidentally trigger Pause or any other regular button on its
+    // way out.
+    const bool playing_phase = reg.ctx().contains<GamePhasePlayingTag>();
+    if (input.button_touch_up) {
+        if (playing_phase) {
+            try_dispatch_lane_button(reg,
+                Vector2{input.button_end_x, input.button_end_y});
+        }
+        return;
+    }
+    if (input.click && playing_phase) {
+        if (try_dispatch_lane_button(reg, Vector2{input.end_x, input.end_y})) {
+            return;
+        }
+    }
 
     const Vector2 pointer = {input.end_x, input.end_y};
 

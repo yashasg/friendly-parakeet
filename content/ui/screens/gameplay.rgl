@@ -27,3 +27,4 @@ c 005 24 ShapeButtonCircle 130 1140 140 100 1
 c 006 24 ShapeButtonSquare 290 1140 140 100 1 
 c 007 24 ShapeButtonTriangle 450 1140 140 100 1 
 c 008 5 PauseButton 620 10 80 50 1 ||
+c 009 4 ChainSlot 80 80 160 32 1 

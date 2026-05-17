@@ -1,11 +1,14 @@
 #include "all_systems.h"
 #include "camera_system.h"
+#include "settings_system.h"
 #include "../components/actions.h"
+#include "../components/energy_bar.h"
 #include "../components/player.h"
 #include "../components/rendering.h"
 #include "../components/scoring.h"
 #include "../components/rhythm.h"
 #include "../components/game_state.h"
+#include "../components/settings.h"
 #include "../components/song_state.h"
 #include "../components/text_resources.h"
 #include "../components/ui.h"
@@ -14,7 +17,6 @@
 #include "../util/level_content_config.h"
 #include "../util/shape_draw_2d.h"
 
-#include "../ui/screen_controllers/gameplay_hud_screen_controller.h"
 #include <raygui.h>
 #include <raylib.h>
 #include <raymath.h>
@@ -102,16 +104,28 @@ void render_ui_entities(entt::registry& reg) {
     // Labels (and dummy-rec slots that carry text). Both kinds use GuiLabel
     // rendering with center alignment; the kind distinction is for hit-test
     // exclusion in `ui_update_system` and future visual specialization.
+    //
+    // Per-entity font-size / alpha overrides (issue #1297): if
+    // `UiLabelFontSize` is present and > 0 use it (gameplay HUD score /
+    // high-score / chain / energy use this), otherwise fall back to the
+    // height-driven Paused headline heuristic. `UiLabelAlpha` does the
+    // same trick for the GuiSetAlpha multiplier.
     {
         auto view = reg.view<UiPosition, UiBounds, UiLabel, UiLabelTag>();
         for (auto [e, pos, sz, label] : view.each()) {
-            (void)e;
             if (label.text[0] == '\0') continue;
-            const int text_size = (sz.h >= kPausedHeadlineHeight)
-                                ? kPausedHeadlineSize
-                                : kEntityLabelTextSize;
+            const auto* fsize = reg.try_get<UiLabelFontSize>(e);
+            const int text_size = (fsize != nullptr && fsize->size > 0)
+                                ? fsize->size
+                                : ((sz.h >= kPausedHeadlineHeight)
+                                    ? kPausedHeadlineSize
+                                    : kEntityLabelTextSize);
+            const auto* alpha = reg.try_get<UiLabelAlpha>(e);
+            const float alpha_value = (alpha != nullptr) ? alpha->value : 1.0f;
             GuiSetStyle(DEFAULT, TEXT_SIZE, text_size);
+            if (alpha_value < 1.0f) GuiSetAlpha(alpha_value);
             GuiLabel(Rectangle{pos.x, pos.y, sz.w, sz.h}, label.text.data());
+            if (alpha_value < 1.0f) GuiSetAlpha(1.0f);
         }
     }
 
@@ -302,13 +316,20 @@ void render_ui_entities(entt::registry& reg) {
     // preview entities (issue #1294); any `.rgl` UiDummyRec named
     // ShapeCircle / ShapeSquare / ShapeTriangle / ShapeHexagon picks up
     // the matching tag via `tools/rguilayout/codegen.py`.
+    //
+    // `LaneButtonTag` (gameplay HUD #1297) is excluded — those entities
+    // carry `UiShapeIconCircle/Square/TriangleTag` too but their bg /
+    // border / approach ring is painted by the dedicated lane button
+    // pass further below, which draws the icon itself at the proper
+    // button-radius scale (so this generic pass would double-draw).
     {
         constexpr Color kShapeIconColor{200, 230, 255, 255};
 
         auto draw_for_tag = []<typename Tag>(entt::registry& r,
                                              Shape shape,
                                              Color color) {
-            auto v = r.view<UiPosition, UiBounds, Tag>();
+            auto v = r.view<UiPosition, UiBounds, Tag>(
+                entt::exclude<LaneButtonTag>);
             for (auto [e, pos, sz] : v.each()) {
                 (void)e;
                 const float cx   = pos.x + sz.w * 0.5f;
@@ -322,6 +343,249 @@ void render_ui_entities(entt::registry& reg) {
         draw_for_tag.template operator()<UiShapeIconSquareTag>  (reg, Shape::Square,   kShapeIconColor);
         draw_for_tag.template operator()<UiShapeIconTriangleTag>(reg, Shape::Triangle, kShapeIconColor);
         draw_for_tag.template operator()<UiShapeIconHexagonTag> (reg, Shape::Hexagon,  kShapeIconColor);
+    }
+
+    // ── Gameplay HUD lane buttons (issue #1297) ─────────────────────
+    //
+    // Three buttons (Circle / Square / Triangle) painted as filled disc
+    // + border + shape icon, with an optional approach-ring overlay
+    // when the next required obstacle for that shape is within the OK
+    // timing window. The button "active" state is per-shape tag
+    // presence on the player (Fabian Principle 1: no `Shape` enum
+    // compare). The approach-ring envelope is precomputed by
+    // `approach_ring_envelope_system` into the per-button `ApproachRing`
+    // component; this pass only reads it.
+    //
+    // Lane divider: rendered as a thin line at the LaneDividerSlot.
+    // The codegen spawns it as a `UiDummyRecTag` entity sized 720×4 at
+    // (0, 1120); we identify it by the `LaneDividerSlot`-shaped bounds
+    // and draw a single line at the top edge (matches legacy).
+    {
+        constexpr Color kLaneButtonActiveBg     {  60,  60, 100, 255 };
+        constexpr Color kLaneButtonInactiveBg   {  30,  30,  50, 200 };
+        constexpr Color kLaneButtonActiveBorder { 120, 180, 255, 255 };
+        constexpr Color kLaneButtonInactiveBord {  60,  60,  80, 255 };
+        constexpr Color kLaneButtonActiveIcon   { 200, 230, 255, 255 };
+        constexpr Color kLaneButtonInactiveIcon { 100, 100, 120, 200 };
+        constexpr float kLaneButtonIconScale    = 1.2f;
+        constexpr float kLaneButtonRadiusFactor = 1.0f / 2.8f;
+
+        auto draw_lane = [&]<typename ShapeIconTag>(entt::registry& r,
+                                                    Shape shape,
+                                                    bool active) {
+            auto v = r.view<LaneButtonTag, UiPosition, UiBounds, ShapeIconTag>();
+            for (auto entity : v) {
+                const auto& pos = v.template get<UiPosition>(entity);
+                const auto& sz  = v.template get<UiBounds>(entity);
+                const float cx  = pos.x + sz.w * 0.5f;
+                const float cy  = pos.y + sz.h * 0.5f;
+                const float btn_radius = sz.w * kLaneButtonRadiusFactor;
+                const Color bg     = active ? kLaneButtonActiveBg
+                                            : kLaneButtonInactiveBg;
+                const Color border = active ? kLaneButtonActiveBorder
+                                            : kLaneButtonInactiveBord;
+                const Color icon   = active ? kLaneButtonActiveIcon
+                                            : kLaneButtonInactiveIcon;
+                DrawCircleV({cx, cy}, btn_radius, bg);
+                DrawCircleLinesV({cx, cy}, btn_radius, border);
+                shape_draw_2d::draw_flat(shape, cx, cy,
+                                         btn_radius * kLaneButtonIconScale,
+                                         icon);
+
+                const auto* ring = r.template try_get<ApproachRing>(entity);
+                if (ring == nullptr || !ring->visible) continue;
+                const Color base_color{ring->color_r, ring->color_g,
+                                       ring->color_b, ring->color_a};
+                const Color ring_color = Fade(base_color,
+                    (200.0f / 255.0f) * ring->alpha_scale);
+                DrawCircleLinesV({cx, cy}, ring->radius, ring_color);
+                DrawCircleLinesV({cx, cy}, ring->radius - 1.0f,
+                                 Color{ring->color_r, ring->color_g, ring->color_b,
+                                       static_cast<unsigned char>(ring_color.a / 2)});
+            }
+        };
+
+        // Active state from the player entity's `Shape*Tag` (no Shape
+        // enum compare — Fabian Principle 1). Frame-0 race (player not
+        // yet spawned) treated as all-inactive: harmless visual.
+        bool circle_active   = false;
+        bool square_active   = false;
+        bool triangle_active = false;
+        for (auto entity : reg.view<PlayerTag, PlayerShape>()) {
+            circle_active   = reg.all_of<ShapeCircleTag>(entity);
+            square_active   = reg.all_of<ShapeSquareTag>(entity);
+            triangle_active = reg.all_of<ShapeTriangleTag>(entity);
+        }
+
+        draw_lane.template operator()<UiShapeIconCircleTag>  (reg, Shape::Circle,   circle_active);
+        draw_lane.template operator()<UiShapeIconSquareTag>  (reg, Shape::Square,   square_active);
+        draw_lane.template operator()<UiShapeIconTriangleTag>(reg, Shape::Triangle, triangle_active);
+    }
+
+    // ── Gameplay HUD lane divider (issue #1297) ─────────────────────
+    //
+    // The lane divider is a non-text dummy-rec slot baked into the
+    // `.rgl` at (0, 1120, 720, 4). It renders as a 1-px horizontal line
+    // at the top edge of those bounds (matches legacy
+    // `render_gameplay_hud_screen_ui` line draw). Identified by a
+    // 720-wide, 4-tall dummy-rec under `GameplayHudTag` — no separate
+    // tag is necessary since the geometry is unique within the HUD.
+    {
+        constexpr Color kLaneDividerColor{40, 40, 60, 200};
+        constexpr float kLaneDividerWidth  = constants::SCREEN_W_F;
+        constexpr float kLaneDividerHeight = 4.0f;
+        auto view = reg.view<GameplayHudTag, UiDummyRecTag, UiPosition, UiBounds>();
+        for (auto [e, pos, sz] : view.each()) {
+            (void)e;
+            if (sz.w != kLaneDividerWidth || sz.h != kLaneDividerHeight) continue;
+            DrawLineV({0.0f, pos.y},
+                      {constants::SCREEN_W_F, pos.y},
+                      kLaneDividerColor);
+        }
+    }
+
+    // ── Gameplay HUD chain bg pulse (issue #1297) ───────────────────
+    //
+    // When `ChainBgPulseTag` is present on the ChainSlot entity, render
+    // a thin pulsing border rectangle behind the chain text. The bind
+    // system emplaces/removes the tag based on chain count; the
+    // sin-based animation reads `SongState::song_time` when available
+    // (so pause freezes the pulse), falling back to `GetTime()` while
+    // the song isn't playing. Reduce-motion settings skip the
+    // animation (steady half-pulse).
+    {
+        constexpr Color kChainPulseColor{100, 255, 180, 255};
+        constexpr Rectangle kChainPulseInset{-4.0f, 2.0f, -22.0f, -4.0f};
+        const auto* settings = find_settings_state(reg);
+        const bool reduce_motion = (settings != nullptr) && settings->reduce_motion;
+        const auto* song = reg.ctx().find<SongState>();
+        const float pulse_time = (song != nullptr && song->playing)
+                                 ? song->song_time
+                                 : static_cast<float>(GetTime());
+        const float pulse = reduce_motion
+                          ? 0.5f
+                          : (0.5f + 0.5f * std::sin(pulse_time * 8.0f));
+
+        auto view = reg.view<ChainBgPulseTag, UiPosition, UiBounds>();
+        for (auto [e, pos, sz] : view.each()) {
+            (void)e;
+            const Rectangle border{
+                pos.x + kChainPulseInset.x,
+                pos.y + kChainPulseInset.y,
+                sz.w  + kChainPulseInset.width,
+                sz.h  + kChainPulseInset.height,
+            };
+            DrawRectangleLinesEx(border, 2.0f,
+                Fade(kChainPulseColor, 0.20f + 0.20f * pulse));
+        }
+    }
+
+    // ── Gameplay HUD energy bar (issue #1297) ───────────────────────
+    //
+    // The energy bar entity is spawned once at session init by
+    // `energy_bar_entity` and persists across phases (so its
+    // `EnergyBarVisual` state survives Pause/Resume). It is rendered
+    // here only while the gameplay HUD screen is active (gated by the
+    // presence of any `GameplayHudTag` entity, same gate the bind
+    // systems use). The actual segment geometry comes from
+    // `EnergyBarLayout` (single source of truth), not the
+    // EnergyBarSlot `.rgl` rectangle (which is a placeholder marker).
+    if (reg.view<GameplayHudTag>().begin() != reg.view<GameplayHudTag>().end()) {
+        auto view = reg.view<EnergyBarTag, EnergyBarLayout, EnergyBarVisual>();
+        for (auto [entity, layout, visual] : view.each()) {
+            (void)entity;
+
+            const int segment_count = effective_energy_bar_segment_count(layout);
+            const float bar_top = layout.bottom - layout.height;
+            const float seg_h = (layout.height - (segment_count - 1) * layout.segment_gap)
+                / static_cast<float>(segment_count);
+
+            for (int i = 0; i < visual.overflow_segments; ++i) {
+                const float seg_y = bar_top - (i + 1) * (seg_h + layout.segment_gap);
+                const float fade  = 1.0f - static_cast<float>(i) / 5.0f;
+                DrawRectangleRec({layout.x, seg_y, layout.width, seg_h},
+                    Fade({255, 80, 200, 255}, fade * (220.0f / 255.0f)));
+            }
+
+            DrawRectangleRec({layout.x, bar_top, layout.width, layout.height},
+                             {15, 15, 25, 180});
+
+            const int filled_segs  = static_cast<int>(
+                visual.fill * static_cast<float>(segment_count) + 0.5f);
+            const int visible_segs = static_cast<int>(
+                visual.visible_level * static_cast<float>(segment_count) + 0.5f);
+
+            for (int i = 0; i < segment_count; ++i) {
+                const float seg_y = layout.bottom
+                    - (i + 1) * (seg_h + layout.segment_gap)
+                    + layout.segment_gap;
+                const float t = static_cast<float>(i)
+                    / static_cast<float>(segment_count > 1 ? segment_count - 1 : 1);
+                unsigned char cr = 0, cg = 0, cb = 0;
+                if (t < 0.33f) {
+                    const float s = t / 0.33f;
+                    cr = 255;
+                    cg = static_cast<unsigned char>(80.0f + s * 175.0f);
+                    cb = static_cast<unsigned char>(30.0f + s * 30.0f);
+                } else if (t < 0.66f) {
+                    const float s = (t - 0.33f) / 0.33f;
+                    cr = static_cast<unsigned char>(255.0f - s * 255.0f);
+                    cg = 255;
+                    cb = static_cast<unsigned char>(60.0f + s * 195.0f);
+                } else {
+                    const float s = (t - 0.66f) / 0.34f;
+                    cr = static_cast<unsigned char>(40.0f + s * 120.0f);
+                    cg = static_cast<unsigned char>(255.0f - s * 120.0f);
+                    cb = 255;
+                }
+
+                if (i < filled_segs) {
+                    const float red_boost = visual.flash_ratio * 0.45f
+                                          + visual.critical_intensity * 0.35f;
+                    const float cool_dim  = visual.critical_intensity * 0.40f;
+                    const unsigned char rr = static_cast<unsigned char>(
+                        Clamp(Lerp(static_cast<float>(cr), 255.0f, red_boost),
+                              0.0f, 255.0f));
+                    const unsigned char rg = static_cast<unsigned char>(
+                        Clamp(Lerp(static_cast<float>(cg), 0.0f, cool_dim),
+                              0.0f, 255.0f));
+                    const unsigned char rb = static_cast<unsigned char>(
+                        Clamp(Lerp(static_cast<float>(cb), 0.0f, cool_dim),
+                              0.0f, 255.0f));
+                    DrawRectangleRec({layout.x, seg_y, layout.width, seg_h},
+                                     {rr, rg, rb, 255});
+                } else if (i < visible_segs) {
+                    const float fade = 1.0f - static_cast<float>(i - filled_segs)
+                        / std::max(1.0f, static_cast<float>(visible_segs - filled_segs));
+                    DrawRectangleRec({layout.x, seg_y, layout.width, seg_h},
+                        Fade({cr, cg, cb, 255}, fade * (200.0f / 255.0f)));
+                } else {
+                    DrawRectangleRec({layout.x, seg_y, layout.width, seg_h},
+                                     {35, 35, 50, 50});
+                }
+            }
+
+            if (visual.flash_overlay > 0.0f) {
+                DrawRectangleRec({layout.x - 1.0f, bar_top - 1.0f,
+                                  layout.width + 2.0f, layout.height + 2.0f},
+                    Fade({255, 80, 80, 255},
+                         visual.flash_overlay * (140.0f / 255.0f)));
+            }
+
+            const float border_thickness = 1.0f + visual.critical_intensity * 2.0f;
+            const unsigned char border_r = static_cast<unsigned char>(
+                80.0f + visual.critical_intensity * 175.0f);
+            const unsigned char border_g = static_cast<unsigned char>(
+                80.0f - visual.critical_intensity * 40.0f);
+            const unsigned char border_b = static_cast<unsigned char>(
+                100.0f - visual.critical_intensity * 60.0f);
+            const unsigned char border_a = static_cast<unsigned char>(
+                140.0f + visual.critical_intensity * 90.0f);
+            DrawRectangleLinesEx(
+                {layout.x, bar_top, layout.width, layout.height},
+                border_thickness,
+                {border_r, border_g, border_b, border_a});
+        }
     }
 
     GuiSetStyle(LABEL, TEXT_ALIGNMENT, saved_label_alignment);
@@ -385,29 +649,10 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     // Entity-driven render pass — issue #1287. Iterates every spawned UI
     // entity for the active screen (the screen lifecycle system already
     // partitions by `GamePhase*Tag`, so this pass is screen-agnostic).
-    // Per #1287 the legacy `render_<screen>_screen_ui` calls below are
-    // removed one at a time as each screen migrates off the
-    // `screen_controllers/*` path. Paused is the pilot.
-    render_ui_entities(reg);
+    // With #1297 (Gameplay HUD) landed, every screen renders through
+    // `render_ui_entities` — no `screen_controllers/` paths remain.
 
-    // Dynamic screens that still need specialized rendering.
-    //
-    // Per Fabian's existential processing (issue #1202/#1204, PR D): each
-    // former `case GamePhase::X` is its own per-tag transform on the ctx-tag
-    // mirror seeded by `enter_phase<...>()`. The mirror
-    // invariant pinned by `tests/test_game_phase_tags.cpp` guarantees that
-    // exactly one `GamePhase*Tag` is present at any time, so these `if`
-    // blocks are mutually exclusive even without `else` chaining and
-    // dispatch on tag presence rather than on an enum compare.
-    //
-    // Paused was migrated to the entity-driven path (#1287 pilot);
-    // Tutorial migrated in #1291; Song Complete migrated in #1292; Game
-    // Over migrated in #1293; Title migrated in #1294; Settings migrated
-    // in #1295; Level Select migrated in #1296. The remaining one screen
-    // (Gameplay HUD) migrates in #1297; at which point this `if` block
-    // drops out entirely.
-    const auto& ctx = reg.ctx();
-    if (ctx.contains<GamePhasePlayingTag>())      { render_gameplay_hud_screen_ui(reg); }
+    render_ui_entities(reg);
 
     // Restore raw mouse transform for non-UI systems in subsequent frames.
     SetMouseOffset(0, 0);

@@ -24,7 +24,10 @@
 #include <catch2/catch_test_macros.hpp>
 #include "util/keyboard_shape_mapping.h"
 #include "test_helpers.h"
-#include "ui/screen_controllers/gameplay_hud_screen_controller.h"
+#include "util/gameplay_hud_ring.h"
+#include "systems/ui_update_system.h"
+#include "ui/generated/screen_spawners.h"
+#include "components/ui.h"
 
 // Runs the fixed-tick input path.
 static void run_pipeline(entt::registry& reg, float dt = 0.016f) {
@@ -32,6 +35,48 @@ static void run_pipeline(entt::registry& reg, float dt = 0.016f) {
 }
 
 namespace {
+
+// ── Gameplay HUD test fixtures (issue #1297 migration) ──────────────
+//
+// The legacy `gameplay_hud_screen_controller.*` exposed direct helpers
+// (`gameplay_hud_apply_button_presses`, `gameplay_hud_*_input_bounds`)
+// for tests; after the entity-driven migration those symbols are gone.
+// These small local fixtures replace them: the bounds match the
+// `.rgl`-baked positions (validated by a dedicated geometry test
+// below), and `apply_button_presses_for_test` reproduces the legacy
+// enqueue / phase-transition behaviour without going through the
+// hit-test pipeline. Tests that exercise the hit-test pipeline
+// explicitly call `spawn_gameplay_screen` + `ui_update_system`.
+constexpr Rectangle kHudCircleBoundsForTest   {130.0f, 1140.0f, 140.0f, 100.0f};
+constexpr Rectangle kHudSquareBoundsForTest   {290.0f, 1140.0f, 140.0f, 100.0f};
+constexpr Rectangle kHudTriangleBoundsForTest {450.0f, 1140.0f, 140.0f, 100.0f};
+
+void apply_button_presses_for_test(entt::registry& reg,
+                                   bool pause_pressed,
+                                   bool circle_pressed,
+                                   bool square_pressed,
+                                   bool triangle_pressed) {
+    if (!reg.ctx().contains<GamePhasePlayingTag>()) return;
+    auto& disp = reg.ctx().get<entt::dispatcher>();
+    if (circle_pressed)   disp.enqueue<ShapePressCircleEvent>({});
+    if (square_pressed)   disp.enqueue<ShapePressSquareEvent>({});
+    if (triangle_pressed) disp.enqueue<ShapePressTriangleEvent>({});
+    if (pause_pressed)    request_phase_transition<NextPhasePausedTag>(reg);
+}
+
+// Runs the entity-driven hit-test dispatch (`ui_update_system`) against
+// a freshly spawned gameplay HUD entity set. Tests that previously
+// called `gameplay_hud_process_button_input(reg)` now route through
+// this helper so they cover the new code path including the lane
+// button hit-test geometry and the Pause action handler.
+void run_gameplay_hud_input_dispatch(entt::registry& reg) {
+    spawn_gameplay_screen(reg);
+    auto& gs = reg.ctx().get<GameState>();
+    if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) {
+        gs.phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.5f;
+    }
+    ui_update_system(reg);
+}
 
 struct SemanticInputOrderCapture {
     int order[2] = {0, 0};
@@ -187,11 +232,11 @@ TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input
     REQUIRE(window_phase_is_idle(reg, player));
     REQUIRE(lane.current == 1);
     lane.target = lane.current;
-    gameplay_hud_apply_button_presses(reg,
-                                      false,
-                                      false,
-                                      true,
-                                      false);
+    apply_button_presses_for_test(reg,
+                                  false,
+                                  false,
+                                  true,
+                                  false);
     run_pipeline(reg);
 
     CHECK(window_phase_is_morph_in(reg, player));
@@ -206,12 +251,12 @@ TEST_CASE("pipeline: gameplay HUD pointer release is collected before the fixed 
     auto& input = reg.ctx().get<InputState>();
     REQUIRE(window_phase_is_idle(reg, player));
 
-    const auto square_bounds = gameplay_hud_square_input_bounds();
+    const auto square_bounds = kHudSquareBoundsForTest;
     input.click = true;
     input.end_x = square_bounds.x + square_bounds.width * 0.5f;
     input.end_y = square_bounds.y + square_bounds.height * 0.5f;
 
-    gameplay_hud_process_button_input(reg);
+    run_gameplay_hud_input_dispatch(reg);
     run_pipeline(reg);
 
     CHECK(window_phase_is_morph_in(reg, player));
@@ -227,7 +272,7 @@ TEST_CASE("pipeline: mobile button-zone touch release is collected independently
     REQUIRE(window_phase_is_idle(reg, player));
     REQUIRE(lane.current == 1);
 
-    const auto square_bounds = gameplay_hud_square_input_bounds();
+    const auto square_bounds = kHudSquareBoundsForTest;
     input.touch_up = true;
     input.end_x = constants::SCREEN_W_F * 0.5f;
     input.end_y = constants::SCREEN_H_F * 0.25f;
@@ -236,7 +281,7 @@ TEST_CASE("pipeline: mobile button-zone touch release is collected independently
     input.button_end_y = square_bounds.y + square_bounds.height * 0.5f;
     push_go_right(reg);
 
-    gameplay_hud_process_button_input(reg);
+    run_gameplay_hud_input_dispatch(reg);
     run_pipeline(reg);
 
     CHECK(window_phase_is_morph_in(reg, player));
@@ -254,14 +299,14 @@ TEST_CASE("pipeline: swipe-zone touch release over shape HUD does not press shap
     REQUIRE(lane.current == 1);
     lane.target = lane.current;
 
-    const auto square_bounds = gameplay_hud_square_input_bounds();
+    const auto square_bounds = kHudSquareBoundsForTest;
     input.touch_up = true;
     input.button_touch_up = false;
     input.end_x = square_bounds.x + square_bounds.width * 0.5f;
     input.end_y = square_bounds.y + square_bounds.height * 0.5f;
     push_go_right(reg);
 
-    gameplay_hud_process_button_input(reg);
+    run_gameplay_hud_input_dispatch(reg);
     run_pipeline(reg);
 
     CHECK(window_phase_is_idle(reg, player));
@@ -278,7 +323,7 @@ TEST_CASE("pipeline: gameplay HUD pause release is collected before the fixed ti
     input.end_x = 660.0f;
     input.end_y = 35.0f;
 
-    gameplay_hud_process_button_input(reg);
+    run_gameplay_hud_input_dispatch(reg);
     run_pipeline(reg);
 
     CHECK(reg.ctx().contains<GamePhasePausedTag>());
@@ -295,7 +340,7 @@ TEST_CASE("pipeline: gameplay HUD touch release can pause before the fixed tick"
     input.end_x = 660.0f;
     input.end_y = 35.0f;
 
-    gameplay_hud_process_button_input(reg);
+    run_gameplay_hud_input_dispatch(reg);
     run_pipeline(reg);
 
     CHECK(reg.ctx().contains<GamePhasePausedTag>());
@@ -352,7 +397,7 @@ TEST_CASE("pipeline: pending phase transition blocks queued go input",
 
 TEST_CASE("pipeline: gameplay HUD shape tap uses slot rectangle bounds",
           "[input_pipeline][hud]") {
-    const auto circle_input_bounds = gameplay_hud_circle_input_bounds();
+    const auto circle_input_bounds = kHudCircleBoundsForTest;
     const Vector2 tap_center = {200.0f, 1190.0f};
     const Vector2 tap_plus_49 = {200.0f, 1239.0f};
     const Vector2 tap_plus_51 = {200.0f, 1241.0f};
@@ -364,19 +409,43 @@ TEST_CASE("pipeline: gameplay HUD shape tap uses slot rectangle bounds",
 
 TEST_CASE("pipeline: gameplay HUD shape geometry matches gameplay.rgl slots",
           "[input_pipeline][hud]") {
-    const auto circle_bounds = gameplay_hud_circle_input_bounds();
-    const auto square_bounds = gameplay_hud_square_input_bounds();
-    const auto triangle_bounds = gameplay_hud_triangle_input_bounds();
+    // The .rgl-baked slot rectangles are the single source of truth for
+    // lane button bounds. The test-local constants above are mirrors;
+    // this case pins both to their `.rgl` values so the hit-test entity
+    // bounds (set in `app/ui/generated/gameplay_screen.cpp`) and the
+    // fixtures here stay in sync. If the codegen output changes, this
+    // test breaks first.
+    auto reg = make_rhythm_registry();
+    spawn_gameplay_screen(reg);
 
-    CHECK(circle_bounds.x == 130.0f);
-    CHECK(square_bounds.x == 290.0f);
-    CHECK(triangle_bounds.x == 450.0f);
-    CHECK(circle_bounds.y == 1140.0f);
-    CHECK(square_bounds.y == 1140.0f);
-    CHECK(triangle_bounds.y == 1140.0f);
+    Rectangle circle_bounds{};
+    Rectangle square_bounds{};
+    Rectangle triangle_bounds{};
+    for (auto [e, pos, sz] :
+         reg.view<LaneButtonTag, UiPosition, UiBounds, UiShapeIconCircleTag>().each()) {
+        (void)e;
+        circle_bounds = {pos.x, pos.y, sz.w, sz.h};
+    }
+    for (auto [e, pos, sz] :
+         reg.view<LaneButtonTag, UiPosition, UiBounds, UiShapeIconSquareTag>().each()) {
+        (void)e;
+        square_bounds = {pos.x, pos.y, sz.w, sz.h};
+    }
+    for (auto [e, pos, sz] :
+         reg.view<LaneButtonTag, UiPosition, UiBounds, UiShapeIconTriangleTag>().each()) {
+        (void)e;
+        triangle_bounds = {pos.x, pos.y, sz.w, sz.h};
+    }
 
-    CHECK(circle_bounds.width == 140.0f);
-    CHECK(circle_bounds.height == 100.0f);
+    CHECK(circle_bounds.x      == kHudCircleBoundsForTest.x);
+    CHECK(square_bounds.x      == kHudSquareBoundsForTest.x);
+    CHECK(triangle_bounds.x    == kHudTriangleBoundsForTest.x);
+    CHECK(circle_bounds.y      == kHudCircleBoundsForTest.y);
+    CHECK(square_bounds.y      == kHudSquareBoundsForTest.y);
+    CHECK(triangle_bounds.y    == kHudTriangleBoundsForTest.y);
+
+    CHECK(circle_bounds.width  == kHudCircleBoundsForTest.width);
+    CHECK(circle_bounds.height == kHudCircleBoundsForTest.height);
 }
 
 TEST_CASE("pipeline: gameplay HUD proximity ring progresses through far near perfect",
@@ -413,11 +482,11 @@ TEST_CASE("pipeline: gameplay HUD raygui shape presses ignored outside Playing",
     set_test_phase<GamePhasePausedTag>(reg);
     auto player = make_rhythm_player(reg);
     REQUIRE(window_phase_is_idle(reg, player));
-    gameplay_hud_apply_button_presses(reg,
-                                      false,
-                                      false,
-                                      true,
-                                      false);
+    apply_button_presses_for_test(reg,
+                                  false,
+                                  false,
+                                  true,
+                                  false);
 
     CHECK(window_phase_is_idle(reg, player));
 }
