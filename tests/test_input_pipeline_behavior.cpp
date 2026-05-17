@@ -437,15 +437,15 @@ TEST_CASE("pipeline: gameplay HUD shape geometry matches gameplay.rgl slots",
         triangle_bounds = {pos.x, pos.y, sz.w, sz.h};
     }
 
-    CHECK(circle_bounds.x == 130.0f);
-    CHECK(square_bounds.x == 290.0f);
-    CHECK(triangle_bounds.x == 450.0f);
-    CHECK(circle_bounds.y == 1140.0f);
-    CHECK(square_bounds.y == 1140.0f);
-    CHECK(triangle_bounds.y == 1140.0f);
+    CHECK(circle_bounds.x      == kHudCircleBoundsForTest.x);
+    CHECK(square_bounds.x      == kHudSquareBoundsForTest.x);
+    CHECK(triangle_bounds.x    == kHudTriangleBoundsForTest.x);
+    CHECK(circle_bounds.y      == kHudCircleBoundsForTest.y);
+    CHECK(square_bounds.y      == kHudSquareBoundsForTest.y);
+    CHECK(triangle_bounds.y    == kHudTriangleBoundsForTest.y);
 
-    CHECK(circle_bounds.width == 140.0f);
-    CHECK(circle_bounds.height == 100.0f);
+    CHECK(circle_bounds.width  == kHudCircleBoundsForTest.width);
+    CHECK(circle_bounds.height == kHudCircleBoundsForTest.height);
 }
 
 TEST_CASE("pipeline: gameplay HUD proximity ring progresses through far near perfect",
