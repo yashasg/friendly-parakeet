@@ -591,7 +591,7 @@ void obstacle_despawn_system(entt::registry& reg, float dt);
 
 ### Dependencies
 
-- **Input System (Spec 1)** — `ShapeID` and `SwipeDirection` enums are defined there; re-used here.
+- **Input System (Spec 1)** — Spec 1 owns the dispatcher events that drive the player (per-shape `ShapePress*Event`, per-direction `Go*Event`). Spec 3 does not consume those events directly; it only re-uses the `Shape` enum (label / lookup key in `app/components/player.h`) as the shared vocabulary between Spec 1's player-shape mutations and the obstacle factories' `RequiredShape*Tag` emplacement here.
 - **Rhythm Scoring (Spec 2)** — spawned obstacles provide `BeatInfo`, `Obstacle`, and required-action components to collision/scoring.
 - **Settings** — audio calibration shifts beat arrival and spawn timing.
 
