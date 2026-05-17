@@ -146,7 +146,10 @@ obstacle_despawn_system -> popup_feedback_system -> popup_display_system ->
 energy_system -> energy_bar_system -> particle_system
 ```
 
-`tick_playing_systems` is gated to `GamePhase::Playing` and runs:
+`tick_playing_systems` is gated by the presence of `GamePhasePlayingTag`
+on the registry's ctx slot (the active phase is the lone present
+`GamePhase*Tag`; see `app/tags/tags.h` and `app/systems/game_phase_transition.h`)
+and runs:
 
 ```
 beat_log_system -> beat_scheduler_system -> shape_window_activation_system ->
@@ -157,7 +160,10 @@ shape_window_system -> miss_detection_system -> scoring_system
 ### Key Design Decisions
 
 - **Rhythm positions derived from song_time**, not accumulated dt — prevents beat drift
-- **Shape windows** are song-time-anchored with phase transitions (MorphIn -> Active -> MorphOut -> Idle)
+- **Shape windows** are song-time-anchored with per-phase zero-column tags on
+  the player entity: `ShapeWindowMorphInTag` → `ShapeWindowActiveTag` →
+  `ShapeWindowMorphOutTag` → absence of all three (Idle). Transitions are
+  component-table operations, not enum compares.
 - **Collision resolution** uses EnTT structural views grouped by obstacle components
   (`BlockedLanes`, `RequiredShape`, `RequiredLane`), not a switch on obstacle kind
 - **Section labels** guide beatmap structure and intensity; obstacle patterns are authored per section
@@ -170,21 +176,21 @@ app/
   game_loop.cpp/.h        # registry wiring, frame loop, shutdown
   constants.h             # tuning values and layout constants
   platform_display.cpp/.h # desktop/mobile display sizing helpers
-  audio/                  # SFX/music routing and dispatch
-  components/             # POD component structs
+  components/             # POD component structs (one table per type)
     player.h              #   PlayerShape, ShapeWindow, Lane
-    rhythm.h              #   TimingGrade, BeatInfo, WindowPhase
+    rhythm.h              #   TimingGrade, BeatInfo (+ re-exports)
     beat_map.h            #   BeatEntry, BeatMap (loaded data)
     song_state.h          #   SongState
     energy_bar.h          #   EnergyState
   entities/               # entity archetype construction helpers
-  input/                  # input routing and semantic event dispatch
-  systems/                # headless ECS system functions
+  tags/
+    tags.h                # canonical zero-column tag table (Fabian Principle 2)
+  systems/                # headless + runtime ECS system functions, including
+                          # audio_*, input_*, play_session.cpp, and the
+                          # per-screen bind/spawn systems
     all_systems.h         #   headless ECS system declarations
     runtime_systems.h     #   runtime input/audio/render system declarations
-  session/
-    play_session.cpp      #   entity setup on game start
-  util/                   # persistence, rhythm math, lane/session helpers
+  util/                   # persistence, rhythm math, lane/shape helpers
 tools/
   rhythm_pipeline.py      # Audio analysis (librosa -> analysis JSON)
   level_designer.py       # Beatmap generation (analysis -> beatmap JSON)
