@@ -4,7 +4,7 @@ This document is retained only as historical context.
 
 ## Current architecture direction (authoritative)
 
-- Use direct **raylib / raygui** and **glm** APIs at runtime boundaries.
+- Use direct **raylib / raygui** APIs at runtime boundaries.
 - Keep ECS data backend-neutral: components stay plain data with no rendering/audio backend handles.
 - Do **not** introduce wrapper abstraction layers (`Renderer`, `AudioEngine`, `InputHandler`, `core_types`, `runtime_compat`, etc.).
 
