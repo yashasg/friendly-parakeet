@@ -1,8 +1,11 @@
 #pragma once
 
 #include <raylib.h>
+#include <raymath.h>  // Clamp
 
 #include "../components/song_state.h"
+#include "../constants.h"
+#include "rhythm_math.h"
 
 // Gameplay HUD approach-ring math (issue #1297, extracted from the legacy
 // `gameplay_hud_screen_controller` during the entity-driven UI migration).
@@ -30,27 +33,55 @@ inline constexpr Color kGameplayHudRingPerfectColor{100, 255, 100, 255};
 inline constexpr Color kGameplayHudRingNearColor   {180, 255, 100, 255};
 inline constexpr Color kGameplayHudRingFarColor    {120, 120, 180, 255};
 
+namespace detail {
+
+inline float gameplay_hud_timing_distance(const SongState* song_state, float timing_seconds) {
+    const float scroll_speed = (song_state && song_state->scroll_speed > 0.0f)
+        ? song_state->scroll_speed
+        : constants::BASE_SCROLL_SPEED;
+    return scroll_speed * timing_seconds;
+}
+
+}  // namespace detail
+
 // Per-tier scroll distances from the player Y to the obstacle at the
 // matching timing window edge. Scale by `SongState::scroll_speed` so a
 // faster song produces a wider ring envelope.
-float gameplay_hud_perfect_distance(const SongState* song_state);
-float gameplay_hud_good_distance(const SongState* song_state);
-float gameplay_hud_ok_distance(const SongState* song_state);
+inline float gameplay_hud_perfect_distance(const SongState* song_state) {
+    return detail::gameplay_hud_timing_distance(song_state, kTimingPerfectSeconds);
+}
+
+inline float gameplay_hud_good_distance(const SongState* song_state) {
+    return detail::gameplay_hud_timing_distance(song_state, kTimingGoodSeconds);
+}
+
+inline float gameplay_hud_ok_distance(const SongState* song_state) {
+    return detail::gameplay_hud_timing_distance(song_state, kTimingOkSeconds);
+}
 
 // Linear ramp from `ring_appear_dist` (ratio = 1) to `perfect_dist`
 // (ratio = 0). Used by the envelope to lerp the ring radius from the
 // button radius up to the max ring radius.
-float gameplay_hud_ring_ratio(float nearest_dist, float perfect_dist,
-                              float ring_appear_dist);
+inline float gameplay_hud_ring_ratio(float nearest_dist, float perfect_dist,
+                                     float ring_appear_dist) {
+    const float denom = ring_appear_dist - perfect_dist;
+    if (denom <= 0.0f) return 0.0f;
+    return Clamp((nearest_dist - perfect_dist) / denom, 0.0f, 1.0f);
+}
 
 // Picks the ring color (Far / Near / Perfect) based on which timing
 // window the nearest obstacle currently occupies. `visible == false`
 // means the obstacle is outside the appear window and the ring should
 // not be drawn.
-GameplayHudRingCue gameplay_hud_ring_cue(float nearest_dist,
-                                         float perfect_dist,
-                                         float good_dist,
-                                         float ring_appear_dist);
+inline GameplayHudRingCue gameplay_hud_ring_cue(float nearest_dist,
+                                                float perfect_dist,
+                                                float good_dist,
+                                                float ring_appear_dist) {
+    if (nearest_dist <= 0.0f || nearest_dist >= ring_appear_dist) return {};
+    if (nearest_dist <= perfect_dist) return {true, kGameplayHudRingPerfectColor};
+    if (nearest_dist <= good_dist)    return {true, kGameplayHudRingNearColor};
+    return {true, kGameplayHudRingFarColor};
+}
 
 // Combined envelope output written into the `ApproachRing` component on
 // each lane button entity. `radius` is the actual ring radius (lerped
@@ -63,8 +94,21 @@ struct ApproachRingEnvelope {
     float alpha_scale = 0.0f;
 };
 
-ApproachRingEnvelope approach_ring_envelope(float ratio,
-                                            float btn_radius,
-                                            float max_ring_radius,
-                                            bool reduce_motion,
-                                            float near_threshold = 0.3f);
+inline ApproachRingEnvelope approach_ring_envelope(float ratio,
+                                                   float btn_radius,
+                                                   float max_ring_radius,
+                                                   bool reduce_motion,
+                                                   float near_threshold = 0.3f) {
+    ApproachRingEnvelope out{};
+    if (ratio < 0.0f) ratio = 0.0f;
+    if (ratio > 1.0f) ratio = 1.0f;
+    if (reduce_motion) {
+        if (ratio > near_threshold) return out;
+        out.radius = max_ring_radius;
+        out.alpha_scale = 1.0f;
+        return out;
+    }
+    out.radius = btn_radius + (max_ring_radius - btn_radius) * ratio;
+    out.alpha_scale = 1.0f - ratio * 0.5f;
+    return out;
+}
