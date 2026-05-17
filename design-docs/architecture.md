@@ -204,19 +204,36 @@ struct Lane {
     float    lerp_t;       // 0.0..1.0 transition progress
 };
 
-/// Vertical movement (jump / slide / grounded). 12 bytes.
-/// Hot: read by collision_system, game_camera_system.
-enum class VMode : uint8_t {
-    Grounded = 0,
-    Jumping  = 1,
-    Sliding  = 2
+// Per-state vertical motion tables (issue #1202/#1204; Fabian existential
+// processing). Each former `VMode` value is its own zero/one-column
+// component on the player entity — absence of both means grounded
+// (no data needed). The old `VerticalState` god-struct and the `VMode`
+// enum were eradicated by these issues; see `app/components/player.h:68-88`
+// for the in-code rationale comment.
+//
+//   `Jumping` present  → entity is mid-jump  (timer + parabolic y_offset).
+//   `Sliding` present  → entity is mid-slide (timer; y_offset stays 0,
+//                        visual squash handled by the render system).
+//
+// Read by: collision_system (`try_get<Jumping>` for y_offset),
+//          game_camera_system, player_movement_system.
+
+struct Jumping {
+    float timer    = 0.0f;   // seconds remaining in the jump
+    float y_offset = 0.0f;   // visual offset from PLAYER_Y (negative = up)
 };
 
-struct VerticalState {
-    VMode    mode;
-    float    timer;        // time remaining in jump/slide
-    float    y_offset;     // visual offset from PLAYER_Y (negative = up)
+struct Sliding {
+    float timer = 0.0f;      // seconds remaining in the slide
 };
+
+// State transitions are component-table operations — no enum compare,
+// no `switch`:
+//   start jump:  reg.emplace<Jumping>(player, Jumping{JUMP_DURATION, 0.0f});
+//   end jump:    reg.remove<Jumping>(player);
+// `player_movement_system` runs one transform per table (one over the
+// `Jumping` view, one over the `Sliding` view); grounded entities have
+// neither row and are skipped without a discriminator check.
 ```
 
 ### 2.3 — HOT: Obstacle Core (iterated every frame for scroll + collision)
@@ -476,23 +493,27 @@ struct GoRightEvent {};
 ```cpp
 // components/game_state.h
 
-enum class GamePhase : uint8_t {
-    Title        = 0,
-    LevelSelect  = 1,
-    Playing      = 2,
-    Paused       = 3,
-    GameOver     = 4,
-    SongComplete = 5,
-    Settings     = 6,
-    Tutorial     = 7
-};
+// Per Fabian's existential processing (issue #1202/#1204), the former
+// `GamePhase` enum and the `GameState::phase` / `transition_pending` /
+// `next_phase` mirror fields have been eradicated. Each former enum value
+// is now a zero-column ctx tag in `app/tags/tags.h`:
+//
+//   GamePhaseTitleTag        GamePhaseLevelSelectTag
+//   GamePhasePlayingTag      GamePhasePausedTag
+//   GamePhaseGameOverTag     GamePhaseSongCompleteTag
+//   GamePhaseSettingsTag     GamePhaseTutorialTag
+//
+// The active phase is the lone present `GamePhase*Tag` on `reg.ctx()`
+// (exactly one at any time). Pending transitions use the parallel
+// `NextPhase*Tag` set; `app/systems/game_phase_transition.h` exposes
+// `enter_phase<...>()`, `request_phase_transition<...>()`, and
+// `is_phase_transition_pending()` — all dispatched on the tag type at
+// the *call site* (no runtime enum compare, no `switch`).
 
-/// Singleton: governs which systems run and screen transitions.
+/// Singleton: per-phase elapsed timer. Phase identity itself lives on the
+/// active `GamePhase*Tag` ctx slot (see above) — not on a field here.
 struct GameState {
-    GamePhase  phase;
-    float      phase_timer;          // seconds in current phase
-    bool       transition_pending;   // set to request a phase change
-    GamePhase  next_phase;           // destination of pending transition
+    float phase_timer = 0.0f;   // seconds in current phase
 };
 
 // End-screen menu choice — per-choice zero-column tables on registry.ctx().
@@ -502,18 +523,18 @@ struct EndChoiceLevelSelect {};
 struct EndChoiceMainMenu {};
 ```
 
-Active phase responsibilities:
+Active-phase responsibilities (the `GamePhase*Tag` whose presence selects the row):
 
-| Phase | Purpose |
+| Phase tag | Purpose |
 | --- | --- |
-| `Title` | Default boot/menu entry point. Routes to level select, settings, tutorial, or exit. |
-| `LevelSelect` | Lets the player choose level and difficulty before `setup_play_session`. |
-| `Playing` | Runs song playback, beat scheduling, player input, collision, scoring, energy, and HUD systems. |
-| `Paused` | Freezes gameplay update while preserving the current play session for resume. |
-| `GameOver` | Terminal failure screen after energy depletion/crash; freezes world and offers restart, level select, or main menu. |
-| `SongComplete` | Terminal success/results screen after the song finishes; offers restart, level select, or main menu. |
-| `Settings` | Menu phase for runtime settings such as audio/haptics/calibration. |
-| `Tutorial` | First-time/user-training phase that teaches controls and basic rhythm rules. |
+| `GamePhaseTitleTag` | Default boot/menu entry point. Routes to level select, settings, tutorial, or exit. |
+| `GamePhaseLevelSelectTag` | Lets the player choose level and difficulty before `setup_play_session`. |
+| `GamePhasePlayingTag` | Runs song playback, beat scheduling, player input, collision, scoring, energy, and HUD systems. |
+| `GamePhasePausedTag` | Freezes gameplay update while preserving the current play session for resume. |
+| `GamePhaseGameOverTag` | Terminal failure screen after energy depletion/crash; freezes world and offers restart, level select, or main menu. |
+| `GamePhaseSongCompleteTag` | Terminal success/results screen after the song finishes; offers restart, level select, or main menu. |
+| `GamePhaseSettingsTag` | Menu phase for runtime settings such as audio/haptics/calibration. |
+| `GamePhaseTutorialTag` | First-time/user-training phase that teaches controls and basic rhythm rules. |
 
 ### 2.9 — Legacy: Difficulty (removed)
 
@@ -608,7 +629,8 @@ PlayerTag            0     HOT        collision/filter
 PlayerShape          8     HOT        shape_window, collision, render, player_action
 ShapeWindow         24     HOT        shape_window, input dispatcher, collision
 Lane                 8     HOT        collision, render, player_action
-VerticalState       12     HOT        collision, render, player_action
+Jumping              8     HOT        present when mid-jump; collision (y_offset), camera, movement
+Sliding              4     HOT        present when mid-slide; movement, render
 ObstacleTag          0     HOT        scroll, collision, cleanup
 Obstacle             4     WARM       collision, miss_detection, scoring
 RequiredShape        1     WARM       collision, scoring
@@ -632,7 +654,9 @@ SINGLETONS (ctx)
 InputState          var    per-frame  input_system internal touch/mouse state
 entt::dispatcher    var    per-frame  input/UI/test-player enqueue semantic events, game_state drains
 ButtonPress/Go      var    per-frame  dispatcher payloads handled by game_state/player input listeners
-GameState           12     per-frame  game_state_system
+GameState            4     per-frame  game_state_system (phase_timer only; phase identity is a `GamePhase*Tag` on ctx)
+GamePhase*Tag        0     per-frame  active-phase mirror; one present at a time (see `app/tags/tags.h`)
+NextPhase*Tag        0     per-frame  pending-transition mirror; drained by `clear_next_phase_tags`
 BeatMap             var    session    setup_play_session (write), beat_scheduler (read)
 SongState           48     per-frame  song_playback/beat_scheduler
 EnergyState         12     per-frame  energy_system (write), ui_render (read)
@@ -811,20 +835,23 @@ owns `ScorePopup::remaining`. Obstacle destruction is handled by
      End screens can restart, return to LEVEL_SELECT, or return to TITLE.
 ```
 
-`GameState::transition_pending` and `next_phase` are the canonical transition
-queue. UI controllers and input handlers request a phase by setting those
-fields; `game_state_system` drains the request, clears stale pointer state, and
-then enters the requested phase. `enter_phase` updates `phase` and
-`phase_timer`.
+The `NextPhase*Tag` ctx slots are the canonical transition queue (per
+issue #1202/#1204; they replace the former `GameState::transition_pending`
+boolean and `GameState::next_phase` enum field). UI controllers and input
+handlers request a phase by calling
+`request_phase_transition<NextPhase*Tag>(reg)`; `game_state_system` drains
+the request via `is_phase_transition_pending(reg)`, clears stale pointer
+state, and then enters the requested phase. `enter_phase<PhaseTag>(reg)`
+swaps the active `GamePhase*Tag` and resets `GameState::phase_timer`.
 
-`Tutorial` is a defined phase with a controller, but current shipped screens do
+`Tutorial` is a defined phase tag with a screen, but current shipped screens do
 not route into it. Its continue action transitions to `Playing`.
 
 ### Transition Summary
 
 | From | To | Trigger / owner | Notes |
 |------|----|-----------------|-------|
-| Title | LevelSelect | Title screen body/start action | Defers through `transition_pending`. |
+| Title | LevelSelect | Title screen body/start action | Defers through `request_phase_transition<NextPhaseLevelSelectTag>`. |
 | Title | Settings | Title screen gear action | Settings exits back to Title. |
 | LevelSelect | Playing | `LevelSelectState::confirmed` | `setup_play_session` loads the selected level/difficulty. |
 | Playing | Paused | HUD pause, keyboard pause, or app background | Gameplay entities remain intact. |
@@ -864,7 +891,7 @@ In code, reusable construction lives in `app/entities/` factory functions
 │ PlayerShape        { current: Hexagon, morph_t: 1.0 }     │
 │ ShapeWindow        { target: Hexagon, phase: Idle, ... }  │
 │ Lane               { current: 1, target: -1, lerp_t: 1 } │
-│ VerticalState      { mode: Grounded, timer: 0, y_off: 0 }│
+│ (Jumping/Sliding absent → grounded; rows added on demand) │
 │ Color              { r: 80, g: 180, b: 255, a: 255 }     │
 │ DrawSize           { w: 64, h: 64 }                       │
 │ TagWorldPass       (tag, 0 bytes)                         │
@@ -1008,12 +1035,8 @@ int main(int argc, char* argv[]) {
     reg.ctx().emplace<InputState>();
     reg.ctx().emplace<entt::dispatcher>();
     wire_input_dispatcher(reg);
-    reg.ctx().emplace<GameState>(GameState{
-        .phase = GamePhase::Title,
-        .phase_timer = 0.0f,
-        .transition_pending = false,
-        .next_phase = GamePhase::Title
-    });
+    reg.ctx().emplace<GameState>(GameState{ .phase_timer = 0.0f });
+    enter_phase<GamePhaseTitleTag>(reg);   // emplaces the active-phase tag
     reg.ctx().emplace<AudioQueue>();
 
     // Load audio assets, textures, fonts into ctx()...
@@ -1254,10 +1277,10 @@ int main(int argc, char* argv[]) {
     │       }                                                │      lerp_t: 0.0 }
     │   }                                                    │
     │   player_input_handle_go_up(GoUpEvent) {               │
-    │       if (VertState.mode == Grounded) {                │──▶ VerticalState
-    │           VertState.mode  = Jumping;                   │    { mode: Jumping,
-    │           VertState.timer = JUMP_DURATION;             │      timer: 0.45,
-    │       }                                                │      y_offset: 0.0 }
+    │       if (!reg.all_of<Jumping, Sliding>(player)) {     │──▶ Jumping (new row)
+    │           reg.emplace<Jumping>(player,                 │    { timer: 0.45,
+    │              Jumping{JUMP_DURATION, 0.0f});            │      y_offset: 0.0 }
+    │       }                                                │
     │   }                                                    │
     │   // ... GoRightEvent, GoDownEvent handlers similar ...│
     │   }                                                    │
@@ -1328,7 +1351,7 @@ This entire game state fits in L1 cache (~32-64 KB).
   │
   │  □ PlayerShape     (shape window + collision + render, every frame, R)
   │  □ Lane            (collision + render, every frame, R)
-  │  □ VerticalState   (collision + render, every frame, R)
+  │  □ Jumping/Sliding (present only when mid-jump/slide; movement + camera + collision, R+W)
   │  □ Obstacle        (collision + scoring, every frame, R)
   │
   │  ○ RequiredShape   (collision + scoring, per-obstacle, R)
@@ -1411,12 +1434,15 @@ With only 5–15 obstacles on screen and 1 player, brute-force is optimal:
 ```cpp
 void collision_system(entt::registry& reg, float dt) {
     // Get player state (single entity)
-    auto player_view = reg.view<PlayerTag, WorldPosition, PlayerShape, Lane, VerticalState>();
+    auto player_view = reg.view<PlayerTag, WorldPosition, PlayerShape, Lane>();
     // Early-out: exactly one player
-    auto [p_ent, p_pos, p_shape, p_lane, p_vstate] = *player_view.each().begin();
+    auto [p_ent, p_pos, p_shape, p_lane] = *player_view.each().begin();
 
+    // Grounded entities have neither Jumping nor Sliding; only Jumping
+    // carries a y_offset (Sliding leaves it at 0). No enum compare.
+    const auto* p_jump = reg.try_get<Jumping>(p_ent);
     float player_x = p_pos.position.x;
-    float player_y = p_pos.position.y + p_vstate.y_offset;
+    float player_y = p_pos.position.y + (p_jump ? p_jump->y_offset : 0.0f);
 
     // Linear scan of obstacles — 15 entities max
     auto obs_view = reg.view<ObstacleTag, WorldPosition, Obstacle>(
@@ -1434,10 +1460,10 @@ void collision_system(entt::registry& reg, float dt) {
             reg.emplace<ScoredTag>(entity);
             // scoring_system will pick this up next
         } else if (dy >= 0.0f) {
-            // Obstacle has reached player and shape doesn't match → CRASH
-            auto& gs = reg.ctx().get<GameState>();
-            gs.transition_pending = true;
-            gs.next_phase = GamePhase::GameOver;
+            // Obstacle has reached player and shape doesn't match → CRASH.
+            // Deferred per #482: request the swap; game_state_system
+            // performs it on the next tick.
+            request_phase_transition<NextPhaseGameOverTag>(reg);
             return;  // stop checking — game over
         }
     }
@@ -1509,15 +1535,17 @@ functions above.
 void render_frame_pseudocode(entt::registry& reg, float alpha) {
     ClearBackground({18, 18, 24, 255});
 
-    auto phase = reg.ctx().get<GameState>().phase;
+    const auto& ctx = reg.ctx();
 
     // ── Layer 0: Background ───────────────────────────
     draw_background();
     draw_lane_lines();
 
     // ── Layer 1: Game entities ────────────────────────
-    if (phase == GamePhase::Playing || phase == GamePhase::Paused
-        || phase == GamePhase::GameOver) {
+    // Per-tag world-pass gating — no enum compare, no `switch`.
+    if (ctx.contains<GamePhasePlayingTag>()
+        || ctx.contains<GamePhasePausedTag>()
+        || ctx.contains<GamePhaseGameOverTag>()) {
 
         // Obstacles (5-15 entities — draw in pool order, no sort needed)
         {
@@ -1530,11 +1558,13 @@ void render_frame_pseudocode(entt::registry& reg, float alpha) {
         // Player (1 entity)
         {
             auto view = reg.view<PlayerTag, WorldPosition, PlayerShape,
-                                  Lane, VerticalState, Color, DrawSize>();
-            for (auto [e, pos, shape, lane, vs, col, sz] : view.each()) {
-                // Interpolate position for smooth sub-frame rendering
+                                  Lane, Color, DrawSize>();
+            for (auto [e, pos, shape, lane, col, sz] : view.each()) {
+                // Interpolate position for smooth sub-frame rendering.
+                // Only Jumping carries a y_offset; absence = grounded.
+                const auto* jump = reg.try_get<Jumping>(e);
                 float render_x = pos.position.x;  // lane lerp already applied
-                float render_y = pos.position.y + vs.y_offset;
+                float render_y = pos.position.y + (jump ? jump->y_offset : 0.0f);
                 draw_player_shape(render_x, render_y,
                                   shape, col, sz);
             }
@@ -1564,7 +1594,7 @@ void render_frame_pseudocode(entt::registry& reg, float alpha) {
     }
 
     // ── Layer 3: HUD ──────────────────────────────────
-    if (phase == GamePhase::Playing || phase == GamePhase::Paused) {
+    if (ctx.contains<GamePhasePlayingTag>() || ctx.contains<GamePhasePausedTag>()) {
         auto& score  = reg.ctx().get<ScoreState>();
         auto& energy = reg.ctx().get<EnergyState>();
         draw_hud_score(score);
@@ -1574,12 +1604,16 @@ void render_frame_pseudocode(entt::registry& reg, float alpha) {
     }
 
     // ── Overlays ──────────────────────────────────────
-    if (phase == GamePhase::Title) {
+    // Each per-phase overlay is its own ctx.contains<> check — same
+    // existential-table dispatch as the world-pass gate above.
+    if (ctx.contains<GamePhaseTitleTag>()) {
         draw_title_screen(reg);
-    } else if (phase == GamePhase::Paused) {
+    }
+    if (ctx.contains<GamePhasePausedTag>()) {
         draw_pause_overlay();
-    } else if (phase == GamePhase::GameOver) {
-        auto& gs = reg.ctx().get<GameState>();
+    }
+    if (ctx.contains<GamePhaseGameOverTag>()) {
+        const auto& gs = reg.ctx().get<GameState>();
         draw_game_over(reg, gs.phase_timer);
     }
 
@@ -1599,7 +1633,9 @@ app/
 ├── components/                  ← all component structs
 │   ├── transform.h              ← WorldPosition, MotionVelocity
 │   ├── window_phase.h           ← WindowPhase (shared by player.h and rhythm.h)
-│   ├── player.h                 ← PlayerTag, PlayerShape, ShapeWindow, Lane, VerticalState
+│   ├── player.h                 ← PlayerTag, PlayerShape, ShapeWindow, Lane,
+│   │                              Jumping, Sliding (per-state vertical motion tables;
+│   │                              absence of both = grounded)
 │   ├── obstacle.h               ← obstacle tags (ScoredTag, MissTag,
 │   │                              ResolvedObstacleTag, NonScorableTag,
 │   │                              OnsetMarkerTag) and requirements
@@ -1608,7 +1644,9 @@ app/
 │   ├── input_events.h           ← per-shape ShapePress*Event, per-action
 │   │                              Menu*Event, per-direction Go*Event
 │   │                              (in systems/, #1277/#1278/#1279)
-│   ├── game_state.h             ← GameState, GamePhase, LevelSelectState
+│   ├── game_state.h             ← GameState (phase_timer only), LevelSelectState,
+│   │                              TerminalResultState. Phase identity lives on
+│   │                              `GamePhase*Tag` ctx slots in `app/tags/tags.h`.
 │   ├── rendering.h              ← DrawSize, ScreenPosition; back-compat shim
 │   │                              for the camera/mesh splits (issue #1194)
 │   ├── particle.h               ← ParticleData, ParticleTag

@@ -39,10 +39,17 @@
 
 ## 1. MASTER SCREEN FLOW MAP
 
-> **Source of truth:** `app/components/game_state.h` defines the
-> `GamePhase` enum; `app/ui/screen_controllers/*` and
-> `app/systems/game_state_system.cpp` define the actual transitions.
-> The diagram below mirrors shipped routing as of Round 6 audit.
+> **Source of truth:** the active phase is carried by per-phase ctx tags
+> (`GamePhaseTitleTag` / `GamePhaseLevelSelectTag` / `GamePhasePlayingTag` /
+> `GamePhasePausedTag` / `GamePhaseGameOverTag` / `GamePhaseSongCompleteTag` /
+> `GamePhaseSettingsTag` / `GamePhaseTutorialTag` per `app/tags/tags.h`);
+> the active phase is the lone present `GamePhase*Tag` on the registry
+> ctx. Transitions live in `app/systems/game_state_routing.cpp` (per-event
+> handlers that call `request_phase_transition<NextPhase*Tag>`),
+> `app/systems/game_phase_transition.{h,cpp}` (the swap mechanic), and
+> `app/systems/screen_lifecycle_system.{h,cpp}` (per-tag spawn/despawn
+> dispatch into `app/ui/generated/screen_spawners.h`).
+> The diagram below mirrors current shipped routing.
 
 ```
                           ┌─────────────────┐
@@ -104,44 +111,54 @@
                           (back to Title)
 ```
 
-> **Tutorial phase.** `GamePhase::Tutorial` is reached from Level Select
+> **Tutorial phase.** `GamePhaseTutorialTag` is reached from Level Select
 > when `SettingsState::ftue_run_count == 0`. Pressing START on the
 > tutorial marks FTUE complete, persists settings, and starts gameplay.
 > Completed FTUE profiles skip Tutorial and go directly to Playing.
 
 ### State Enumeration (for ECS implementation)
 
-> **Source of truth:** `app/components/game_state.h:6-15`. If this list
-> drifts from the header, the header wins.
+> **Source of truth:** `app/tags/tags.h` § "Game phase mirrors"
+> (`GamePhase*Tag` set). If this list drifts from the header, the
+> header wins.
 
+```cpp
+struct GamePhaseTitleTag        {};   // main menu
+struct GamePhaseLevelSelectTag  {};   // song/difficulty selection
+struct GamePhasePlayingTag      {};   // core gameplay
+struct GamePhasePausedTag       {};   // overlay on gameplay
+struct GamePhaseGameOverTag     {};   // results screen
+struct GamePhaseSongCompleteTag {};   // song finished successfully
+struct GamePhaseSettingsTag     {};   // settings screen (entered from Title gear)
+struct GamePhaseTutorialTag     {};   // FTUE/tutorial run before first gameplay
 ```
-  enum class GamePhase : uint8_t {
-      Title        = 0,   // main menu
-      LevelSelect  = 1,   // song/difficulty selection
-      Playing      = 2,   // core gameplay
-      Paused       = 3,   // overlay on gameplay
-      GameOver     = 4,   // results screen
-      SongComplete = 5,   // song finished successfully
-      Settings     = 6,   // settings screen (entered from Title gear)
-      Tutorial     = 7    // FTUE/tutorial run before first gameplay
-  };
+
+The active phase is the lone `GamePhase*Tag` present on `reg.ctx()` —
+exactly one is present at any time. A parallel `NextPhase*Tag` set (same
+names with `NextPhase` prefix) holds the pending-transition target; see
+`app/systems/game_phase_transition.h` for the `enter_phase<...>()` /
+`request_phase_transition<...>()` / `is_phase_transition_pending()` API.
 ```
 
-Shipped transitions, by controller, as of Round 6 audit:
+Shipped transitions (input events flow through dispatcher sinks in
+`app/systems/game_state_routing.cpp`, which call
+`request_phase_transition<NextPhase*Tag>`; the actual swap runs in
+`game_state_system` on the next tick per the deferred-transition
+pattern of issue #482):
 
-- `Title → LevelSelect` — body tap (`title_screen_controller.cpp:62-72`).
-- `Title → Settings` — gear-icon tap (same controller).
-- `Settings → Title` — back action (`settings_screen_controller.cpp:101-104` and `:141-144`).
+- `Title → LevelSelect` — confirm/body tap (`game_state_handle_confirm`).
+- `Title → Settings` — gear-icon tap (settings entrypoint event).
+- `Settings → Title` — back action.
 - `LevelSelect → Tutorial` — song selection when FTUE is incomplete.
 - `LevelSelect → Playing` — song selection after FTUE is complete.
-- `Playing ↔ Paused` — pause button / resume.
+- `Playing ↔ Paused` — pause button / resume (any direction unpauses).
 - `Paused → Title` — quit action.
-- `Playing → GameOver` — energy reaches zero.
-- `Playing → SongComplete` — song reaches end.
-- `GameOver | SongComplete → Playing` — restart action.
-- `GameOver | SongComplete → LevelSelect` — level-select action.
-- `GameOver | SongComplete → Title` — main-menu action.
-- `Tutorial → Playing` — START marks FTUE complete and begins the run.
+- `Playing → GameOver` — energy reaches zero (`energy_system` requests it).
+- `Playing → SongComplete` — song reaches end (`game_state_terminal_phase_system`).
+- `GameOver | SongComplete → Playing` — restart end-screen choice.
+- `GameOver | SongComplete → LevelSelect` — level-select end-screen choice.
+- `GameOver | SongComplete → Title` — main-menu end-screen choice.
+- `Tutorial → Playing` — `game_state_handle_confirm` marks FTUE complete and begins the run.
 
 ---
 
@@ -179,10 +196,10 @@ and screen width (W) for portrait mode (9:16 aspect ratio target).
 ### 2a-bis. LEVEL SELECT SCREEN
 
 After tapping "start" on the title screen, the player is taken to the
-**LevelSelect** screen (`GamePhase::LevelSelect`). This screen presents
-a list of available songs and difficulty options. The layout is defined in
-`content/ui/screens/level_select.rgl`. Confirming a selection transitions
-to `GamePhase::Playing`.
+**LevelSelect** screen (active `GamePhaseLevelSelectTag`). This screen
+presents a list of available songs and difficulty options. The layout
+is defined in `content/ui/screens/level_select.rgl`. Confirming a
+selection transitions to `GamePhasePlayingTag`.
 
 ---
 
@@ -562,7 +579,7 @@ Terminal split:
 ## 3. FIRST-TIME USER EXPERIENCE (FTUE)
 
 > **Implementation status:** the shipped tutorial is the single-screen
-> **Quick Start** flow (`GamePhase::Tutorial`, `content/ui/screens/tutorial.rgl`).
+> **Quick Start** flow (active `GamePhaseTutorialTag`, `content/ui/screens/tutorial.rgl`).
 > The five-run adaptive FTUE design below is aspirational/archived and is not
 > routed by the current controllers.
 
