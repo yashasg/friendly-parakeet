@@ -231,13 +231,14 @@ the correct perspective distortion.
 
 Same as circle but with 6 points.  Each vertex projected independently.
 
-### Rectangle obstacles (full-width bars, lane blocks, gates)
+### Rectangle obstacles (e.g. shape gates)
 
 Already shown in the square example.  Each corner is a vertex with its
 own y, so top edge is narrower than bottom edge.
 
 ```
-  Full-width bar at y=300, h=20:
+  Rectangle at y=300, h=20 (illustrative — same math applies to any
+  axis-aligned rectangle):
 
   Before:                        After:
   ┌──────────────────────┐       ╱──────────────────╲     ← y=300
