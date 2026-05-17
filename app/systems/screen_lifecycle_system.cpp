@@ -40,11 +40,11 @@ bool entities_alive_probe(entt::registry& reg) noexcept {
 }
 
 // Pilot (#1287): Paused. Tutorial (#1291), Song Complete (#1292), Game
-// Over (#1293), Title (#1294), Settings (#1295), Level Select (#1296).
-// Each subsequent per-screen migration sub-issue extends this table by
-// one row. Level Select's spawn entry-point wraps the codegen-emitted
-// `spawn_level_select_screen` + the dynamic-spawn pass that creates
-// per-level cards / difficulty buttons (see
+// Over (#1293), Title (#1294), Settings (#1295), Level Select (#1296),
+// Gameplay HUD (#1297). Each subsequent per-screen migration sub-issue
+// extends this table by one row. Level Select's spawn entry-point wraps
+// the codegen-emitted `spawn_level_select_screen` + the dynamic-spawn
+// pass that creates per-level cards / difficulty buttons (see
 // `level_select_dynamic_spawn_system.h`); despawn is the codegen
 // function since every dynamic entity also carries `LevelSelectScreenTag`.
 constexpr ScreenLifecycleRow kLifecycleRows[] = {
@@ -89,6 +89,12 @@ constexpr ScreenLifecycleRow kLifecycleRows[] = {
         &entities_alive_probe<LevelSelectScreenTag>,
         &spawn_level_select_screen_full,
         &despawn_level_select_screen,
+    },
+    {
+        &phase_active_probe<GamePhasePlayingTag>,
+        &entities_alive_probe<GameplayHudTag>,
+        &spawn_gameplay_screen,
+        &despawn_gameplay_screen,
     },
 };
 

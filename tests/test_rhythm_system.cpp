@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "ui/screen_controllers/gameplay_hud_screen_controller.h"
+#include "util/gameplay_hud_ring.h"
 #include "util/rhythm_math.h"
 #include "entities/beat_map.h"
 

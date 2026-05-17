@@ -22,7 +22,6 @@
 #include "systems/session_logger_system.h"
 #include "systems/camera_system.h"
 #include "entities/beat_map.h"
-#include "ui/screen_controllers/gameplay_hud_screen_controller.h"
 #include "platform_display.h"
 #include "systems/persistence_policy_system.h"
 #include "components/high_score.h"
@@ -34,6 +33,8 @@
 #include "systems/settings_screen_bind_system.h"
 #include "systems/title_start_tap_system.h"
 #include "systems/tutorial_dodge_hint_bind_system.h"
+#include "systems/gameplay_hud_bind_system.h"
+#include "systems/approach_ring_envelope_system.h"
 #include "systems/ui_update_system.h"
 
 #include <raylib.h>
@@ -286,7 +287,6 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
     input_system(reg, raw_dt);
     ui_update_system(reg);
     title_start_tap_system(reg);
-    gameplay_hud_process_button_input(reg);
     test_player_system(reg, raw_dt);
 
     while (accumulator >= FIXED_DT) {
@@ -302,11 +302,13 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
 
     // Per-screen UI label binding: write platform / runtime-dependent text
     // into the dynamic-text slots spawned by `screen_lifecycle_system`.
-    // Must run after spawn and before render (#1291, #1292, #1293).
+    // Must run after spawn and before render (#1291, #1292, #1293, #1297).
     tutorial_dodge_hint_bind_system(reg);
     song_complete_scoreboard_bind_system(reg);
     game_over_scoreboard_bind_system(reg);
     settings_screen_bind_system(reg);
+    gameplay_hud_bind_system(reg);
+    approach_ring_envelope_system(reg);
 
     // Camera runs after gameplay systems so transforms reflect current frame
     game_camera_system(reg, raw_dt);

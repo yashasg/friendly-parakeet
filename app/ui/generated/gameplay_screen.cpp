@@ -67,6 +67,8 @@ void spawn_gameplay_screen(entt::registry& reg) {
         auto e = reg.create();
         reg.emplace<GameplayHudTag>(e);
         reg.emplace<UiDummyRecTag>(e);
+        reg.emplace<LaneButtonTag>(e);
+        reg.emplace<UiShapeIconCircleTag>(e);
         reg.emplace<UiPosition>(e, 130.0f, 1140.0f);
         reg.emplace<UiBounds>(e, 140.0f, 100.0f);
         auto& label = reg.emplace<UiLabel>(e);
@@ -77,6 +79,8 @@ void spawn_gameplay_screen(entt::registry& reg) {
         auto e = reg.create();
         reg.emplace<GameplayHudTag>(e);
         reg.emplace<UiDummyRecTag>(e);
+        reg.emplace<LaneButtonTag>(e);
+        reg.emplace<UiShapeIconSquareTag>(e);
         reg.emplace<UiPosition>(e, 290.0f, 1140.0f);
         reg.emplace<UiBounds>(e, 140.0f, 100.0f);
         auto& label = reg.emplace<UiLabel>(e);
@@ -87,6 +91,8 @@ void spawn_gameplay_screen(entt::registry& reg) {
         auto e = reg.create();
         reg.emplace<GameplayHudTag>(e);
         reg.emplace<UiDummyRecTag>(e);
+        reg.emplace<LaneButtonTag>(e);
+        reg.emplace<UiShapeIconTriangleTag>(e);
         reg.emplace<UiPosition>(e, 450.0f, 1140.0f);
         reg.emplace<UiBounds>(e, 140.0f, 100.0f);
         auto& label = reg.emplace<UiLabel>(e);
@@ -102,6 +108,16 @@ void spawn_gameplay_screen(entt::registry& reg) {
         auto& label = reg.emplace<UiLabel>(e);
         ui_label_set(label, "||");
         reg.emplace<OnPress>(e, ActionId::PauseButton);
+    }
+    {
+        // ChainSlot (label)
+        auto e = reg.create();
+        reg.emplace<GameplayHudTag>(e);
+        reg.emplace<UiLabelTag>(e);
+        reg.emplace<UiPosition>(e, 80.0f, 80.0f);
+        reg.emplace<UiBounds>(e, 160.0f, 32.0f);
+        auto& label = reg.emplace<UiLabel>(e);
+        (void)label;  // dynamic-text slot; bound by render system
     }
 }
 

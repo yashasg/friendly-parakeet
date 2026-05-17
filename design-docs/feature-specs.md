@@ -201,10 +201,16 @@ void input_system(entt::registry& reg, float raw_dt);
 // Called once at startup (and on dispatcher swap).
 void wire_input_dispatcher(entt::registry& reg);
 
-// raygui screen controllers (e.g. gameplay_hud_screen_controller) enqueue
-// ShapePress*Event / Menu*Event on UI hits — they are the dominant
-// press-event producer alongside input_system's keyboard fallbacks.
-void gameplay_hud_process_button_input(entt::registry& reg);
+// Entity-driven UI dispatch (issue #1287, completed in #1297): each
+// migrated screen — including the gameplay HUD — relies on
+// `ui_update_system` to hit-test `UiPosition`/`UiBounds`/`OnPress`
+// entities and dispatch the matching action. The legacy
+// `screen_controllers/*_screen_controller.cpp` raygui producers are
+// being removed in lockstep. Gameplay HUD lane buttons (Circle /
+// Square / Triangle) emit `ShapePress*Event`s through this same
+// system; the Pause button enqueues a `NextPhasePausedTag` phase
+// transition.
+void ui_update_system(entt::registry& reg);
 
 // Automated test player: enqueues Go*Event / ShapePress*Event on the
 // dispatcher from scripted patterns. Replaces human input when running

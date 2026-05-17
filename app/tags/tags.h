@@ -306,3 +306,32 @@ struct UiToggleTag {};
 // destroys them.
 struct LevelCardTag       {};
 struct DifficultyButtonTag {};
+
+// ── Gameplay HUD lane buttons (issue #1297) ──────────────────────────
+// The three shape buttons (Circle / Square / Triangle) in the gameplay HUD
+// carry this marker plus a per-shape `UiShapeIcon*Tag` (for the flat icon
+// row in `shape_draw_2d`) and the codegen-default `UiDummyRecTag`. Per
+// Fabian existential processing the per-shape identity is the tag rather
+// than a Shape-typed field, and the lane button vs the static Title-screen
+// shape preview is distinguished by presence of this marker.
+//
+// Render path: a dedicated lane button pass in `ui_render_system` draws
+// the background fill + active border + flat icon + approach ring
+// (consumed from `ApproachRing` written by `approach_ring_envelope_system`).
+// The generic `UiShapeIcon*Tag` icon pass excludes `LaneButtonTag` so the
+// Title-screen preview isn't dragged into the lane-button visuals.
+//
+// Input path: a dedicated lane button pass in `ui_update_system` carries
+// the click/button_touch_up split semantics from the legacy
+// `gameplay_hud_process_button_input` (#956 / #986) — `input.click` and
+// `input.button_touch_up` both fire the press, plain `input.touch_up`
+// (swipe-zone release) does not.
+struct LaneButtonTag {};
+
+// Chain meaningful-streak background pulse marker (issue #1297). Emplaced
+// by `gameplay_hud_bind_system` on the ChainSlot entity when
+// `ScoreState::chain_count >= 5`; removed otherwise. The renderer
+// iterates the view to draw the pulsing border behind the chain label.
+// Presence on a UI entity IS the "draw pulse this frame" signal —
+// Fabian existential processing.
+struct ChainBgPulseTag {};

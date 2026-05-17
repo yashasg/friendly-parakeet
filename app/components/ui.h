@@ -94,3 +94,44 @@ struct DifficultyIndex {
 struct UiToggleState {
     bool on = false;
 };
+
+// Per-entity font-size override for `UiLabel` rendering (issue #1297).
+// When absent the renderer falls back to the bounds-height heuristic
+// (height ≥ 80 ⇒ 56, else 24). Written by per-screen bind systems for
+// slots that need explicit sizes (gameplay HUD score / high score /
+// chain / energy label). `size <= 0` is ignored (treated as "use the
+// fallback") to keep the component cheap to default-construct.
+struct UiLabelFontSize {
+    int size = 0;
+};
+
+// Per-entity alpha override for `UiLabel` rendering (issue #1297). When
+// absent the renderer uses 1.0. Written by per-screen bind systems for
+// slots that need dimming (gameplay HUD high score 0.7, chain 0.7/0.95,
+// energy label 0.8). Values outside [0, 1] are clamped at render time.
+struct UiLabelAlpha {
+    float value = 1.0f;
+};
+
+// Per-lane-button approach ring (issue #1297). Emplaced + updated each
+// frame by `approach_ring_envelope_system` on every `LaneButtonTag`
+// entity. The component is the contract between the envelope system
+// (which knows the beat scheduler and obstacle distances) and the lane
+// button render pass (which knows the button geometry).
+//
+// `visible == false` means no ring draws this frame. Otherwise:
+//   - `radius` is the ring radius around the button center.
+//   - `alpha_scale` is the global multiplier on the ring color alpha.
+//   - `color_*` are the precomputed tier color (Far / Near / Perfect —
+//     the discriminator on the original `GameplayHudRingCue` is collapsed
+//     into the data the renderer needs, matching Fabian's principle that
+//     the consumer should not branch on labels).
+struct ApproachRing {
+    bool          visible     = false;
+    float         radius      = 0.0f;
+    float         alpha_scale = 0.0f;
+    unsigned char color_r     = 0;
+    unsigned char color_g     = 0;
+    unsigned char color_b     = 0;
+    unsigned char color_a     = 0;
+};
