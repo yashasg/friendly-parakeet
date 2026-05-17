@@ -1,5 +1,7 @@
 #include "persistence_policy_system.h"
 
+#include <array>
+#include <cstddef>
 #include <cstdlib>
 #include <string>
 #include <string_view>
@@ -196,17 +198,27 @@ Result flush_persistence_writes(const std::filesystem::path& path) {
 }
 
 const char* status_name(const Status status) {
-    switch (status) {
-        case Status::Success: return "success";
-        case Status::MissingFile: return "missing_file";
-        case Status::CorruptData: return "corrupt_data";
-        case Status::PathUnavailable: return "path_unavailable";
-        case Status::DirectoryCreateFailed: return "directory_create_failed";
-        case Status::FileOpenFailed: return "file_open_failed";
-        case Status::FileReadFailed: return "file_read_failed";
-        case Status::FileWriteFailed: return "file_write_failed";
-    }
-    return "unknown";
+    // Fabian Principle 1 / issue #1306: enum-as-lookup-key into a static
+    // table. Row order must match the `Status` declaration in
+    // `app/systems/persistence_policy_system.h`; the `static_assert` pins
+    // the table size to the trailing enumerator (`FileWriteFailed`).
+    static constexpr std::array<const char*, 8> kNameByStatus{{
+        /* Success               */ "success",
+        /* MissingFile           */ "missing_file",
+        /* CorruptData           */ "corrupt_data",
+        /* PathUnavailable       */ "path_unavailable",
+        /* DirectoryCreateFailed */ "directory_create_failed",
+        /* FileOpenFailed        */ "file_open_failed",
+        /* FileReadFailed        */ "file_read_failed",
+        /* FileWriteFailed       */ "file_write_failed",
+    }};
+    static_assert(kNameByStatus.size() ==
+                  static_cast<std::size_t>(Status::FileWriteFailed) + 1,
+                  "kNameByStatus must cover every Status enumerator");
+
+    const auto idx = static_cast<std::size_t>(status);
+    if (idx >= kNameByStatus.size()) return "unknown";
+    return kNameByStatus[idx];
 }
 
 }  // namespace persistence
