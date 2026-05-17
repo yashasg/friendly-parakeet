@@ -142,6 +142,16 @@ TEST_CASE("ToString: Shape covers all shapes", "[ToString]") {
     CHECK(to_string(Shape::Hexagon)  == "Hexagon");
 }
 
+TEST_CASE("ToString: HapticEvent covers all events", "[ToString]") {
+    CHECK(to_string(HapticEvent::ShapeShift)   == "ShapeShift");
+    CHECK(to_string(HapticEvent::LaneSwitch)   == "LaneSwitch");
+    CHECK(to_string(HapticEvent::JumpLand)     == "JumpLand");
+    CHECK(to_string(HapticEvent::DeathCrash)   == "DeathCrash");
+    CHECK(to_string(HapticEvent::NewHighScore) == "NewHighScore");
+    CHECK(to_string(HapticEvent::RetryTap)     == "RetryTap");
+    CHECK(to_string(HapticEvent::UIButtonTap)  == "UIButtonTap");
+}
+
 // ObstacleKind enum was eradicated in issue #1202/#1204 (per Fabian's
 // existential processing); each former value is now a zero-column tag
 // (ShapeGateTag/SplitPathTag/OnsetMarkerTag) and the magic_enum
