@@ -20,7 +20,9 @@
 #include <raygui.h>
 #include <raylib.h>
 #include <raymath.h>
+#include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 #include <string>
 #include <utility>
@@ -32,12 +34,24 @@
 namespace {
 
 const Font& popup_font_for_size(const TextContext& ctx, FontSize font_size) {
-    switch (font_size) {
-        case FontSize::Small:  return ctx.font_small;
-        case FontSize::Medium: return ctx.font_medium;
-        case FontSize::Large:  return ctx.font_large;
-    }
-    return ctx.font_medium;
+    // Fabian Principle 1 / issue #1306: label-to-value lookup by ordinal,
+    // not by `switch`. `Font` carries runtime GPU state so a `constexpr`
+    // array of `Font` is not viable; instead the table is a `std::array`
+    // of pointer-to-data-members, indexed by `static_cast<size_t>(font_size)`.
+    // Row order must match the `FontSize` declaration in
+    // `app/components/text.h`.
+    static constexpr std::array<const Font TextContext::*, 3> kFontByFontSize{{
+        /* Small  */ &TextContext::font_small,
+        /* Medium */ &TextContext::font_medium,
+        /* Large  */ &TextContext::font_large,
+    }};
+    static_assert(kFontByFontSize.size() ==
+                  static_cast<std::size_t>(FontSize::Large) + 1,
+                  "kFontByFontSize must cover every FontSize enumerator");
+
+    const auto idx = static_cast<std::size_t>(font_size);
+    if (idx >= kFontByFontSize.size()) return ctx.font_medium;
+    return ctx.*kFontByFontSize[idx];
 }
 
 // ── Entity-driven UI render (issue #1287) ──────────────────────────────────
