@@ -30,3 +30,34 @@ TEST_CASE("join_app_dir: app_dir missing separator gets '/' inserted", "[util][a
     // raw concat would yield "/path/to/appcontent/x.ttf" (broken).
     CHECK(util::join_app_dir("/path/to/app", "content/x.ttf") == "/path/to/app/content/x.ttf");
 }
+
+// Issue #1361: when the caller passes an already-absolute path as `rel`
+// (e.g. PlaySessionContentOverride beatmap_path pointing at /var/folders/...
+// in tests), the old helper would produce "<app_dir>//var/folders/..." and
+// open() would silently fail before the caller's fallback retry succeeded —
+// leaving a spurious WARNING: FILEIO line in every run.
+
+TEST_CASE("join_app_dir: absolute POSIX rel passes through unchanged", "[util][app_dir_path][issue1361]") {
+    CHECK(util::join_app_dir("/path/to/app/", "/var/folders/06/tmp.json") == "/var/folders/06/tmp.json");
+    CHECK(util::join_app_dir("/path/to/app", "/var/folders/06/tmp.json") == "/var/folders/06/tmp.json");
+}
+
+TEST_CASE("join_app_dir: absolute Windows drive-letter rel passes through unchanged", "[util][app_dir_path][issue1361]") {
+    CHECK(util::join_app_dir("C:\\path\\to\\app\\", "D:\\temp\\beatmap.json") == "D:\\temp\\beatmap.json");
+    CHECK(util::join_app_dir("C:\\path\\to\\app\\", "c:/temp/beatmap.json") == "c:/temp/beatmap.json");
+}
+
+TEST_CASE("join_app_dir: absolute Windows UNC rel passes through unchanged", "[util][app_dir_path][issue1361]") {
+    CHECK(util::join_app_dir("C:\\path\\to\\app\\", "\\\\server\\share\\file.json") == "\\\\server\\share\\file.json");
+}
+
+TEST_CASE("is_absolute_path: recognizes POSIX, Windows UNC, and drive-letter paths", "[util][app_dir_path][issue1361]") {
+    CHECK(util::is_absolute_path("/var/folders/x.json"));
+    CHECK(util::is_absolute_path("\\\\server\\share"));
+    CHECK(util::is_absolute_path("C:\\foo"));
+    CHECK(util::is_absolute_path("c:/foo"));
+    CHECK_FALSE(util::is_absolute_path(""));
+    CHECK_FALSE(util::is_absolute_path("content/x.ttf"));
+    CHECK_FALSE(util::is_absolute_path("9:not-a-drive"));
+    CHECK_FALSE(util::is_absolute_path("AB:not-a-drive")); // two letters then colon is not a drive
+}
