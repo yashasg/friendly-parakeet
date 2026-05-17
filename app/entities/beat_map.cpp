@@ -282,11 +282,12 @@ inline constexpr std::array<ShapeBinAccessor, kShapeCount> kSplitPathSinks{
 // Parsing dispatches into per-kind vectors directly by the JSON `kind`
 // string. No discriminator enum is reintroduced — see `parse_beat_map`
 // below where each known kind string has its own dispatch branch.
-bool kind_string_requires_shape(std::string_view kind_str) {
-    return kind_str == "shape_gate" || kind_str == "split_path";
-}
-
-bool kind_string_requires_lane(std::string_view kind_str) {
+//
+// `shape_gate` and `split_path` rows both require a shape + lane payload;
+// `onset_marker` rows require neither. The two payload fields are validated
+// independently in `parse_beat_map`, so this single predicate covers both
+// "missing shape" and "missing lane" checks (issue #1414).
+bool kind_string_requires_payload(std::string_view kind_str) {
     return kind_str == "shape_gate" || kind_str == "split_path";
 }
 
@@ -494,7 +495,7 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             }
             parsed_shape = *shape_opt;
             has_parsed_shape = true;
-        } else if (kind_string_requires_shape(kind_str)) {
+        } else if (kind_string_requires_payload(kind_str)) {
             errors.push_back({entry.beat_index,
                 "Missing required shape for obstacle kind '" + kind_str + "' at beat "
                     + std::to_string(entry.beat_index)});
@@ -507,7 +508,7 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             parse_ok = false;
             continue;
         }
-        if (!b.contains("lane") && kind_string_requires_lane(kind_str)) {
+        if (!b.contains("lane") && kind_string_requires_payload(kind_str)) {
             errors.push_back({entry.beat_index,
                 "Missing required lane for obstacle kind '" + kind_str + "' at beat "
                     + std::to_string(entry.beat_index)});
