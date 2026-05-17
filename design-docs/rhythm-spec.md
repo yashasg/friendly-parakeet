@@ -176,7 +176,9 @@ constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20; // caps at 2.0x from chain 21
   │  WorldPosition     8B ← world position (single Vector2)     │
   │  MotionVelocity     8B ← dx, dy                             │
   │  ObstacleTag        0B ← marker                             │
-  │  RequiredShape      4B ← shape + lane                       │
+  │  ShapeGate / SplitPath / OnsetMarkerTag  0B ← archetype     │
+  │  RequiredShape*Tag  0B ← one of 4 per-shape tags            │
+  │  int8_t lane        1B ← raw lane index (issue #1198)       │
   │  BeatInfo          12B ← beat_index, arrival_time, spawn    │
   │  TimingGrade        5B ← scoring (existential)              │
   │  ScoredTag          0B ← scored marker (prevents re-fire)   │
@@ -187,15 +189,17 @@ constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20; // caps at 2.0x from chain 21
 
 ```cpp
 struct BeatEntry {
-    int          beat_index   = 0;           // beat index (not seconds)
-    Shape        shape        = Shape::Circle;
-    int8_t       lane         = 1;
-    uint8_t      blocked_mask = 0;
-    float        time_sec     = 0.0f;        // optional authored timestamp
-    bool         has_time_sec = false;       // true → time_sec wins over beat_index
-    // Archetype kind is a per-archetype tag (ShapeGateTag / SplitPathTag /
-    // OnsetMarkerTag from app/tags/tags.h) on the spawned obstacle entity;
-    // BeatEntry no longer carries a runtime kind discriminator (issue #1202/#1204).
+    int    beat_index   = 0;           // beat index (not seconds)
+    int8_t lane         = 1;
+    float  time_sec     = 0.0f;        // optional authored timestamp
+    bool   has_time_sec = false;       // true → time_sec wins over beat_index
+    // Archetype kind is identified by *which per-kind vector in BeatMap*
+    // the row lives in (shape_gate_* / split_path_* / onset_marker_beats).
+    // Required shape (for shape_gate / split_path) is identified by
+    // *which per-shape sub-vector* the row lives in. The former
+    // `Shape shape` and `uint8_t blocked_mask` fields were eradicated
+    // per issues #1198 / #1202 / #1204 — the columns collapsed into
+    // table membership.
 };
 
 struct BeatMap {
@@ -208,7 +212,17 @@ struct BeatMap {
     float                    duration   = 180.0f;
     std::string              difficulty;
     std::vector<float>       beat_times;     // optional analysed onset table
-    std::vector<BeatEntry>   beats;
+
+    // Seven per-(kind, shape) vectors replace the former single `beats`
+    // vector — see `app/components/beat_map.h`. Hexagon is not a valid
+    // required shape, so no `*_hexagon_beats` vector exists.
+    std::vector<BeatEntry>   shape_gate_circle_beats;
+    std::vector<BeatEntry>   shape_gate_square_beats;
+    std::vector<BeatEntry>   shape_gate_triangle_beats;
+    std::vector<BeatEntry>   split_path_circle_beats;
+    std::vector<BeatEntry>   split_path_square_beats;
+    std::vector<BeatEntry>   split_path_triangle_beats;
+    std::vector<BeatEntry>   onset_marker_beats;
 };
 ```
 

@@ -44,9 +44,11 @@
   │ Position             │  8B  │ ~10 max    │ HOT: every frame ×3sys │
   │ Velocity             │  8B  │ ~10 max    │ HOT: scroll_system     │
   │ Obstacle             │  4B  │ ~10 max    │ WARM: collision, decide│
-  │ RequiredShape        │  1B  │ ~6 max     │ WARM: collision, decide│
-  │ BlockedLanes         │  1B  │ ~3 max     │ WARM: collision, decide│
-  │ RequiredLane         │  1B  │ ~2 max     │ WARM: collision, decide│
+  │ ShapeGate/SplitPath/ │  0B  │ ~10 max    │ WARM: archetype select │
+  │   OnsetMarkerTag     │      │            │   (one per obstacle)   │
+  │ RequiredShape*Tag    │  0B  │ ~6 max     │ WARM: collision, decide│
+  │   (per-shape tag)    │      │            │                        │
+  │ int8_t lane          │  1B  │ ~6 max     │ WARM: collision, decide│
   │ BeatInfo             │ 12B  │ ~10 max    │ COLD: beat scheduling  │
   ├──────────────────────┼──────┼────────────┼────────────────────────┤
   │ TestPlayerState      │~2.6KB│ 1 singleton│ COLD: once per frame   │
@@ -62,13 +64,14 @@
 ## Data Flow (Transforms)
 
 ```
-  ┌──────────────┐     ┌──────────────┐     ┌────────────────┐
-  │ Position     │     │ Obstacle     │     │ BeatInfo       │
-  │ (per obs)    │     │ RequiredShape│     │ arrival_time   │
-  │              │     │ BlockedLanes │     │                │
-  └──────┬───────┘     │ RequiredLane │     └───────┬────────┘
-         │             │ Obstacle.kind│             │
-         │             └──────┬───────┘             │
+  ┌──────────────┐     ┌──────────────────┐     ┌────────────────┐
+  │ Position     │     │ Obstacle         │     │ BeatInfo       │
+  │ (per obs)    │     │ RequiredShape*Tag│     │ arrival_time   │
+  │              │     │ ShapeGate /      │     │                │
+  └──────┬───────┘     │   SplitPath /    │     └───────┬────────┘
+         │             │   OnsetMarkerTag │             │
+         │             │ int8_t lane      │             │
+         │             └──────┬───────────┘             │
          ▼                    ▼                     ▼
   ┌──────────────────────────────────────────────────────────┐
   │              test_player_system                          │
@@ -359,16 +362,17 @@ a no-op.
 
   ┌─────────────────────────────────────────────────────────────────┐
   │                                                                 │
-  │  Has RequiredShape?                                             │
-  │    YES → target_shape = required.shape                          │
+  │  has_required_shape_tag(reg, e)?  (any RequiredShape*Tag)       │
+  │    YES → target_shape = current_required_shape(reg, e)          │
+  │           (helper in app/util/shape_tag.h)                      │
   │                                                                 │
-  │  Has BlockedLanes?                                              │
-  │    YES → is current lane blocked?                               │
-  │      YES → target_lane = nearest unblocked lane                 │
-  │      NO  → target_lane stays -1 (no change)                     │
+  │  view<ShapeGateTag>().contains(e)?                              │
+  │    YES → target_lane = reg.get<int8_t>(e)  (positional lane;    │
+  │           player must align here to pass)                       │
   │                                                                 │
-  │  Has RequiredLane?                                               │
-  │    YES → target_lane = required.lane                             │
+  │  view<SplitPathTag>().contains(e)?                              │
+  │    YES → target_lane = reg.get<int8_t>(e)  (required dodge      │
+  │           lane the player must be in)                           │
   │                                                                 │
   └─────────────────────────────────────────────────────────────────┘
 ```
@@ -479,7 +483,8 @@ a no-op.
   void on_obstacle_spawn(entt::registry& reg, entt::entity entity) {
       auto* log = reg.ctx().find<SessionLog>();
       if (!log || !log->file) return;
-      // read Obstacle, BeatInfo, RequiredShape from entity
+      // read Obstacle, BeatInfo, RequiredShape*Tag (via
+      // current_required_shape) and the raw int8_t lane from entity
       // write [GAME] OBSTACLE_SPAWN line
   }
 ```

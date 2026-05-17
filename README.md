@@ -164,8 +164,12 @@ shape_window_system -> miss_detection_system -> scoring_system
   the player entity: `ShapeWindowMorphInTag` → `ShapeWindowActiveTag` →
   `ShapeWindowMorphOutTag` → absence of all three (Idle). Transitions are
   component-table operations, not enum compares.
-- **Collision resolution** uses EnTT structural views grouped by obstacle components
-  (`BlockedLanes`, `RequiredShape`, `RequiredLane`), not a switch on obstacle kind
+- **Collision resolution** uses EnTT structural views grouped by per-archetype
+  tags on the obstacle entity (`ShapeGateTag` / `SplitPathTag` /
+  `OnsetMarkerTag`) plus per-shape tags (`RequiredShapeCircleTag` / …`SquareTag` /
+  …`TriangleTag` / …`HexagonTag`) and a raw `int8_t` lane index, not a switch on
+  obstacle kind. The legacy `BlockedLanes`, `RequiredShape`, `RequiredLane`
+  wrapper structs were eradicated per issues #1198 / #1202 / #1204.
 - **Section labels** guide beatmap structure and intensity; obstacle patterns are authored per section
 
 ### Project Layout
