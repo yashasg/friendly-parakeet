@@ -108,7 +108,7 @@ All game state lives in the `entt::registry` (per architecture). The following i
 | `song_time` (frozen at pause) | ✅ Yes | Stored as singleton in registry context |
 | Score | ✅ Yes | `ScoreState` component |
 | HP / Energy | ✅ Yes | `EnergyState` singleton (`app/components/energy_bar.h`) |
-| Beatmap index / beat cursor | ✅ Yes | Implicit in `SongState.song_time` + `BeatMap` ctx singletons (`app/components/song_state.h`, `app/components/beat_map.h`); the scheduler re-derives the cursor each frame |
+| Beatmap index / beat cursor | ✅ Yes | `SongState.next_*_idx` cursors (ctx singleton, `app/components/song_state.h`) advanced by `beat_scheduler_system`; chart in `BeatMap` component on the singleton `BeatMapTag` entity (`app/components/beat_map.h`, `app/entities/beat_map.h`) |
 | Current shape | ✅ Yes | `PlayerShape` component |
 | Current lane | ✅ Yes | `Lane` component (`app/components/player.h`) |
 | Active obstacles (entities) | ✅ Yes | Registry intact in memory |
