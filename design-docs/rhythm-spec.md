@@ -128,16 +128,15 @@ constexpr float MIN_MORPH        = 0.060f;
 // morph_duration = max(BASE_MORPH_BEATS * beat_period, MIN_MORPH)
 
 // ── Window scale factors (applied to remaining window on early hit) ──
-// Exposed only via window_scale_for_tier() in app/util/rhythm_math.h —
-// no named constexpr constants exist; callers pass a TimingTier.
-inline float window_scale_for_tier(TimingTier tier) {
-    switch (tier) {
-        case TimingTier::Perfect: return 0.50f;  // halve remaining window
-        case TimingTier::Good:    return 0.75f;  // cut by 25%
-        case TimingTier::Ok:      return 1.00f;  // no change (default)
-        case TimingTier::Bad:     return 1.00f;  // no window-collapse reward
-    }
-    return 1.00f;
+// The former `TimingTier` enum and per-tier `switch` were eradicated per
+// issue #1202/#1204. The canonical mechanic is a single delta-keyed
+// lookup that consults the threshold ladder directly — Perfect/Good/Ok/Bad
+// are zero-column tags emplaced alongside the returned scale. See
+// `app/util/rhythm_math.h::window_scale_from_delta_abs()`:
+inline float window_scale_from_delta_abs(float delta_seconds_abs) {
+    if (delta_seconds_abs <= kTimingPerfectSeconds + kEps) return 0.50f;
+    if (delta_seconds_abs <= kTimingGoodSeconds    + kEps) return 0.75f;
+    return 1.00f;  // Ok and Bad: neutral (no window-collapse reward)
 }
 
 // ── Morph duration (seconds to animate shape change) ────────────────
@@ -189,12 +188,14 @@ constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20; // caps at 2.0x from chain 21
 ```cpp
 struct BeatEntry {
     int          beat_index   = 0;           // beat index (not seconds)
-    ObstacleKind kind         = ObstacleKind::ShapeGate;
     Shape        shape        = Shape::Circle;
     int8_t       lane         = 1;
     uint8_t      blocked_mask = 0;
     float        time_sec     = 0.0f;        // optional authored timestamp
     bool         has_time_sec = false;       // true → time_sec wins over beat_index
+    // Archetype kind is a per-archetype tag (ShapeGateTag / SplitPathTag /
+    // OnsetMarkerTag from app/tags/tags.h) on the spawned obstacle entity;
+    // BeatEntry no longer carries a runtime kind discriminator (issue #1202/#1204).
 };
 
 struct BeatMap {
@@ -248,20 +249,25 @@ struct SongState {
 ## PlayerShape (per entity)
 
 ```cpp
-enum class WindowPhase { Idle, MorphIn, Active, MorphOut };
+// The former `enum class WindowPhase { Idle, MorphIn, Active, MorphOut }`
+// was eradicated per issue #1202/#1204. The phase identity lives as one of
+// three per-phase tags on the player entity (Idle = absence of all three):
+//   ShapeWindowMorphInTag, ShapeWindowActiveTag, ShapeWindowMorphOutTag
+// Both are declared in `app/tags/tags.h`; transitions are component-table
+// operations (emplace/remove), no enum compare. The target shape the press
+// is morphing toward similarly lives as `TargetShapeCircleTag` / `…SquareTag` /
+// `…TriangleTag` / `…HexagonTag` on the same entity. The current settled
+// shape lives as `ShapeCircleTag` / `…SquareTag` / etc.
 
 struct PlayerShape {
-    Shape current = Shape::Circle;  // player_entity initializes this to Hexagon
     float morph_t = 1.0f;           // [0,1] visual interpolation; 1.0 = settled
 };
 
 struct ShapeWindow {
-    Shape       target_shape = Shape::Circle; // player_entity initializes this to Hexagon
-    WindowPhase phase        = WindowPhase::Idle;
-    bool        graded       = false;         // window already graded this cycle
-    float       window_timer = 0.0f;          // seconds in current phase/window
-    float       window_start = 0.0f;          // absolute song_time of window start
-    float       press_time   = -1.0f;         // absolute song_time of input
+    bool  graded       = false;   // window already graded this cycle
+    float window_timer = 0.0f;    // seconds in current phase/window
+    float window_start = 0.0f;    // absolute song_time of window start
+    float press_time   = -1.0f;   // absolute song_time of input
 };
 ```
 
@@ -355,8 +361,9 @@ struct SongResults {
            ↓
   ┌─ TIMING WINDOW ────────────────────────────────────────────┐
   │ shape_window_system                            ★ NEW       │
-  │   → advances WindowPhase state machine                     │
-  │     Active → MorphOut → Idle (Hexagon)                    │
+  │   → advances per-phase tag state machine                   │
+  │     ShapeWindowActiveTag → ShapeWindowMorphOutTag → Idle   │
+  │     (Idle = no per-phase tag present; Hexagon)             │
   │   → guarded by SongState existing (not song->playing)      │
   │   → MorphIn ticking is owned by                            │
   │     shape_window_activation_system above                   │
