@@ -10,7 +10,7 @@
 // belong to which screen" lives in tag presence — not in an enum field,
 // not in a god-struct. Each `.rgl` produces a `spawn_<screen>_screen()` +
 // `despawn_<screen>_screen()` pair (codegen, see
-// `app/ui/generated/screen_spawners.h`). This system converges the entity
+// `app/systems/generated/screen_spawners.h`). This system converges the entity
 // set toward whatever `GamePhase*Tag` is currently in `reg.ctx()`: if the
 // matching screen-tag has no entities and the phase tag is present, spawn;
 // if the phase tag is absent and entities still exist, despawn.

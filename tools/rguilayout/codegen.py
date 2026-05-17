@@ -17,7 +17,7 @@ for the component / tag declarations.
 Invocation (driven by CMake):
 
     python3 tools/rguilayout/codegen.py \\
-        --output-dir   app/ui/generated \\
+        --output-dir   app/systems/generated \\
         --actions-header app/components/actions.h \\
         content/ui/screens/title.rgl \\
         content/ui/screens/settings.rgl \\

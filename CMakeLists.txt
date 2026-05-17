@@ -119,7 +119,6 @@ endforeach()
 # ── Game library (shared between exe and tests) ──────────────
 file(GLOB SYSTEM_SOURCES CONFIGURE_DEPENDS app/systems/*.cpp)
 file(GLOB UTIL_SOURCES CONFIGURE_DEPENDS app/util/*.cpp)
-file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
 file(GLOB ENTITY_SOURCES CONFIGURE_DEPENDS app/entities/*.cpp)
 # Exclude files requiring a live raylib context from the library. They are
 # compiled directly into the executable targets.
@@ -129,15 +128,16 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)song_playback_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)camera_system\\.cpp$")
 
-# ── rguilayout codegen (issue #1193) ─────────────────────────
+# ── rguilayout codegen (issue #1193, relocated #1325) ────────
 # Each .rgl in content/ui/screens/ produces a <stem>_screen.cpp under
-# app/ui/generated/ via tools/rguilayout/codegen.py. Generated sources are
-# committed for deterministic CI / fresh-checkout builds; the custom_command
-# below only re-runs codegen when a .rgl (or the script) changes.
+# app/systems/generated/ via tools/rguilayout/codegen.py. Generated sources
+# are committed for deterministic CI / fresh-checkout builds; the
+# custom_command below only re-runs codegen when a .rgl (or the script)
+# changes.
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 set(RGUILAYOUT_CODEGEN_SCRIPT ${CMAKE_SOURCE_DIR}/tools/rguilayout/codegen.py)
 set(RGUILAYOUT_ACTIONS_HEADER ${CMAKE_SOURCE_DIR}/app/components/actions.h)
-set(RGUILAYOUT_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/app/ui/generated)
+set(RGUILAYOUT_OUTPUT_DIR ${CMAKE_SOURCE_DIR}/app/systems/generated)
 set(RGUILAYOUT_RGL_FILES
     ${CMAKE_SOURCE_DIR}/content/ui/screens/title.rgl
     ${CMAKE_SOURCE_DIR}/content/ui/screens/level_select.rgl
@@ -222,7 +222,7 @@ set(SHAPESHIFTER_MACOS_FRAMEWORKS
     "-framework CoreVideo"
 )
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${UTIL_SOURCES} ${UI_SOURCES} ${ENTITY_SOURCES} ${RGUILAYOUT_GENERATED_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${UTIL_SOURCES} ${ENTITY_SOURCES} ${RGUILAYOUT_GENERATED_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated

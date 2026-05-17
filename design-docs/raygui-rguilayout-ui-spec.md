@@ -4,7 +4,7 @@
 
 Implemented. All migration phases described below have shipped; this spec now documents the as-built rguilayout / raygui entity-spawner UI architecture.
 
-This spec replaced the legacy JSON-driven UI layout path with raygui controls and rguilayout-authored/generated layout files. The current implementation lives under `app/ui/generated/<screen>_screen.cpp` (per-screen spawner functions emitted by `tools/rguilayout/` codegen), `app/systems/screen_lifecycle_system.{h,cpp}` (per-tag spawn/despawn dispatch), `app/systems/ui_render_system.cpp` (single render pass over `UiLabelTag` / `UiButtonTag` / `UiDummyRecTag` entities), and `app/systems/ui_update_system.cpp` (button-action dispatch). An intermediate per-screen render-callback folder used during migration was deleted in #1308 once #1287 (entity-driven UI) completed.
+This spec replaced the legacy JSON-driven UI layout path with raygui controls and rguilayout-authored/generated layout files. The current implementation lives under `app/systems/generated/<screen>_screen.cpp` (per-screen spawner functions emitted by `tools/rguilayout/` codegen), `app/systems/screen_lifecycle_system.{h,cpp}` (per-tag spawn/despawn dispatch), `app/systems/ui_render_system.cpp` (single render pass over `UiLabelTag` / `UiButtonTag` / `UiDummyRecTag` entities), and `app/systems/ui_update_system.cpp` (button-action dispatch). An intermediate per-screen render-callback folder used during migration was deleted in #1308 once #1287 (entity-driven UI) completed.
 
 Current runtime note: proximity rings are active HUD timing feedback driven by `app/systems/approach_ring_envelope_system.cpp` (which writes per-button `ApproachRing` components consumed by `app/systems/ui_render_system.cpp`) and are specified by
 `design-docs/rhythm-spec.md`. The migration preserved this behavior; the
@@ -12,7 +12,7 @@ historical `approach_ring` JSON layout fields (which lived in the now-removed
 `content/ui/screens/gameplay.json`) were intentionally not ported and are not
 the active C++ proximity-ring behavior.
 
-Current directive: the rguilayout application is vendored under `tools/rguilayout/`; `.rgl` files have replaced the legacy `content/ui` JSON layout sources; codegen runs at CMake configure time and writes per-screen entity-spawner `.cpp` files plus `screen_spawners.h` declarations under `app/ui/generated/`; the screen spawners are linked into `shapeshifter_lib` and called by `screen_lifecycle_system` whenever the active `GamePhase*Tag` mirror changes.
+Current directive: the rguilayout application is vendored under `tools/rguilayout/`; `.rgl` files have replaced the legacy `content/ui` JSON layout sources; codegen runs at CMake configure time and writes per-screen entity-spawner `.cpp` files plus `screen_spawners.h` declarations under `app/systems/generated/`; the screen spawners are linked into `shapeshifter_lib` and called by `screen_lifecycle_system` whenever the active `GamePhase*Tag` mirror changes.
 
 The Excalidraw tool currently returns an empty scene, so Excalidraw is not a usable source of truth for this spec. If Excalidraw is restored later, it should be used as visual reference only; rguilayout `.rgl` files remain the authoring source for compiled UI layout.
 
@@ -33,7 +33,7 @@ The Excalidraw tool currently returns an empty scene, so Excalidraw is not a usa
 
 ## Core decision: exported files own layout data
 
-The rguilayout export is the runtime boundary for UI layout data. Generated headers and per-screen entity-spawner sources are committed under `app/ui/generated/` and called by `app/systems/screen_lifecycle_system.cpp`.
+The rguilayout export is the runtime boundary for UI layout data. Generated headers and per-screen entity-spawner sources are committed under `app/systems/generated/` and called by `app/systems/screen_lifecycle_system.cpp`.
 
 The rguilayout tool itself lives in:
 
@@ -46,8 +46,8 @@ For each migrated screen, commit:
 | File | Role | Runtime behavior |
 |---|---|---|
 | `content/ui/screens/<screen>.rgl` | Editable rguilayout source replacing `content/ui/screens/<screen>.json` | Not compiled |
-| `app/ui/generated/<screen>_screen.cpp` (e.g. `title_screen.cpp`) | Codegen-emitted C++ source defining `spawn_<screen>_screen(reg)` / `despawn_<screen>_screen(reg)`. Each spawner emplaces one entity per control row from the `.rgl`, carrying atomic `UiPosition` / `UiBounds` / `UiLabel` (+ `OnPress` for buttons) plus a per-screen tag and per-kind tag (`UiLabelTag` / `UiButtonTag` / `UiDummyRecTag`). | Linked into `shapeshifter_lib`; called by `screen_lifecycle_system` when the active `GamePhase*Tag` ctx mirror changes |
-| `app/ui/generated/screen_spawners.h` | Forward declarations of every `spawn_*` / `despawn_*` pair emitted by codegen, plus the consuming-system contract comment. | Single header included by `screen_lifecycle_system.cpp` |
+| `app/systems/generated/<screen>_screen.cpp` (e.g. `title_screen.cpp`) | Codegen-emitted C++ source defining `spawn_<screen>_screen(reg)` / `despawn_<screen>_screen(reg)`. Each spawner emplaces one entity per control row from the `.rgl`, carrying atomic `UiPosition` / `UiBounds` / `UiLabel` (+ `OnPress` for buttons) plus a per-screen tag and per-kind tag (`UiLabelTag` / `UiButtonTag` / `UiDummyRecTag`). | Linked into `shapeshifter_lib`; called by `screen_lifecycle_system` when the active `GamePhase*Tag` ctx mirror changes |
+| `app/systems/generated/screen_spawners.h` | Forward declarations of every `spawn_*` / `despawn_*` pair emitted by codegen, plus the consuming-system contract comment. | Single header included by `screen_lifecycle_system.cpp` |
 
 The codegen pattern is source-emitting — there are no separate per-screen layout `.h` files. The spawner `.cpp` files compile as ordinary translation units and own their literal rectangles, anchors, and label strings directly.
 
@@ -59,7 +59,7 @@ Disallowed:
 
 - `RaguiAnchors<ScreenTag>` or similar hand-written ECS/ctx anchor structs.
 - Rebuilding `HudLayout`, `LevelSelectLayout`, or `OverlayLayout` from rguilayout constants.
-- Hand-written widget-entity spawners outside `app/ui/generated/`.
+- Hand-written widget-entity spawners outside `app/systems/generated/`.
 - Legacy UI hit-test entities whose only purpose is raygui widget hit testing.
 - Hand-written normalized-coordinate tables that duplicate `.rgl` data.
 
@@ -81,7 +81,7 @@ content/ui/screens/<screen>.rgl
         | codegen.py emits per-screen spawner source
         | (runs at CMake configure time)
         v
-app/ui/generated/<screen>_screen.cpp + screen_spawners.h
+app/systems/generated/<screen>_screen.cpp + screen_spawners.h
         |
         | linked into shapeshifter_lib
         v
@@ -140,7 +140,7 @@ Custom controls are not lifecycle-owning systems. They are immediate-mode draw f
 The UI runtime has three responsibility layers; each consumes the previous one:
 
 ```text
-app/ui/generated/<screen>_screen.cpp + screen_spawners.h   (Producer)
+app/systems/generated/<screen>_screen.cpp + screen_spawners.h   (Producer)
    - spawn_<screen>_screen(reg)   → emplace UI entities for one screen
    - despawn_<screen>_screen(reg) → destroy every entity carrying <screen>Tag
 
@@ -158,7 +158,7 @@ app/systems/ui_update_system.cpp                           (Input dispatch)
    - reads OnPress and invokes the bound action function
 ```
 
-The single producer is the codegen output under `app/ui/generated/`. Hand-written code never creates UI entities outside this contract; bind systems (`gameplay_hud_bind_system`, `game_over_scoreboard_bind_system`, etc.) only **mutate** atomic component data on spawner-emitted entities. An intermediate per-screen render-callback folder was the staging shape during migration and was deleted in #1308 once #1287 (entity-driven UI) shipped.
+The single producer is the codegen output under `app/systems/generated/`. Hand-written code never creates UI entities outside this contract; bind systems (`gameplay_hud_bind_system`, `game_over_scoreboard_bind_system`, etc.) only **mutate** atomic component data on spawner-emitted entities. An intermediate per-screen render-callback folder was the staging shape during migration and was deleted in #1308 once #1287 (entity-driven UI) shipped.
 
 Spawner sources may contain:
 
@@ -218,9 +218,9 @@ Hit-test entities are exactly the same `UiButtonTag` / `LaneButtonTag` entities 
 
 The UI pipeline is wired into `shapeshifter_lib` as follows:
 
-- `tools/rguilayout/` is the vendored authoring/tooling location. `tools/rguilayout/codegen.py` is invoked at CMake configure time to regenerate `app/ui/generated/<screen>_screen.cpp` + `screen_spawners.h` from `content/ui/screens/*.rgl`. The authoring GUI is not run in CI.
+- `tools/rguilayout/` is the vendored authoring/tooling location. `tools/rguilayout/codegen.py` is invoked at CMake configure time to regenerate `app/systems/generated/<screen>_screen.cpp` + `screen_spawners.h` from `content/ui/screens/*.rgl`. The authoring GUI is not run in CI.
 - `.rgl` layout sources live in `content/ui/screens/` unless a future global/root layout source is justified.
-- Codegen output `.cpp` files under `app/ui/generated/` are added to `shapeshifter_lib` via the `RGUILAYOUT_GENERATED_SOURCES` list in `CMakeLists.txt`.
+- Codegen output `.cpp` files under `app/systems/generated/` are added to `shapeshifter_lib` via the `RGUILAYOUT_GENERATED_SOURCES` list in `CMakeLists.txt`.
 - `app/util/raygui_impl.cpp` is the single-TU owner of `RAYGUI_IMPLEMENTATION`. The macro is set via `COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION` on that source file, and the file is excluded from unity batching (`SKIP_UNITY_BUILD_INCLUSION TRUE`) so the raygui implementation stays isolated.
 - All other UI consumer TUs (`ui_render_system.cpp`, `ui_update_system.cpp`, `screen_lifecycle_system.cpp`, the per-screen bind systems) live in `app/systems/` and pull in raygui headers normally without defining the implementation macro.
 
@@ -240,12 +240,12 @@ The native build (`shapeshifter`, `shapeshifter_tests`) and WASM build compile t
 1. Use the vendored rguilayout application under `tools/rguilayout/`.
 2. Store screen `.rgl` files as `content/ui/screens/<screen>.rgl`, replacing the matching `content/ui/screens/<screen>.json` layout source as each screen migrates.
 3. Keep `content/ui/routes.json` until routing is moved to code or another non-layout source.
-4. Codegen emits `app/ui/generated/<screen>_screen.cpp` + entries in `screen_spawners.h`.
+4. Codegen emits `app/systems/generated/<screen>_screen.cpp` + entries in `screen_spawners.h`.
 5. Wire codegen output into `shapeshifter_lib`.
 
 ### Phase 2: First screen authoring proof — done
 
-1. Authored Title: `content/ui/screens/title.rgl` → `app/ui/generated/title_screen.cpp`.
+1. Authored Title: `content/ui/screens/title.rgl` → `app/systems/generated/title_screen.cpp`.
 2. Tap/Enter start behavior and web exit-button gating are preserved by the codegen-emitted `OnPress` payloads + per-action handlers in `ui_update_system.cpp`.
 3. Generated source compiles into `shapeshifter_lib` and renders via `ui_render_system`.
 
@@ -255,11 +255,11 @@ raygui codegen build support, spawner compilation, native CI coverage, and WASM 
 
 ### Phase 4: Menus and overlays — done
 
-Tutorial, Paused, Game Over, Song Complete, Level Select, and Settings each have a codegen-emitted spawner under `app/ui/generated/` and a matching row in `screen_lifecycle_system.cpp`. Their JSON / layout-cache / hand-written widget-entity dependencies have been removed.
+Tutorial, Paused, Game Over, Song Complete, Level Select, and Settings each have a codegen-emitted spawner under `app/systems/generated/` and a matching row in `screen_lifecycle_system.cpp`. Their JSON / layout-cache / hand-written widget-entity dependencies have been removed.
 
 ### Phase 5: Gameplay HUD — done
 
-HUD placement is driven by `app/ui/generated/gameplay_screen.cpp` (entity spawner). Shape buttons (`LaneButtonTag`) and the energy bar (`EnergyBarTag`) are implemented as raygui-style custom immediate-mode draw functions selected by per-kind tag inside `ui_render_system`. Stale approach-ring layout data was not migrated; the active proximity-ring timing cue is preserved via per-`LaneButtonTag` `ApproachRing` components written by `approach_ring_envelope_system`.
+HUD placement is driven by `app/systems/generated/gameplay_screen.cpp` (entity spawner). Shape buttons (`LaneButtonTag`) and the energy bar (`EnergyBarTag`) are implemented as raygui-style custom immediate-mode draw functions selected by per-kind tag inside `ui_render_system`. Stale approach-ring layout data was not migrated; the active proximity-ring timing cue is preserved via per-`LaneButtonTag` `ApproachRing` components written by `approach_ring_envelope_system`.
 
 ### Phase 6: Delete old UI layout path — done (with one exception)
 
@@ -276,7 +276,7 @@ HUD placement is driven by `app/ui/generated/gameplay_screen.cpp` (entity spawne
 - Native unity build still catches ODR hazards in hand-written code; the `RAYGUI_IMPLEMENTATION` TU is excluded from unity batching.
 - WASM build remains warning-free and does not unity-merge raygui implementation or generated C.
 - No runtime path opens `content/ui/screens/*.json` (those files are gone).
-- No project-owned `HudLayout`, `LevelSelectLayout`, or `OverlayLayout` cache struct exists; layout geometry lives only inside the per-screen spawner `.cpp` files under `app/ui/generated/` as literal constants emitted from each `.rgl` source.
+- No project-owned `HudLayout`, `LevelSelectLayout`, or `OverlayLayout` cache struct exists; layout geometry lives only inside the per-screen spawner `.cpp` files under `app/systems/generated/` as literal constants emitted from each `.rgl` source.
 - No stale JSON `approach_ring` data is referenced by UI code; active proximity-ring rendering is driven by per-`LaneButtonTag` `ApproachRing` components written by `approach_ring_envelope_system` and consumed by `ui_render_system`.
 - Screen behavior parity is verified for title, level select, pause/resume, game over, song complete, settings, and gameplay HUD controls.
 

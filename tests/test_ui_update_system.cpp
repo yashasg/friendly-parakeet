@@ -37,7 +37,7 @@
 #include "systems/tutorial_dodge_hint_bind_system.h"
 #include "systems/ui_update_system.h"
 #include "tags/tags.h"
-#include "ui/generated/screen_spawners.h"
+#include "systems/generated/screen_spawners.h"
 #include "util/tutorial_dodge_hint.h"
 #include "util/level_content_config.h"
 

@@ -57,7 +57,7 @@ const Font& popup_font_for_size(const TextContext& ctx, FontSize font_size) {
 // ── Entity-driven UI render (issue #1287) ──────────────────────────────────
 //
 // Iterates the per-kind tag views populated by the rguilayout codegen
-// (`spawn_<screen>_screen()`, see `app/ui/generated/`). Per-screen membership
+// (`spawn_<screen>_screen()`, see `app/systems/generated/`). Per-screen membership
 // is the per-screen tag on each entity; the screen lifecycle system
 // (`app/systems/screen_lifecycle_system.h`) keeps the entity set in sync
 // with the active `GamePhase*Tag`, so this pass only sees the active

@@ -3,7 +3,7 @@
 #include "../components/actions.h"
 #include "../components/ui.h"
 #include "../tags/tags.h"
-#include "../ui/generated/screen_spawners.h"
+#include "generated/screen_spawners.h"
 #include "../util/level_content_config.h"
 
 #include <cstdio>

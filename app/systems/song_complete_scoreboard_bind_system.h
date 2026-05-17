@@ -6,7 +6,7 @@
 //
 // Writes per-frame score / high-score / NEW BEST / stats / energy text into
 // the dynamic-text label slots spawned by `spawn_song_complete_screen()`
-// (codegen, see `app/ui/generated/song_complete_screen.cpp`). The slot
+// (codegen, see `app/systems/generated/song_complete_screen.cpp`). The slot
 // entities are identified by their canonical (x, y) position baked from
 // `content/ui/screens/song_complete.rgl`; the bind table is a per-slot row
 // of (x, y, write fn) — no `switch` over a discriminator.

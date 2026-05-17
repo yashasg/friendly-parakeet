@@ -11,7 +11,7 @@ content/ui/screens/<screen>.rgl          # source-of-truth (rguilayout.app visua
         ↓
 tools/rguilayout/codegen.py              # parses .rgl, emits entity spawners
         ↓
-app/ui/generated/<screen>_screen.cpp     # generated, COMMITTED
+app/systems/generated/<screen>_screen.cpp     # generated, COMMITTED
         ↓
 linked into shapeshifter_lib via CMakeLists.txt
 ```
@@ -50,14 +50,14 @@ void despawn_<screen>_screen(entt::registry& reg);   // destroys all entities wi
    `CMakeLists.txt`.
 4. Run `cmake --build build` — the codegen runs automatically when any `.rgl`
    (or the codegen script) is newer than the corresponding `.cpp`.
-5. Commit the regenerated `app/ui/generated/<screen>_screen.cpp` along with
+5. Commit the regenerated `app/systems/generated/<screen>_screen.cpp` along with
    the `.rgl` edit.
 
 You can also invoke the codegen by hand:
 
 ```bash
 python3 tools/rguilayout/codegen.py \
-    --output-dir   app/ui/generated \
+    --output-dir   app/systems/generated \
     --actions-header app/components/actions.h \
     content/ui/screens/*.rgl
 ```
@@ -93,7 +93,9 @@ The legacy `app/ui/screen_controllers/*` OOP bridge and the matching
 `app/ui/generated/*_layout.h` god-struct headers were deleted in #1308 (refs
 #1287 OoS-B / #1193). The single `RAYGUI_IMPLEMENTATION` translation unit
 now lives at `app/util/raygui_impl.cpp` (moved from `app/ui/` in #1317
-sub-PR 1, completing the Section-7 folder-allowlist sweep).
+sub-PR 1). Issue #1325 sub-PR 3 then relocated the codegen output from
+`app/ui/generated/` to `app/systems/generated/`, completing the Section-7
+folder-allowlist sweep (`app/ui/` no longer exists).
 
 ## Doctrine
 

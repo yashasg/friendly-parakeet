@@ -26,7 +26,7 @@
 #include "test_helpers.h"
 #include "util/gameplay_hud_ring.h"
 #include "systems/ui_update_system.h"
-#include "ui/generated/screen_spawners.h"
+#include "systems/generated/screen_spawners.h"
 #include "components/ui.h"
 
 // Runs the fixed-tick input path.
@@ -412,7 +412,7 @@ TEST_CASE("pipeline: gameplay HUD shape geometry matches gameplay.rgl slots",
     // The .rgl-baked slot rectangles are the single source of truth for
     // lane button bounds. The test-local constants above are mirrors;
     // this case pins both to their `.rgl` values so the hit-test entity
-    // bounds (set in `app/ui/generated/gameplay_screen.cpp`) and the
+    // bounds (set in `app/systems/generated/gameplay_screen.cpp`) and the
     // fixtures here stay in sync. If the codegen output changes, this
     // test breaks first.
     auto reg = make_rhythm_registry();
