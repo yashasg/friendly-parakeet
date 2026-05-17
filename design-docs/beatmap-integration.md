@@ -438,9 +438,9 @@ endif()
   ✅ app/systems/shape_window_system.cpp  — timing window morphing
   ✅ app/systems/energy_system.cpp        — miss tracking and terminal failure
   ✅ app/systems/audio_system.cpp         — dispatcher-driven SFX playback
-  ✅ app/components/music.h               — raylib Music handle + state flags
+  ✅ app/systems/audio_resources.h        — MusicContext (raylib Music handle + state flags)
   ✅ app/game_loop.cpp                    — InitAudioDevice + audio lifecycle
-  ✅ app/session/play_session.cpp         — LoadMusicStream per play session
+  ✅ app/systems/play_session.cpp         — LoadMusicStream per play session
 ```
 
 `audio_system.cpp` is already in `app/systems/` so it's auto-included in
