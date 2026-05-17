@@ -18,7 +18,6 @@
 #include <raymath.h>
 #include <rlgl.h>
 #include <algorithm>
-#include <cmath>
 #include <stdexcept>
 
 namespace camera {
