@@ -39,6 +39,7 @@
 #include "tags/tags.h"
 #include "ui/generated/screen_spawners.h"
 #include "ui/tutorial_dodge_hint.h"
+#include "util/level_content_config.h"
 
 namespace {
 
@@ -1182,4 +1183,237 @@ TEST_CASE("settings_screen_bind_system: no-op when Settings entities absent",
     // No spawn_settings_screen call — the bind must short-circuit.
     settings_screen_bind_system(reg);
     SUCCEED("bind ran without spawning Settings entities");
+}
+
+// ── Level Select screen migration (#1296) ────────────────────────────────
+
+namespace {
+
+void prime_level_select_entry(entt::registry& reg) {
+    sync_game_phase_tags<GamePhaseLevelSelectTag>(reg);
+    screen_lifecycle_system(reg);
+    reg.ctx().get<GameState>().phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.05f;
+    clear_next_phase_tags(reg);
+    reg.ctx().erase<LevelSelectConfirmedTag>();
+}
+
+}  // namespace
+
+TEST_CASE("screen_lifecycle_system: spawns Level Select entities on phase entry, "
+          "despawns on exit (#1296)",
+          "[ui][screen_lifecycle_system][issue1296]") {
+    entt::registry reg = make_registry();
+    clear_next_phase_tags(reg);
+
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<LevelSelectScreenTag>().size() == 0);
+
+    sync_game_phase_tags<GamePhaseLevelSelectTag>(reg);
+    screen_lifecycle_system(reg);
+    // Static (codegen): HeaderText label + StartButton.
+    // Dynamic: LEVEL_COUNT cards + LEVEL_COUNT*DIFFICULTY_COUNT diff buttons.
+    const auto expected = 2 + content_config::LEVEL_COUNT
+                           + content_config::LEVEL_COUNT
+                             * content_config::DIFFICULTY_COUNT;
+    CHECK(reg.view<LevelSelectScreenTag>().size()
+          == static_cast<std::size_t>(expected));
+
+    // Idempotent — second tick on the same phase does not double-spawn.
+    const auto count_after_first = reg.view<LevelSelectScreenTag>().size();
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<LevelSelectScreenTag>().size() == count_after_first);
+
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<LevelSelectScreenTag>().size() == 0);
+}
+
+TEST_CASE("Level Select cards carry LevelCardTag + LevelIndex; no OnPress (#1296)",
+          "[ui][level_select][issue1296]") {
+    entt::registry reg = make_registry();
+    sync_game_phase_tags<GamePhaseLevelSelectTag>(reg);
+    screen_lifecycle_system(reg);
+
+    auto cards = reg.view<LevelCardTag, LevelIndex, LevelSelectScreenTag>();
+    int card_count = 0;
+    bool indices_seen[content_config::LEVEL_COUNT] = {};
+    for (auto e : cards) {
+        ++card_count;
+        const auto& idx = cards.get<LevelIndex>(e);
+        REQUIRE(content_config::is_valid_level_index(idx.value));
+        indices_seen[idx.value] = true;
+        // Per #1296: cards intentionally do NOT carry the regular button
+        // archetype components — Pass C of `ui_update_system` reads
+        // `LevelCardTag` + `LevelIndex` directly. Keeping them out of the
+        // generic button view means diff buttons (Pass A) and other UI
+        // buttons (Pass B) win priority when they overlap the card region.
+        CHECK_FALSE(reg.all_of<UiButtonTag>(e));
+        CHECK_FALSE(reg.all_of<OnPress>(e));
+    }
+    CHECK(card_count == content_config::LEVEL_COUNT);
+    for (int i = 0; i < content_config::LEVEL_COUNT; ++i) {
+        CHECK(indices_seen[i]);
+    }
+}
+
+TEST_CASE("Level Select difficulty buttons carry DifficultyButtonTag + LevelIndex + "
+          "DifficultyIndex + matching ActionId (#1296)",
+          "[ui][level_select][issue1296]") {
+    entt::registry reg = make_registry();
+    sync_game_phase_tags<GamePhaseLevelSelectTag>(reg);
+    screen_lifecycle_system(reg);
+
+    auto diffs = reg.view<DifficultyButtonTag, LevelIndex, DifficultyIndex,
+                          UiButtonTag, OnPress, LevelSelectScreenTag>();
+    int per_pair[content_config::LEVEL_COUNT][content_config::DIFFICULTY_COUNT] = {};
+    int total = 0;
+    for (auto e : diffs) {
+        ++total;
+        const auto& li = diffs.get<LevelIndex>(e);
+        const auto& di = diffs.get<DifficultyIndex>(e);
+        const auto& op = diffs.get<OnPress>(e);
+        REQUIRE(content_config::is_valid_level_index(li.value));
+        REQUIRE(content_config::is_valid_difficulty_index(di.value));
+        ++per_pair[li.value][di.value];
+        const ActionId expected = (di.value == 0)   ? ActionId::DifficultyEasy
+                                : (di.value == 1)   ? ActionId::DifficultyMedium
+                                                    : ActionId::DifficultyHard;
+        CHECK(op.action == expected);
+    }
+    CHECK(total
+          == content_config::LEVEL_COUNT * content_config::DIFFICULTY_COUNT);
+    for (int l = 0; l < content_config::LEVEL_COUNT; ++l) {
+        for (int d = 0; d < content_config::DIFFICULTY_COUNT; ++d) {
+            CHECK(per_pair[l][d] == 1);
+        }
+    }
+}
+
+TEST_CASE("ui_update_system: Level Select StartButton press latches "
+          "LevelSelectConfirmedTag (#1296)",
+          "[ui][ui_update_system][issue1296]") {
+    entt::registry reg = make_registry();
+    prime_level_select_entry(reg);
+
+    CHECK_FALSE(reg.ctx().contains<LevelSelectConfirmedTag>());
+
+    auto& input = reg.ctx().get<InputState>();
+    // StartButton bounds from level_select.rgl: (210, 1050, 300, 60).
+    click_at(input, 360.0f, 1080.0f);
+
+    ui_update_system(reg);
+
+    CHECK(reg.ctx().contains<LevelSelectConfirmedTag>());
+    CHECK_FALSE(any_next_phase_pending(reg));  // gated by game_state_system
+}
+
+TEST_CASE("ui_update_system: Level Select card press writes LevelSelectState::selected_level (#1296)",
+          "[ui][ui_update_system][issue1296]") {
+    entt::registry reg = make_registry();
+    prime_level_select_entry(reg);
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    lss.selected_level = 0;
+
+    // Card 2 lives at y = 200 + 2*(200+40) = 680, x = 110, h = 200, w = 500.
+    // Click within the card's bounds but NOT in the difficulty-button band
+    // (which sits at y=800-850 — well inside the card rect by design).
+    // Use the very top of card 2 (y≈700) for an unambiguous card-only hit.
+    auto& input = reg.ctx().get<InputState>();
+    click_at(input, 360.0f, 700.0f);
+
+    ui_update_system(reg);
+
+    CHECK(lss.selected_level == 2);
+}
+
+TEST_CASE("ui_update_system: Level Select difficulty press writes "
+          "LevelSelectState::selected_difficulty (#1296)",
+          "[ui][ui_update_system][issue1296]") {
+    entt::registry reg = make_registry();
+    prime_level_select_entry(reg);
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    lss.selected_level = 0;
+    lss.selected_difficulty = 1;  // medium
+
+    // Easy button under card 0: x=160 y=320 w=120 h=50.
+    auto& input = reg.ctx().get<InputState>();
+    click_at(input, 220.0f, 345.0f);
+
+    ui_update_system(reg);
+
+    CHECK(lss.selected_difficulty == 0);
+
+    // Now Hard under same card: x=160+2*(120+30)=460, y=320, w=120, h=50.
+    click_at(input, 520.0f, 345.0f);
+    ui_update_system(reg);
+    CHECK(lss.selected_difficulty == 2);
+}
+
+TEST_CASE("ui_update_system: Level Select difficulty press on non-active card "
+          "is ignored (#1296)",
+          "[ui][ui_update_system][issue1296]") {
+    entt::registry reg = make_registry();
+    prime_level_select_entry(reg);
+    auto& lss = reg.ctx().get<LevelSelectState>();
+    lss.selected_level = 0;
+    lss.selected_difficulty = 1;  // medium
+
+    // Click the Easy button under card 2 (level_index=2), but the active
+    // level is 0. The render path won't show this button, but if a stale
+    // click ever reaches dispatch the handler must no-op — pinned here.
+    // Card 2's diff row sits at y = 680 + 120 = 800.
+    auto& input = reg.ctx().get<InputState>();
+    click_at(input, 220.0f, 825.0f);
+
+    ui_update_system(reg);
+
+    // Selection unchanged.
+    CHECK(lss.selected_difficulty == 1);
+    // The card-2 click region overlaps the card's rectangle (y=680..880), so
+    // the level-card hit-test wins (first hit wins in ui_update_system).
+    // Verify the side-effect of the card press: selected_level moves to 2.
+    CHECK(lss.selected_level == 2);
+}
+
+TEST_CASE("ui_update_system: Level Select click before debounce ignored (#1296)",
+          "[ui][ui_update_system][issue1296]") {
+    entt::registry reg = make_registry();
+    sync_game_phase_tags<GamePhaseLevelSelectTag>(reg);
+    screen_lifecycle_system(reg);
+    reg.ctx().get<GameState>().phase_timer = 0.0f;
+    clear_next_phase_tags(reg);
+    reg.ctx().erase<LevelSelectConfirmedTag>();
+
+    auto& input = reg.ctx().get<InputState>();
+    click_at(input, 360.0f, 1080.0f);  // StartButton centre
+
+    ui_update_system(reg);
+
+    CHECK_FALSE(reg.ctx().contains<LevelSelectConfirmedTag>());
+}
+
+TEST_CASE("ui_update_system: LevelSelectButton on end-screens still emplaces "
+          "EndChoiceLevelSelect (#1296 regression guard)",
+          "[ui][ui_update_system][issue1296]") {
+    entt::registry reg = make_registry();
+    sync_game_phase_tags<GamePhaseGameOverTag>(reg);
+    screen_lifecycle_system(reg);
+    reg.ctx().get<GameState>().phase_timer = constants::GAME_OVER_INPUT_DELAY + 0.05f;
+    clear_next_phase_tags(reg);
+    reg.ctx().erase<EndChoiceLevelSelect>();
+
+    auto& input = reg.ctx().get<InputState>();
+    // Game Over LevelSelect button bounds from game_over.rgl: (220, 935, 280, 50).
+    click_at(input, 360.0f, 960.0f);
+
+    ui_update_system(reg);
+
+    CHECK(reg.ctx().contains<EndChoiceLevelSelect>());
+    // Must NOT have written LevelSelectState — that path is only valid on
+    // the Level Select screen itself.
+    auto* lss = reg.ctx().find<LevelSelectState>();
+    if (lss != nullptr) {
+        CHECK(lss->selected_level == 0);
+    }
 }

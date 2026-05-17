@@ -287,3 +287,22 @@ struct UiHiddenOnWebTag {};
 // the row. Codegen attaches this tag to `.rgl` button controls whose
 // name is in the NAME_EXTRA_TAGS toggle list (`tools/rguilayout/codegen.py`).
 struct UiToggleTag {};
+
+// ── Level Select dynamic UI archetypes (issue #1296) ─────────────────
+// Per Fabian's existential processing, the level-select cards and the
+// per-card difficulty buttons live as ECS entities spawned by
+// `level_select_dynamic_spawn_system` (count derived from
+// `content_config::LEVELS` and `content_config::DIFFICULTY_COUNT` — no
+// hard-coded counts in the `.rgl`). Each card carries `LevelCardTag` +
+// `LevelIndex`; each difficulty button carries `DifficultyButtonTag` +
+// `LevelIndex` (owning card) + `DifficultyIndex` (which difficulty row).
+// Both kinds also carry `UiButtonTag` + `OnPress` so the existing
+// `ui_update_system` hit-test path dispatches presses; the render path
+// excludes them from the generic GuiButton pass via `entt::exclude` and
+// runs dedicated per-tag passes that paint the rounded-rect card visual
+// and the active-state emphasis (thick border + selection bar, #469).
+// Despawn falls out for free — all entities also carry
+// `LevelSelectScreenTag` so the codegen-emitted `despawn_level_select_screen`
+// destroys them.
+struct LevelCardTag       {};
+struct DifficultyButtonTag {};
