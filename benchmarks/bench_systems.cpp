@@ -12,7 +12,6 @@
 #include "components/rendering.h"
 #include "components/particle.h"
 #include "components/rhythm.h"
-#include "components/audio.h"
 #include "systems/audio_routing.h"
 #include "constants.h"
 #include "systems/all_systems.h"

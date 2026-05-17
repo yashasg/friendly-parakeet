@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <raylib.h>
 
 // `Count` is a sentinel (always last); `static_cast<int>(SFX::Count)` replaces
 // the former `magic_enum::enum_count<SFX>()` lookup (issue #1204 bonus).
@@ -22,19 +21,7 @@ static_assert(static_cast<int>(SFX::Count) == 6,
 static_assert(static_cast<int>(SFX::ShapeShift) == 0,
               "SFX enum must be zero-based for array indexing");
 
-// Resident sound bank initialised by sfx_bank_init (app/systems/sfx_bank.cpp).
-struct SFXBank {
-    static constexpr int SFX_COUNT = static_cast<int>(SFX::Count);
-    Sound sounds[SFX_COUNT]       = {};
-    bool  sound_loaded[SFX_COUNT] = {};
-    bool  loaded                  = false;
-
-    SFXBank() = default;
-    SFXBank(const SFXBank&) = delete;
-    SFXBank& operator=(const SFXBank&) = delete;
-    SFXBank(SFXBank&& other) noexcept;
-    SFXBank& operator=(SFXBank&& other) noexcept;
-    ~SFXBank();
-
-    void release();
-};
+// The resident sound bank that owns raylib Sound handles for each SFX lives
+// in `app/systems/sfx_bank_resources.h` (issue #1358). `app/components/audio.h`
+// stays plain data — see .squad/decisions.md §"app/components parallel audit
+// verdict (consolidated)".

@@ -5,7 +5,6 @@
 #include "util/app_dir_path.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
-#include "components/audio.h"
 #include "systems/sfx_bank.h"
 #include "systems/audio_routing.h"
 #include "entities/settings.h"
