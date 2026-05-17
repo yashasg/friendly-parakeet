@@ -112,8 +112,8 @@ void unload_text_fonts(TextContext& ctx) {
 // Status → (log_level, message_template) lookup table. Per Fabian's
 // existential processing (issue #1277), behavior dispatch on the `Status`
 // discriminator is replaced with a value→data lookup — same shape as the
-// `to_string(Shape)` / `HapticEvent → TriggerPattern` lookups that the
-// issue lists as doctrinally OK.
+// `to_string(Shape)` / `HapticEvent → TriggerPattern` lookups (issue #1309
+// converted these label→value mappings to constexpr table indexing).
 struct PersistenceLogRow {
     persistence::Status status;
     int log_level;            // raylib TraceLogLevel (LOG_INFO / LOG_WARNING)

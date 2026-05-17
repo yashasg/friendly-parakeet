@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string_view>
 #include "tags/tags.h"
@@ -11,18 +13,26 @@ enum class Shape : uint8_t {
     Hexagon,
 };
 
-// Stringification for trace/log lines. Pure label lookup, doctrinally fine
-// per Fabian's Existential Processing chapter (see issue #1204 — "Bonus:
-// drop the magic_enum dependency"). Replaces the former
+// Stringification for trace/log lines. Replaces the former
 // `magic_enum::enum_name(Shape)` lookup used by the session logger and tests.
+//
+// Fabian Principle 1 / issue #1309: enum-as-lookup-key into a static table.
+// Row order must match the `Shape` declaration above; the `static_assert`
+// pins the table size to the trailing enumerator (`Hexagon`).
 constexpr std::string_view to_string(Shape shape) noexcept {
-    switch (shape) {
-        case Shape::Circle:   return "Circle";
-        case Shape::Square:   return "Square";
-        case Shape::Triangle: return "Triangle";
-        case Shape::Hexagon:  return "Hexagon";
-    }
-    return {};
+    constexpr std::array<std::string_view, 4> kNameByShape{{
+        /* Circle   */ "Circle",
+        /* Square   */ "Square",
+        /* Triangle */ "Triangle",
+        /* Hexagon  */ "Hexagon",
+    }};
+    static_assert(kNameByShape.size() ==
+                  static_cast<std::size_t>(Shape::Hexagon) + 1,
+                  "kNameByShape must cover every Shape enumerator");
+
+    const auto idx = static_cast<std::size_t>(shape);
+    if (idx >= kNameByShape.size()) return {};
+    return kNameByShape[idx];
 }
 
 // Hot render data — read by game_camera_system, player_movement_system every frame.
