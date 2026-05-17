@@ -277,3 +277,13 @@ struct UiShapeIconHexagonTag  {};
 // Codegen attaches this tag to `.rgl` entities whose name is in the
 // NAME_EXTRA_TAGS web-hidden list (`tools/rguilayout/codegen.py`).
 struct UiHiddenOnWebTag {};
+
+// ── UI toggle kind (per-kind specialization of UiButtonTag) ──────────
+// Per Fabian's existential processing, "is this button a two-state
+// toggle?" is presence of this tag rather than a `UiButtonKind` enum
+// field. Toggle buttons (#1295) render with green ON / grey OFF colors
+// + an `[X] / [ ]` icon prefix per the two-cue A11Y requirement (#390);
+// `ui_render_system` reads the sibling `UiToggleState` component to pick
+// the row. Codegen attaches this tag to `.rgl` button controls whose
+// name is in the NAME_EXTRA_TAGS toggle list (`tools/rguilayout/codegen.py`).
+struct UiToggleTag {};

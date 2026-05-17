@@ -76,6 +76,12 @@ NAME_EXTRA_TAGS: Dict[str, Tuple[str, ...]] = {
     # PLATFORM_WEB; `title_start_tap_system` keeps treating their bounds
     # as a dead-zone (defense-in-depth).
     "ExitButton":    ("UiHiddenOnWebTag",),
+    # Settings screen toggle buttons (#1295). `UiToggleTag` selects the
+    # two-cue ON/OFF render row in `ui_render_system`; the sibling
+    # `UiToggleState` is written each frame by `settings_screen_bind_system`
+    # from `SettingsState`.
+    "HapticsToggle":      ("UiToggleTag",),
+    "ReduceMotionToggle": ("UiToggleTag",),
 }
 
 

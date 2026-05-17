@@ -39,8 +39,8 @@ bool entities_alive_probe(entt::registry& reg) noexcept {
 }
 
 // Pilot (#1287): Paused. Tutorial (#1291), Song Complete (#1292), Game
-// Over (#1293), Title (#1294). Each subsequent per-screen migration
-// sub-issue extends this table by one row.
+// Over (#1293), Title (#1294), Settings (#1295). Each subsequent
+// per-screen migration sub-issue extends this table by one row.
 constexpr ScreenLifecycleRow kLifecycleRows[] = {
     {
         &phase_active_probe<GamePhasePausedTag>,
@@ -71,6 +71,12 @@ constexpr ScreenLifecycleRow kLifecycleRows[] = {
         &entities_alive_probe<TitleScreenTag>,
         &spawn_title_screen,
         &despawn_title_screen,
+    },
+    {
+        &phase_active_probe<GamePhaseSettingsTag>,
+        &entities_alive_probe<SettingsScreenTag>,
+        &spawn_settings_screen,
+        &despawn_settings_screen,
     },
 };
 
