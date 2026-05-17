@@ -178,22 +178,26 @@ struct PlayerShape {
 ///                        resolves (collision_system compares it against
 ///                        BeatInfo.arrival_time).
 ///
-/// `WindowPhase` lives in `components/window_phase.h` so it can be shared by
-/// player.h and rhythm.h without a header cycle.
-enum class WindowPhase : uint8_t {
-    Idle     = 0,   // no active window
-    MorphIn  = 1,   // accepting a press that will become the next shape
-    Active   = 2,   // on-beat scoring window open
-    MorphOut = 3,   // window closing; settling animation
-};
-
+/// The former `WindowPhase` enum (Idle/MorphIn/Active/MorphOut) was
+/// eradicated per issue #1202/#1204 (Fabian existential processing) —
+/// the phase identity now lives as a per-phase tag on the player entity:
+///
+///   `ShapeWindowMorphInTag`   present → window accepting the next press
+///   `ShapeWindowActiveTag`    present → on-beat scoring window open
+///   `ShapeWindowMorphOutTag`  present → window closing / settling animation
+///   none present              → Idle (no active window — no data needed)
+///
+/// The target shape the press is morphing toward is similarly a per-shape
+/// tag (`TargetShapeCircleTag` / `TargetShapeSquareTag` /
+/// `TargetShapeTriangleTag` / `TargetShapeHexagonTag`) on the same entity.
+/// Phase transitions are component-table operations; no enum compare,
+/// no `switch`. See `app/systems/shape_window_system.cpp` for the
+/// canonical transitions.
 struct ShapeWindow {
-    Shape       target_shape;   // shape the player will become at MorphIn end
-    WindowPhase phase;          // current rhythm window phase
-    bool        graded;         // a TimingGrade has already been emitted
-    float       window_timer;   // seconds into the current phase
-    float       window_start;   // song_time when the current window opened
-    float       press_time;     // song_time of the latest valid press (-1 = none)
+    bool  graded       = false;  // a TimingGrade has already been emitted
+    float window_timer = 0.0f;   // seconds into the current phase
+    float window_start = 0.0f;   // song_time when the current window opened
+    float press_time   = -1.0f;  // song_time of the latest valid press (-1 = none)
 };
 
 /// Lane occupancy and transition. 8 bytes.
@@ -244,14 +248,13 @@ struct Sliding {
 /// Empty tag — marks all obstacle entities. 0 bytes.
 struct ObstacleTag {};
 
-/// Authored/spawn-time obstacle kind. Runtime entities do not store this in
-/// Obstacle; systems infer it from presence of obstacle-specific components.
-/// LowBar/HighBar were removed from the runtime obstacle enum and remain archival only.
-enum class ObstacleKind : uint8_t {
-    ShapeGate,   // must match shape
-    SplitPath,   // shape + specific lane
-    OnsetMarker, // visual beat/onset marker; no collision/scoring
-};
+/// Per-archetype zero-column tags in `app/tags/tags.h` (issue #1202/#1204):
+///   ShapeGateTag   — must match shape; lane stored as raw int8_t component.
+///   SplitPathTag   — shape + required dodge lane; raw int8_t component.
+///   OnsetMarkerTag — visual beat/onset marker; no collision/scoring.
+/// The former `enum class ObstacleKind` and any `switch (kind)` dispatch
+/// were eradicated; consumer systems filter by view (`view<ShapeGateTag, …>`
+/// vs `view<SplitPathTag, …>`). LowBar/HighBar archetypes are archival only.
 
 struct Obstacle {
     int16_t      base_points = 200;   // PTS_SHAPE_GATE etc.
@@ -259,15 +262,6 @@ struct Obstacle {
     constexpr Obstacle() = default;
     constexpr explicit Obstacle(int16_t points) : base_points(points) {}
 };
-
-constexpr ObstacleKind obstacle_kind_from_components(bool has_required_shape,
-                                                     bool has_required_lane) {
-    (void)has_required_shape;
-    if (has_required_lane) {
-        return ObstacleKind::SplitPath;
-    }
-    return ObstacleKind::ShapeGate;
-}
 
 // Existential tag: presence means the obstacle has been cleared and awaits scoring.
 struct ScoredTag {};
@@ -356,13 +350,15 @@ struct ScoreState {
     float   passive_score_remainder = 0.0f;  // fractional passive score carried across fixed ticks
 };
 
-/// Score popup entity component. 8 bytes.
+/// Score popup entity component. The tier discriminator that used to live
+/// here was migrated to per-tier tags (TimingPerfectTag / TimingGoodTag /
+/// TimingOkTag / TimingBadTag from `app/tags/tags.h`) emplaced on the
+/// popup entity itself (issue #1202/#1204). Static text + base color are
+/// baked into a sibling `PopupDisplay` row at spawn time.
 struct ScorePopup {
-    int32_t    value           = 0;              // points to display
-    bool       has_timing_tier = false;          // false when no TimingGrade was present
-    TimingTier timing_tier     = TimingTier::Ok; // valid only when has_timing_tier is true
-    float      remaining       = 0.0f;           // seconds left to display
-    float      max_time        = 0.0f;           // initial lifetime for fade/scale
+    int32_t value     = 0;     // points to display
+    float   remaining = 0.0f;  // seconds left to display
+    float   max_time  = 0.0f;  // initial lifetime for fade/scale
 };
 ```
 
@@ -1429,72 +1425,76 @@ void motion_system(entt::registry& reg, float dt) {
 
 ### 8.5 Collision Detection Strategy
 
-With only 5–15 obstacles on screen and 1 player, brute-force is optimal:
+With only 5–15 obstacles on screen and 1 player, brute-force is optimal.
+The system dispatches by **archetype tag** (issue #1202/#1204) — one view
+per archetype, no `switch` on a discriminator:
 
 ```cpp
 void collision_system(entt::registry& reg, float dt) {
     // Get player state (single entity)
-    auto player_view = reg.view<PlayerTag, WorldPosition, PlayerShape, Lane>();
-    // Early-out: exactly one player
-    auto [p_ent, p_pos, p_shape, p_lane] = *player_view.each().begin();
+    auto player_view = reg.view<PlayerTag, WorldPosition, Lane>();
+    auto [p_ent, p_pos, p_lane] = *player_view.each().begin();
+
+    // Current shape lives as a `Shape*Tag` on the player entity, not a
+    // field on PlayerShape (issue #1202/#1204).
+    const Shape p_shape = current_shape_from_tag(reg, p_ent);
 
     // Grounded entities have neither Jumping nor Sliding; only Jumping
     // carries a y_offset (Sliding leaves it at 0). No enum compare.
     const auto* p_jump = reg.try_get<Jumping>(p_ent);
-    float player_x = p_pos.position.x;
     float player_y = p_pos.position.y + (p_jump ? p_jump->y_offset : 0.0f);
 
-    // Linear scan of obstacles — 15 entities max
-    auto obs_view = reg.view<ObstacleTag, WorldPosition, Obstacle>(
+    // ShapeGate pass: filtered by archetype tag, no discriminator.
+    auto gate_view = reg.view<ObstacleTag, WorldPosition, ShapeGateTag>(
         entt::exclude<ScoredTag, ResolvedObstacleTag, NonScorableTag>);
-    for (auto entity : obs_view) {
-        const auto& o_pos = obs_view.get<WorldPosition>(entity);
-
-        // Broad phase: vertical proximity check
+    for (auto entity : gate_view) {
+        const auto& o_pos = gate_view.get<WorldPosition>(entity);
         float dy = o_pos.position.y - player_y;
-        if (dy < -40.0f || dy > 40.0f) continue;  // not overlapping vertically
+        if (dy < -40.0f || dy > 40.0f) continue;  // broad phase
 
-        // Narrow phase: per-obstacle-kind match test
-        bool cleared = check_obstacle_cleared(reg, entity, p_shape, p_lane);
-        if (cleared) {
+        if (check_shape_gate_cleared(reg, entity, p_shape)) {
             reg.emplace<ScoredTag>(entity);
-            // scoring_system will pick this up next
         } else if (dy >= 0.0f) {
-            // Obstacle has reached player and shape doesn't match → CRASH.
-            // Deferred per #482: request the swap; game_state_system
-            // performs it on the next tick.
             request_phase_transition<NextPhaseGameOverTag>(reg);
-            return;  // stop checking — game over
+            return;
+        }
+    }
+
+    // SplitPath pass: same shape, different match (shape + lane). The two
+    // archetype views never share entities — exactly Fabian's existential
+    // processing.
+    auto split_view = reg.view<ObstacleTag, WorldPosition, SplitPathTag>(
+        entt::exclude<ScoredTag, ResolvedObstacleTag, NonScorableTag>);
+    for (auto entity : split_view) {
+        const auto& o_pos = split_view.get<WorldPosition>(entity);
+        float dy = o_pos.position.y - player_y;
+        if (dy < -40.0f || dy > 40.0f) continue;
+
+        if (check_split_path_cleared(reg, entity, p_shape, p_lane)) {
+            reg.emplace<ScoredTag>(entity);
+        } else if (dy >= 0.0f) {
+            request_phase_transition<NextPhaseGameOverTag>(reg);
+            return;
         }
     }
 }
 
-// Per-kind match logic — no virtual dispatch, kind inferred from components
-bool check_obstacle_cleared(entt::registry& reg, entt::entity e,
-                             const PlayerShape& shape,
-                             const Lane& lane) {
-    if (reg.all_of<NonScorableTag>(e)) {
-        return false;
-    }
+// Per-archetype match logic — no virtual dispatch, no `switch` on a
+// discriminator. The archetype IS the obstacle's tag (issue #1202/#1204);
+// `collision_system` already runs one view per archetype tag, so the
+// callee only needs to test the archetype-specific match condition.
+bool check_shape_gate_cleared(entt::registry& reg, entt::entity e,
+                              Shape player_shape) {
+    if (reg.all_of<NonScorableTag>(e)) return false;
+    return player_shape == current_required_shape(reg, e);
+}
 
-    const ObstacleKind kind = obstacle_kind_from_components(
-        reg.all_of<RequiredShape>(e),
-        reg.all_of<RequiredLane>(e));
-
-    switch (kind) {
-        case ObstacleKind::ShapeGate:
-            return shape.current == reg.get<RequiredShape>(e).shape;
-
-        case ObstacleKind::SplitPath: {
-            bool shape_ok = shape.current == reg.get<RequiredShape>(e).shape;
-            bool lane_ok  = lane.current == reg.get<RequiredLane>(e).lane;
-            return shape_ok && lane_ok;
-        }
-
-        case ObstacleKind::OnsetMarker:
-            return false;
-    }
-    return false;
+bool check_split_path_cleared(entt::registry& reg, entt::entity e,
+                              Shape player_shape, const Lane& lane) {
+    if (reg.all_of<NonScorableTag>(e)) return false;
+    const bool shape_ok = player_shape == current_required_shape(reg, e);
+    const bool lane_ok  = lane.current == reg.get<int8_t>(e);
+    return shape_ok && lane_ok;
 }
 ```
 
@@ -1632,14 +1632,17 @@ app/
 │
 ├── components/                  ← all component structs
 │   ├── transform.h              ← WorldPosition, MotionVelocity
-│   ├── window_phase.h           ← WindowPhase (shared by player.h and rhythm.h)
 │   ├── player.h                 ← PlayerTag, PlayerShape, ShapeWindow, Lane,
 │   │                              Jumping, Sliding (per-state vertical motion tables;
-│   │                              absence of both = grounded)
+│   │                              absence of both = grounded). Window phase lives
+│   │                              as `ShapeWindow*Tag` on the player entity (see
+│   │                              `app/tags/tags.h`).
 │   ├── obstacle.h               ← obstacle tags (ScoredTag, MissTag,
 │   │                              ResolvedObstacleTag, NonScorableTag,
-│   │                              OnsetMarkerTag) and requirements
-│   │                              (RequiredShape, RequiredLane, ShapeGateLane)
+│   │                              OnsetMarkerTag) and per-archetype tags
+│   │                              (ShapeGateTag, SplitPathTag in tags.h);
+│   │                              required shape lives as `RequiredShape*Tag`,
+│   │                              lane index as a raw int8_t component.
 │   ├── scoring.h                ← ScoreState, ScorePopup
 │   ├── input_events.h           ← per-shape ShapePress*Event, per-action
 │   │                              Menu*Event, per-direction Go*Event
@@ -1650,7 +1653,8 @@ app/
 │   ├── rendering.h              ← DrawSize, ScreenPosition; back-compat shim
 │   │                              for the camera/mesh splits (issue #1194)
 │   ├── particle.h               ← ParticleData, ParticleTag
-│   ├── rhythm.h                 ← BeatInfo, TimingGrade, TimingTier
+│   ├── rhythm.h                 ← BeatInfo, TimingGrade (precision only;
+│   │                              tier is a `Timing*Tag` from `tags.h`)
 │   └── song_state.h             ← SongState
 │
 ├── systems/                     ← all system free functions

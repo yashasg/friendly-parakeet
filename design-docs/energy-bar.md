@@ -125,28 +125,36 @@ Current shipped behavior:
 MISS: enqueue_energy_effect(reg, -ENERGY_DRAIN_MISS, true)
 ```
 
-The miss no longer kills the player directly. `energy_system` requests the
-`GamePhase::GameOver` transition in the same fixed tick that drains energy
-to ≤ 0 (provided a `SongState` exists), setting
-`GameOverState::cause = DeathCause::EnergyDepleted`. `game_state_system`
-retains a fallback check that catches pre-existing `energy <= 0` while phase
-is `Playing` (defense-in-depth, not the primary path).
+The miss no longer kills the player directly. `energy_system` emplaces
+`EnergyDepletedDeath` on `reg.ctx()` in the same fixed tick that drains
+energy to ≤ 0 (provided a `SongState` exists); `game_state_system`
+consumes that ctx tag and inserts `GamePhaseGameOverTag` on the next
+tick. The former `GameOverState::cause = DeathCause::EnergyDepleted`
+field was eradicated per issue #1202/#1204 — the cause is the presence
+of the `EnergyDepletedDeath` ctx tag. `game_state_system` retains a
+fallback check that catches pre-existing `energy <= 0` while the
+`GamePhasePlayingTag` is present (defense-in-depth, not the primary path).
 
 Miss still increments `results->miss_count` and still emplaces
 `ScoredTag` (obstacle is consumed, not re-triggered).
 
 ### 2. scoring_system.cpp — on scored obstacle with TimingGrade
 
-After computing points, enqueue an energy delta based on timing tier:
+After computing points, enqueue an energy delta selected by the
+per-tier tag (`TimingPerfectTag` / `TimingGoodTag` / `TimingOkTag` /
+`TimingBadTag` from `app/tags/tags.h`). The former `switch (timing->tier)`
+discriminator was eradicated per issue #1202/#1204; the canonical
+mechanic is a per-tag view (one transform per tier), e.g.:
 
-```
-switch (timing->tier) {
-    case TimingTier::Perfect: enqueue_energy_effect(reg, ENERGY_RECOVER_PERFECT); break;
-    case TimingTier::Good:    enqueue_energy_effect(reg, ENERGY_RECOVER_GOOD);    break;
-    case TimingTier::Ok:      enqueue_energy_effect(reg, ENERGY_RECOVER_OK);      break;
-    case TimingTier::Bad:     enqueue_energy_effect(reg, -ENERGY_DRAIN_BAD, true);
-                              break;
-}
+```cpp
+for (auto e : reg.view<ScoredTag, TimingPerfectTag>())
+    enqueue_energy_effect(reg, ENERGY_RECOVER_PERFECT);
+for (auto e : reg.view<ScoredTag, TimingGoodTag>())
+    enqueue_energy_effect(reg, ENERGY_RECOVER_GOOD);
+for (auto e : reg.view<ScoredTag, TimingOkTag>())
+    enqueue_energy_effect(reg, ENERGY_RECOVER_OK);
+for (auto e : reg.view<ScoredTag, TimingBadTag>())
+    enqueue_energy_effect(reg, -ENERGY_DRAIN_BAD, true);
 ```
 
 

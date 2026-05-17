@@ -151,23 +151,23 @@ while (accumulator >= FIXED_DT) {
 ```cpp
 // app/systems/test_player.h
 
-enum class TestPlayerSkill : uint8_t { Pro = 0, Good = 1, Bad = 2 };
+// The former `enum class TestPlayerSkill { Pro, Good, Bad }` and its
+// 3-row `SKILL_TABLE[]` index lookup were eradicated per issue #1202/#1204
+// (Fabian existential processing). Each former enum value is now a named
+// `SkillConfig` constant; the active skill is the `SkillConfig` value
+// itself on `TestPlayerState::skill` (no discriminator, no index).
 
 struct SkillConfig {
-    float vision_range;     // px from PLAYER_Y upward
-    float reaction_min;     // seconds
-    float reaction_max;     // seconds
-    bool  aim_perfect;      // true = delay to hit Perfect window
+    float       vision_range;   // px from PLAYER_Y upward
+    float       reaction_min;   // seconds
+    float       reaction_max;   // seconds
+    bool        aim_perfect;    // true = delay to hit Perfect window
+    const char* name;           // CLI key + session-log key
 };
 
-static constexpr SkillConfig SKILL_TABLE[] = {
-    // Pro:   fast reflexes, wide vision, aims for Perfect
-    { 800.0f, 0.300f, 0.500f, true  },
-    // Good:  moderate reflexes, medium vision, reacts ASAP
-    { 600.0f, 0.500f, 0.800f, false },
-    // Bad:   slow reflexes, narrow vision, reacts ASAP
-    { 400.0f, 0.800f, 1.200f, false },
-};
+inline constexpr SkillConfig SKILL_PRO  { 800.0f, 0.300f, 0.500f, true,  "pro"  };
+inline constexpr SkillConfig SKILL_GOOD { 600.0f, 0.500f, 0.800f, false, "good" };
+inline constexpr SkillConfig SKILL_BAD  { 400.0f, 0.800f, 1.200f, false, "bad"  };
 ```
 
 **DoD note**: Table lookup, not inheritance. All personas use the same
@@ -183,22 +183,33 @@ struct TestPlayerAction {
     float        arrival_time = 0.0f;      // song_time when obstacle reaches player
 
     // Required actions (determined from obstacle components)
-    Shape  target_shape      = Shape::Hexagon; // Hexagon = no shape change needed
-    int8_t target_lane       = -1;             // -1 = no lane change needed
-    VMode  target_vertical   = VMode::Grounded;// Grounded = no jump/slide needed
+    // The former `Shape target_shape = Shape::Hexagon` sentinel was
+    // replaced by `const ShapePressSpec* shape_press` (issue #1202 PR C3):
+    // nullptr means "no shape change", a non-null pointer carries both
+    // the press-enqueue function and the log labels for that shape.
+    const ShapePressSpec* shape_press = nullptr;
+    int8_t target_lane                = -1;             // -1 = no lane change needed
+    // The former `VMode target_vertical = VMode::Grounded` enum was split
+    // into two independent boolean columns (issue #1202/#1204); both false
+    // means "grounded — no change needed".
+    bool   wants_jump                 = false;
+    bool   wants_slide                = false;
 
-    // Execution state (packed into uint8_t bitmask)
-    //   bit 0: shape_done
-    //   bit 1: lane_done
-    //   bit 2: vertical_done
-    uint8_t done_flags       = 0;
+    // Per-sub-action completion. Three independent boolean columns
+    // (the former `ActionDoneBit` bitmask was eradicated per issue
+    // #1202/#1204 — per Fabian's existential processing, each completion
+    // flag is its own column).
+    bool shape_done    = false;
+    bool lane_done     = false;
+    bool vertical_done = false;
 };
 ```
 
-**DoD note**: Bools replaced with bitmask. `target_shape = Hexagon` means
-"no change needed" — existential encoding via sentinel value instead of a
-separate `need_shape` boolean. Same pattern for `target_lane = -1` and
-`target_vertical = Grounded`.
+**DoD note**: Sentinel-free choice encoding. `shape_press = nullptr` means
+"no shape change needed" (the pointer's value IS the choice — identity-is-the-choice
+mechanic, no enum compare). `target_lane = -1` and `!wants_jump && !wants_slide`
+follow the same per-column-defaults-mean-absence pattern. Per-sub-action
+completion is three independent boolean columns rather than a packed bitmask.
 
 ## TestPlayerState (context singleton)
 
@@ -207,7 +218,9 @@ separate `need_shape` boolean. Same pattern for `target_lane = -1` and
 
 struct TestPlayerState {
     // ── Hot ──────────────────────────────────────────────────
-    TestPlayerSkill skill   = TestPlayerSkill::Pro;
+    // `skill` is a `SkillConfig` row value (one of `SKILL_PRO` / `SKILL_GOOD` /
+    // `SKILL_BAD`), not a discriminator — the row IS the choice.
+    SkillConfig     skill   = SKILL_PRO;
     bool            active  = false;
 
     // Delay between consecutive lane swipes (simulates human re-swipe time)
@@ -318,8 +331,9 @@ a no-op.
 ## Auto-Start (Title / GameOver / SongComplete screens)
 
 ```cpp
-  if (gs.phase == GamePhase::Title || gs.phase == GamePhase::GameOver ||
-      gs.phase == GamePhase::SongComplete) {
+  if (reg.ctx().contains<GamePhaseTitleTag>() ||
+      reg.ctx().contains<GamePhaseGameOverTag>() ||
+      reg.ctx().contains<GamePhaseSongCompleteTag>()) {
       if (gs.phase_timer > constants::TEST_PLAYER_AUTO_START_DELAY) {
           // Restart on end screens, Confirm on Title — same dispatcher path
           // a real menu button press would take.
@@ -610,8 +624,10 @@ inside `tick_playing_systems`.
 ```
   app/
     systems/
-      test_player.h            ← TestPlayerSkill, SkillConfig, TestPlayerAction,
-      │                           TestPlayerState (context singleton)
+      test_player.h            ← SkillConfig + named SKILL_PRO/GOOD/BAD constants,
+      │                           TestPlayerAction (sentinel-free choice encoding),
+      │                           TestPlayerState (context singleton). No
+      │                           `TestPlayerSkill` enum exists in app/ today.
       test_player_system.cpp   ← AI: perceive, decide, wait, execute
       │                           Platform-portable: enqueues events
       │                           directly on the EnTT dispatcher

@@ -112,14 +112,19 @@ singletons (`SongState`, `EnergyState`, `SongResults`) live in registry context.
 All are cold data read a few times per frame, not iterated in bulk.
 
 ```cpp
-// Defined in beat_map.h and re-exported by rhythm.h
+// Defined in beat_map.h and re-exported by rhythm.h. The authored kind is
+// carried as a per-archetype tag on the spawned obstacle entity (issue
+// #1202/#1204) — `ShapeGateTag` / `SplitPathTag` / `OnsetMarkerTag` from
+// `app/tags/tags.h`. BeatEntry retains the authored discriminator only as
+// a loader-side spawn hint; runtime systems never re-read it.
 struct BeatEntry {
     int          beat_index   = 0;       //  4B
-    ObstacleKind kind         = ObstacleKind::ShapeGate;  // 1B
-    Shape        shape        = Shape::Circle;            // 1B
+    Shape        shape        = Shape::Circle;  // 1B
     int8_t       lane         = 1;       //  1B
     float        time_sec     = 0.0f;    // optional authored timestamp
     bool         has_time_sec = false;
+    // (authored archetype kind hint is internal to the loader; runtime
+    // entities discover archetype via their tag)
 };
 
 struct BeatMap {
@@ -196,11 +201,11 @@ The current obstacle components already match the beatmap schema:
 > and emitted in shipped beatmaps. LowBar/HighBar were removed from the runtime obstacle enum.
 
 ```
-  ObstacleKind::ShapeGate      → "shape_gate"       ✓  required shipped obstacle
-  ObstacleKind::SplitPath      → "split_path"       ✓  runtime-supported, not generated today
-  ObstacleKind::OnsetMarker    → "onset_marker"     ✓  non-blocking shipped metadata
+  ShapeGateTag    → "shape_gate"       ✓  required shipped obstacle
+  SplitPathTag    → "split_path"       ✓  runtime-supported, not generated today
+  OnsetMarkerTag  → "onset_marker"     ✓  non-blocking shipped metadata
 
-  RequiredShape { shape }      → beatmap "shape" field  ✓
+  `RequiredShape*Tag` (per-shape) → beatmap "shape" field  ✓
 ```
 
 **No new per-entity components required for shape_gate.** The beat scheduler
@@ -238,7 +243,7 @@ creates the standard runtime obstacle archetypes via `spawn_rhythm_obstacle()`.
   │  FIXED TICK (tick_fixed_systems — fixed_tick_runner.cpp):        │
   │  ✅ game_state_system          (phase + semantic input drain)   │
   │  ✅ song_playback_system       (advances SongState.song_time)   │
-  │  ✅ tick_playing_systems       (gated on GamePhase::Playing)    │
+  │  ✅ tick_playing_systems       (gated on GamePhasePlayingTag) │
   │  ✅ obstacle_despawn_system    (destroy off-camera obstacles)   │
   │  ✅ popup_feedback_system      (drain ScorePopupRequestQueue)   │
   │  ✅ popup_display_system       (ScorePopup timer → fade/cull)   │
@@ -280,7 +285,7 @@ creates the standard runtime obstacle archetypes via `spawn_rhythm_obstacle()`.
 
 ```cpp
 void song_playback_system(entt::registry& reg, float dt) {
-    if (reg.ctx().get<GameState>().phase != GamePhase::Playing) return;
+    if (!reg.ctx().contains<GamePhasePlayingTag>()) return;
 
     auto* song  = reg.ctx().find<SongState>();
     auto* music = reg.ctx().find<MusicContext>();
@@ -486,7 +491,7 @@ Music starts or resumes from `song_playback_system` when the active phase is
 `Playing` and `SongState.playing` is true:
 
 ```cpp
-if (music_loaded && gs.phase == GamePhase::Playing && song && song->playing) {
+if (music_loaded && reg.ctx().contains<GamePhasePlayingTag>() && song && song->playing) {
     if (!music->started) {
         PlayMusicStream(music->stream);
         music->started = true;
@@ -534,7 +539,8 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
   STEP 2 — Data Components                         ✅ DONE
   ─────────────────────────────
   • BeatMap, BeatEntry, SongState, SongResults, EnergyState in rhythm.h/song_state.h
-  • TimingGrade, WindowPhase, BeatInfo all defined
+  • TimingGrade (precision-only), ShapeWindow*Tag (per-phase tags in
+    `app/tags/tags.h`), BeatInfo all defined
 
   STEP 3 — Beat Map Loader                         ✅ DONE
   ─────────────────────────────
@@ -603,7 +609,7 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
   │                                    │  past, then trigger results screen.  │
   ├────────────────────────────────────┼──────────────────────────────────────┤
   │  Game paused                       │  song_playback_system guards on      │
-  │                                    │  GamePhase::Playing. song_time       │
+  │                                    │  GamePhasePlayingTag. song_time      │
   │                                    │  freezes. Music: PauseMusicStream(). │
   │                                    │  Resume: ResumeMusicStream().        │
   ├────────────────────────────────────┼──────────────────────────────────────┤

@@ -346,32 +346,35 @@ the energy bar; energy reaching zero ends the run.
 ### ECS Components (C++ structs)
 
 ```cpp
-enum class TimingTier : uint8_t {
-    Bad,
-    Ok,
-    Good,
-    Perfect,
-};
+// The former `enum class TimingTier { Bad, Ok, Good, Perfect }` was
+// eradicated per issue #1202/#1204 (Fabian existential processing).
+// The tier discriminator now lives as one of four zero-column tags
+// (TimingPerfectTag / TimingGoodTag / TimingOkTag / TimingBadTag) from
+// `app/tags/tags.h`, emplaced on the obstacle/popup entity by
+// `emplace_timing_tier_tag_for_delta_abs()` in `app/util/rhythm_math.h`.
 
 struct TimingGrade {
-    TimingTier tier      = TimingTier::Bad;
-    float      precision = 0.0f;  // 0.0 = edge, 1.0 = dead center
+    float precision = 0.0f;  // 0.0 = edge, 1.0 = dead center
 };
 
 struct ScoreState {
     int32_t score = 0;
-    int32_t displayed_score = 0;
-    int32_t high_score = 0;
     int32_t chain_count = 0;
     float passive_score_remainder = 0.0f;
 };
 
+// ScoreDisplay holds the HUD's smoothly-animated readout.
+struct ScoreDisplay {
+    int32_t displayed = 0;
+};
+
+// ScorePopup carries only the value + lifetime. The tier discriminator is a
+// per-tier tag (Timing*Tag) on the popup entity itself; static text/color are
+// baked into a sibling `PopupDisplay` row at spawn time.
 struct ScorePopup {
-    int32_t value = 0;
-    bool has_timing_tier = false;
-    TimingTier timing_tier = TimingTier::Ok;
-    float remaining = 0.0f;
-    float max_time = 0.0f;
+    int32_t value     = 0;
+    float   remaining = 0.0f;
+    float   max_time  = 0.0f;
 };
 ```
 
@@ -488,19 +491,23 @@ struct Obstacle {
     int16_t base_points = 200;
 };
 
-enum class ObstacleKind : uint8_t {
-    ShapeGate,
-    SplitPath,
-    OnsetMarker,
-};
+// The former `enum class ObstacleKind { ShapeGate, SplitPath, OnsetMarker }`
+// was eradicated per issue #1202/#1204. Archetype identity now lives as a
+// zero-column tag in `app/tags/tags.h`:
+//   ShapeGateTag   — must match shape; lane stored as raw `int8_t` component.
+//   SplitPathTag   — shape + dodge lane; raw `int8_t` component.
+//   OnsetMarkerTag — visual beat marker; non-blocking, non-scoring.
+// Consumers filter by view (`view<ShapeGateTag, …>` vs `view<SplitPathTag, …>`);
+// no `switch (kind)` dispatch remains in `app/`.
 
-struct RequiredShape {
-    Shape shape = Shape::Circle;
-};
+// `RequiredShape { Shape shape }` was unwrapped to per-shape tags
+// (`RequiredShapeCircleTag` / …`SquareTag` / …`TriangleTag` / …`HexagonTag`)
+// on the obstacle entity. Read via `current_required_shape(reg, e)` from
+// `app/util/shape_tag.h`.
 
-struct RequiredLane {
-    int8_t lane = 0;
-};
+// Lane index is a raw int8_t component on the obstacle entity (issue #1198).
+// Semantics depend on the archetype tag — ShapeGateTag = positional lane,
+// SplitPathTag = required dodge lane.
 
 struct BeatInfo {
     int beat_index = 0;
@@ -642,7 +649,9 @@ obstacle_despawn_system -> popup_feedback_system -> popup_display_system ->
 energy_system -> energy_bar_system -> particle_system
 ```
 
-`tick_playing_systems` is a `GamePhase::Playing`-gated bundle:
+`tick_playing_systems` is gated on the active `GamePhasePlayingTag`
+(emplaced on `reg.ctx()` by `game_state_system`; see
+`app/systems/playing_systems_runner.cpp`):
 
 ```
 beat_log_system -> beat_scheduler_system -> shape_window_activation_system ->
@@ -679,8 +688,8 @@ shape_window_system -> miss_detection_system -> scoring_system
   │  TimingGrade            │ per-ent  │ Spec 2 — Rhythm Scoring │
   │  Obstacle               │ per-ent  │ Spec 3 — Scheduling     │
   │  BeatInfo               │ per-ent  │ Spec 3 — Scheduling     │
-  │  RequiredShape          │ per-ent  │ Spec 3 — Scheduling     │
-  │  RequiredLane           │ per-ent  │ Spec 3 — Scheduling     │
+  │  RequiredShape*Tag      │ tag      │ Spec 3 — Scheduling     │
+  │  int8_t (lane index)    │ per-ent  │ Spec 3 — Scheduling     │
   │  ScoredTag              │ tag      │ Spec 2/3 bridge         │
   │  MissTag                │ tag      │ Spec 2/3 bridge         │
   └─────────────────────────┴──────────┴─────────────────────────┘
