@@ -60,25 +60,31 @@ void bind_prev_best(const GameOverBindContext& ctx, UiLabel& label) {
     ui_label_set(label, buf);
 }
 
-// Reason slot at y=685 — shown only when NOT new-best (legacy
-// `reason_y = 685.0f` branch in `draw_game_over_scoreboard`).
-void bind_reason(const GameOverBindContext& ctx, UiLabel& label) {
-    if (!ctx.energy_depleted || is_new_best(ctx)) {
+// Reason text is the same string ("ENERGY DEPLETED") regardless of which
+// row gets to render it; only the row's `for_new_best_row` flag picks
+// which (x=110) row is active for the current `is_new_best(ctx)` state.
+// One source of the literal, two trampolines for the position-keyed
+// dispatch table below.
+void bind_reason_impl(const GameOverBindContext& ctx, bool for_new_best_row,
+                      UiLabel& label) {
+    if (!ctx.energy_depleted || is_new_best(ctx) != for_new_best_row) {
         ui_label_set(label, "");
         return;
     }
     ui_label_set(label, "ENERGY DEPLETED");
 }
 
+// Reason slot at y=685 — shown only when NOT new-best (legacy
+// `reason_y = 685.0f` branch in `draw_game_over_scoreboard`).
+void bind_reason(const GameOverBindContext& ctx, UiLabel& label) {
+    bind_reason_impl(ctx, /*for_new_best_row=*/false, label);
+}
+
 // Reason slot at y=742 — shown only when new-best (legacy
 // `reason_y = 742.0f` branch in `draw_game_over_scoreboard`; the reason
 // moves down to clear room for "NEW BEST!" + "PREV N").
 void bind_reason_new_best(const GameOverBindContext& ctx, UiLabel& label) {
-    if (!ctx.energy_depleted || !is_new_best(ctx)) {
-        ui_label_set(label, "");
-        return;
-    }
-    ui_label_set(label, "ENERGY DEPLETED");
+    bind_reason_impl(ctx, /*for_new_best_row=*/true, label);
 }
 
 // Per-slot bind table. Position-keyed identification matches the
