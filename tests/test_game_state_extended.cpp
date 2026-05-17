@@ -491,8 +491,9 @@ TEST_CASE("title settings navigation: pending Settings transition reaches Settin
     gs.phase_timer = 2.0f;
     request_phase_transition<NextPhaseSettingsTag>(reg);
 
-    // Proxy for title gear click path: title_screen_controller sets
-    // transition_pending + next_phase=Settings, then fixed-step consumes it.
+    // Proxy for title gear click path: the title-screen Settings tap
+    // request enqueues a `NextPhaseSettingsTag` transition (seeded here
+    // directly), and fixed-step consumes it.
     game_state_system(reg, 0.016f);
     REQUIRE(reg.ctx().contains<GamePhaseSettingsTag>());
     CHECK_FALSE(is_phase_transition_pending(reg));
