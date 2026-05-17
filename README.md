@@ -5,7 +5,7 @@
 ![CI (Windows)](https://github.com/yashasg/friendly-parakeet/actions/workflows/ci-windows.yml/badge.svg)
 ![CI (WebAssembly)](https://github.com/yashasg/friendly-parakeet/actions/workflows/ci-wasm.yml/badge.svg)
 
-A rhythm game where obstacles ARE the beats. Match shapes and dodge lane blocks in time with the music — the closer to the beat, the higher your score.
+A rhythm game where obstacles ARE the beats. Match the right shape on the beat — the closer to the beat, the higher your score.
 
 Built with **C++20** and **EnTT** using Data-Oriented Design.
 Current architecture direction is direct **raylib/raygui**
@@ -16,7 +16,7 @@ at runtime boundaries, without wrapper abstraction layers.
 ## Gameplay
 
 - **4 shapes** — Circle, Square, Triangle, and Hexagon. Press shape buttons on the beat; Hexagon is the idle/default shape.
-- **3 lanes** — Swipe or press A/D to dodge lane blocks.
+- **3 lanes** — Swipe or press A/D to move between lanes.
 - **Timing grades** — Perfect > Good > Ok > Bad. Closer to the beat = higher score.
 - **Rhythm windows** — Shape changes are temporary; match the shape before the window closes.
 - **Song-driven levels** — Obstacles are generated from audio analysis of the music.
