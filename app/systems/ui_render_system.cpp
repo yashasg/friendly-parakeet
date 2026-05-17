@@ -11,9 +11,9 @@
 #include "../components/ui.h"
 #include "../constants.h"
 #include "../tags/tags.h"
+#include "../util/level_content_config.h"
 #include "../util/shape_draw_2d.h"
 
-#include "../ui/screen_controllers/level_select_screen_controller.h"
 #include "../ui/screen_controllers/gameplay_hud_screen_controller.h"
 #include <raygui.h>
 #include <raylib.h>
@@ -66,6 +66,33 @@ constexpr int kEntityButtonTextSize = 28;
 constexpr float kPausedHeadlineHeight = 80.0f;
 constexpr int   kPausedHeadlineSize   = 56;
 
+// Level-select dynamic visuals (issue #1296). Constants mirror
+// `level_select_dynamic_spawn_system.cpp` (single source of truth for
+// the per-card geometry); kept duplicated here to avoid pulling the
+// dynamic-spawn header into the already-busy render TU. Drift across
+// the two locations would show up as a visible offset in playtest.
+constexpr float kLevelCardCornerRadius = 0.1f;
+constexpr int   kLevelCardCornerSegs   = 4;
+constexpr float kLevelCardBorderThick  = 2.0f;
+constexpr int   kLevelCardTitleSize    = 32;
+constexpr int   kLevelCardTrackSize    = 32;
+constexpr int   kLevelDiffTextSize     = 20;
+constexpr float kLevelCardTitleOffsetX = 30.0f;
+constexpr float kLevelCardTitleOffsetY = 30.0f;
+constexpr float kLevelCardTrackBoxW    = 50.0f;
+constexpr float kLevelCardTrackBoxH    = 40.0f;
+constexpr float kLevelCardTrackInsetX  = 60.0f;
+constexpr float kDiffActiveBorderThick = 3.0f;
+constexpr float kDiffActiveBarInsetX   = 6.0f;
+constexpr float kDiffActiveBarOffsetY  = 6.0f;
+constexpr float kDiffActiveBarHeight   = 3.0f;
+constexpr Color kLevelCardBgSelected   {  40,  40,  60, 255 };
+constexpr Color kLevelCardBgUnselected {  20,  20,  30, 255 };
+constexpr Color kLevelCardBorderSel    { 100, 150, 255, 255 };
+constexpr Color kLevelCardBorderUnsel  {  60,  60,  80, 255 };
+constexpr Color kDiffActiveBorderColor { 120, 180, 255, 255 };
+constexpr Color kDiffActiveBarColor    {  80, 120, 200, 255 };
+
 void render_ui_entities(entt::registry& reg) {
     const int saved_text_size       = GuiGetStyle(DEFAULT, TEXT_SIZE);
     const int saved_label_alignment = GuiGetStyle(LABEL, TEXT_ALIGNMENT);
@@ -88,6 +115,62 @@ void render_ui_entities(entt::registry& reg) {
         }
     }
 
+    // ── Level Select cards (issue #1296) ────────────────────────────
+    // Per-level rounded rect + border + title + track number. Selection
+    // is determined by `LevelIndex.value == LevelSelectState.selected_level`
+    // (no separate active-tag — existence of the singleton ctx data is the
+    // signal). Rendered before the generic GuiButton pass so card paint
+    // does not get overdrawn; the generic button pass excludes
+    // `LevelCardTag` to avoid double-rendering them as raygui buttons.
+    {
+        auto* lss = reg.ctx().find<LevelSelectState>();
+        if (lss != nullptr) {
+            const int selected = lss->selected_level;
+            auto cards = reg.view<UiPosition, UiBounds, UiLabel,
+                                  LevelCardTag, LevelIndex>();
+            for (auto [e, pos, sz, label, idx] : cards.each()) {
+                (void)e;
+                const bool is_selected = (idx.value == selected);
+                const Color bg     = is_selected ? kLevelCardBgSelected
+                                                 : kLevelCardBgUnselected;
+                const Color border = is_selected ? kLevelCardBorderSel
+                                                 : kLevelCardBorderUnsel;
+                const Rectangle card{pos.x, pos.y, sz.w, sz.h};
+                DrawRectangleRounded(card, kLevelCardCornerRadius,
+                                     kLevelCardCornerSegs, bg);
+                DrawRectangleRoundedLinesEx(card, kLevelCardCornerRadius,
+                                            kLevelCardCornerSegs,
+                                            kLevelCardBorderThick, border);
+
+                GuiSetStyle(DEFAULT, TEXT_SIZE, kLevelCardTitleSize);
+                GuiSetAlpha(is_selected ? 1.0f : 0.6f);
+                GuiLabel(Rectangle{pos.x + kLevelCardTitleOffsetX,
+                                   pos.y + kLevelCardTitleOffsetY,
+                                   sz.w - kLevelCardTitleOffsetX * 2.0f,
+                                   kLevelCardTitleSize + 8.0f},
+                         label.text.data());
+                GuiSetAlpha(1.0f);
+
+                // Track number (1-based). LEVEL_COUNT is small (3 today,
+                // grows linearly with content) but `LevelIndex::value` is
+                // a plain `int`; size the buffer to fit any 32-bit
+                // integer + sign + null so GCC's
+                // `-Werror=format-truncation` is satisfied without
+                // adding a clamp that would silently misrender on a
+                // malformed entity.
+                char track_buf[12];
+                std::snprintf(track_buf, sizeof(track_buf), "%d", idx.value + 1);
+                GuiSetStyle(DEFAULT, TEXT_SIZE, kLevelCardTrackSize);
+                GuiSetAlpha(0.4f);
+                GuiLabel(Rectangle{pos.x + sz.w - kLevelCardTrackInsetX,
+                                   pos.y + kLevelCardTitleOffsetY,
+                                   kLevelCardTrackBoxW, kLevelCardTrackBoxH},
+                         track_buf);
+                GuiSetAlpha(1.0f);
+            }
+        }
+    }
+
     // Buttons — rendered with GuiButton. Press dispatch lives in
     // `ui_update_system`; ignoring the return value keeps that path the
     // single source of truth for button activation.
@@ -101,6 +184,11 @@ void render_ui_entities(entt::registry& reg) {
     // on Web per #511) are skipped to keep the button invisible on Web —
     // their bounds still act as a tap-anywhere dead-zone via
     // `title_start_tap_system`.
+    //
+    // Level-select dynamic archetypes (`LevelCardTag`, `DifficultyButtonTag`,
+    // issue #1296) are excluded — they render in dedicated passes (cards
+    // above, difficulty buttons below) so the rounded-rect / active-state
+    // emphasis aren't overdrawn by a default GuiButton call.
     {
         GuiSetStyle(DEFAULT, TEXT_SIZE, kEntityButtonTextSize);
 
@@ -153,9 +241,11 @@ void render_ui_entities(entt::registry& reg) {
             GuiSetStyle(BUTTON, kToggleStyleProps[i], saved_button_style[i]);
         }
 
-        // ── Pass B: plain (non-toggle) buttons, default raygui style ──
+        // ── Pass B: plain (non-toggle, non-level-select) buttons ──
         auto view = reg.view<UiPosition, UiBounds, UiLabel, UiButtonTag>(
-            entt::exclude<UiToggleTag
+            entt::exclude<UiToggleTag,
+                          LevelCardTag,
+                          DifficultyButtonTag
 #ifdef PLATFORM_WEB
                           , UiHiddenOnWebTag
 #endif
@@ -164,6 +254,45 @@ void render_ui_entities(entt::registry& reg) {
         for (auto [e, pos, sz, label] : view.each()) {
             (void)e;
             (void)GuiButton(Rectangle{pos.x, pos.y, sz.w, sz.h}, label.text.data());
+        }
+    }
+
+    // ── Level Select difficulty buttons (issue #1296) ───────────────
+    // Render only those belonging to the currently selected level card.
+    // Active difficulty gets a two-cue emphasis (thick border + inset
+    // selection bar) painted *after* GuiButton so it isn't overdrawn by
+    // raygui's BUTTON style (#469). The colour cue alone wouldn't satisfy
+    // A11Y/2.1.3; the non-colour cues (line thickness + bar) make the
+    // selected option distinguishable to colourblind players.
+    {
+        auto* lss = reg.ctx().find<LevelSelectState>();
+        if (lss != nullptr) {
+            const int active_level = lss->selected_level;
+            const int active_diff  = lss->selected_difficulty;
+
+            GuiSetStyle(DEFAULT, TEXT_SIZE, kLevelDiffTextSize);
+            auto diffs = reg.view<UiPosition, UiBounds, UiLabel,
+                                  DifficultyButtonTag, LevelIndex,
+                                  DifficultyIndex>();
+            for (auto [e, pos, sz, label, lidx, didx] : diffs.each()) {
+                (void)e;
+                if (lidx.value != active_level) continue;
+                const Rectangle rect{pos.x, pos.y, sz.w, sz.h};
+                (void)GuiButton(rect, label.text.data());
+                if (didx.value == active_diff) {
+                    DrawRectangleRoundedLinesEx(rect, kLevelCardCornerRadius,
+                                                kLevelCardCornerSegs,
+                                                kDiffActiveBorderThick,
+                                                kDiffActiveBorderColor);
+                    const Rectangle bar{
+                        rect.x + kDiffActiveBarInsetX,
+                        rect.y + rect.height - kDiffActiveBarOffsetY,
+                        rect.width - kDiffActiveBarInsetX * 2.0f,
+                        kDiffActiveBarHeight,
+                    };
+                    DrawRectangleRec(bar, kDiffActiveBarColor);
+                }
+            }
         }
     }
 
@@ -274,10 +403,10 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     // Paused was migrated to the entity-driven path (#1287 pilot);
     // Tutorial migrated in #1291; Song Complete migrated in #1292; Game
     // Over migrated in #1293; Title migrated in #1294; Settings migrated
-    // in #1295. The remaining two screens migrate in follow-up sub-issues
-    // — see #1287.
+    // in #1295; Level Select migrated in #1296. The remaining one screen
+    // (Gameplay HUD) migrates in #1297; at which point this `if` block
+    // drops out entirely.
     const auto& ctx = reg.ctx();
-    if (ctx.contains<GamePhaseLevelSelectTag>())  { render_level_select_screen_ui(reg); }
     if (ctx.contains<GamePhasePlayingTag>())      { render_gameplay_hud_screen_ui(reg); }
 
     // Restore raw mouse transform for non-UI systems in subsequent frames.

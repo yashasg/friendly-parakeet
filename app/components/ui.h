@@ -69,6 +69,22 @@ struct OnPress {
     ActionId action = ActionId::None;
 };
 
+// Per-entity row index for dynamic-spawn UI archetypes (level-select cards
+// and difficulty buttons, issue #1296). Each level-select card carries
+// `LevelIndex{i}` for i in [0, content_config::LEVEL_COUNT); each
+// difficulty button carries both `LevelIndex` (which card it belongs to)
+// and `DifficultyIndex{d}` for d in [0, content_config::DIFFICULTY_COUNT).
+// Render and input systems use these to drive the "active card" selection
+// against `LevelSelectState::selected_level/selected_difficulty` without
+// any switch on an enum discriminator (Fabian Principle 1).
+struct LevelIndex {
+    int value = 0;
+};
+
+struct DifficultyIndex {
+    int value = 0;
+};
+
 // Two-state toggle data for buttons carrying `UiToggleTag` (Settings
 // screen, issue #1295). The bind system (e.g.
 // `settings_screen_bind_system`) writes the current ON/OFF state each
