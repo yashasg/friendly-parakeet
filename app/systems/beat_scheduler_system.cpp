@@ -68,11 +68,18 @@ void warn_invalid_lane_once(int lane) {
 // target (issue #1202/#1204). The shape is now encoded by which vector
 // the cursor walks and the shape literal each transform passes to the
 // spawn function.
+//
+// The per-row body (timing resolve, lane validate, lane-x lookup, warn,
+// spawn-call) is identical across `shape_gate`, `split_path`, and
+// `onset_marker` bins (issue #1416); only the trailing spawn call
+// differs. `schedule_bin` owns the shared body; each kind passes a thin
+// spawn lambda that picks the right `spawn_*_rhythm` call.
 
-void schedule_shape_gate_bin(ScheduleContext& ctx,
-                             const std::vector<BeatEntry>& bin,
-                             size_t& cursor,
-                             Shape required_shape) {
+template <typename SpawnFn>
+void schedule_bin(ScheduleContext& ctx,
+                  const std::vector<BeatEntry>& bin,
+                  size_t& cursor,
+                  SpawnFn&& spawn_fn) {
     while (cursor < bin.size()) {
         const auto& entry = bin[cursor];
         float calibrated_arrival_time = 0.0f;
@@ -86,52 +93,42 @@ void schedule_shape_gate_bin(ScheduleContext& ctx,
         warn_invalid_lane_once(static_cast<int>(entry.lane));
 
         const BeatInfo bi{entry.beat_index, calibrated_arrival_time, effective_spawn_time};
-        spawn_shape_gate_rhythm(ctx.reg, {x_pos, start_y, required_shape,
-                                          ctx.song.scroll_speed}, bi);
+        spawn_fn(ctx, spawn_lane, x_pos, start_y, bi);
         cursor++;
     }
+}
+
+void schedule_shape_gate_bin(ScheduleContext& ctx,
+                             const std::vector<BeatEntry>& bin,
+                             size_t& cursor,
+                             Shape required_shape) {
+    schedule_bin(ctx, bin, cursor,
+        [required_shape](ScheduleContext& c, int8_t /*spawn_lane*/,
+                         float x_pos, float start_y, const BeatInfo& bi) {
+            spawn_shape_gate_rhythm(c.reg, {x_pos, start_y, required_shape,
+                                            c.song.scroll_speed}, bi);
+        });
 }
 
 void schedule_split_path_bin(ScheduleContext& ctx,
                              const std::vector<BeatEntry>& bin,
                              size_t& cursor,
                              Shape required_shape) {
-    while (cursor < bin.size()) {
-        const auto& entry = bin[cursor];
-        float calibrated_arrival_time = 0.0f;
-        float effective_spawn_time    = 0.0f;
-        float start_y                 = 0.0f;
-        if (!resolve_spawn_timing(ctx, entry, calibrated_arrival_time,
-                                  effective_spawn_time, start_y)) break;
-
-        const int8_t spawn_lane = lane_utils::valid_or_default(entry.lane);
-        const float x_pos = constants::LANE_X[static_cast<int>(spawn_lane)];
-        warn_invalid_lane_once(static_cast<int>(entry.lane));
-
-        const BeatInfo bi{entry.beat_index, calibrated_arrival_time, effective_spawn_time};
-        spawn_split_path_rhythm(ctx.reg, {x_pos, start_y, required_shape,
-                                          spawn_lane, ctx.song.scroll_speed}, bi);
-        cursor++;
-    }
+    schedule_bin(ctx, bin, cursor,
+        [required_shape](ScheduleContext& c, int8_t spawn_lane,
+                         float x_pos, float start_y, const BeatInfo& bi) {
+            spawn_split_path_rhythm(c.reg, {x_pos, start_y, required_shape,
+                                            spawn_lane, c.song.scroll_speed}, bi);
+        });
 }
 
 void schedule_onset_markers(ScheduleContext& ctx) {
-    while (ctx.song.next_onset_marker_idx < ctx.map.onset_marker_beats.size()) {
-        const auto& entry = ctx.map.onset_marker_beats[ctx.song.next_onset_marker_idx];
-        float calibrated_arrival_time = 0.0f;
-        float effective_spawn_time    = 0.0f;
-        float start_y                 = 0.0f;
-        if (!resolve_spawn_timing(ctx, entry, calibrated_arrival_time,
-                                  effective_spawn_time, start_y)) break;
-
-        const int8_t spawn_lane = lane_utils::valid_or_default(entry.lane);
-        const float x_pos = constants::LANE_X[static_cast<int>(spawn_lane)];
-        warn_invalid_lane_once(static_cast<int>(entry.lane));
-
-        const BeatInfo bi{entry.beat_index, calibrated_arrival_time, effective_spawn_time};
-        spawn_onset_marker_rhythm(ctx.reg, {x_pos, start_y, ctx.song.scroll_speed}, bi);
-        ctx.song.next_onset_marker_idx++;
-    }
+    schedule_bin(ctx, ctx.map.onset_marker_beats, ctx.song.next_onset_marker_idx,
+        [](ScheduleContext& c, int8_t /*spawn_lane*/,
+           float x_pos, float start_y, const BeatInfo& bi) {
+            spawn_onset_marker_rhythm(c.reg, {x_pos, start_y,
+                                              c.song.scroll_speed}, bi);
+        });
 }
 
 } // namespace
