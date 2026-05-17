@@ -4,7 +4,6 @@
 
 #include <array>
 #include <cstddef>
-#include <cstring>
 
 // Atomic UI components produced by the rguilayout codegen pipeline (#1193).
 // Each control row in a `.rgl` layout file becomes one ECS entity carrying:
