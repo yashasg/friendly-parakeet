@@ -4,8 +4,9 @@
 > Historical implementation plan. The current runtime uses `EnergyState`,
 > dispatcher-based `PlaySfxEvent` / `PlayHapticEvent` audio routing, and CMake
 > content copy rules; use `README.md`, `design-docs/beatmap-integration.md`,
-> and the code under `app/components/audio.h`, `app/components/music.h`, and
-> `app/systems/` as the authoritative
+> and the code under `app/components/audio.h`, `app/systems/audio_resources.h`
+> (where `MusicContext` actually lives — relocated from the never-shipped
+> `app/components/music.h` per #1351), and `app/systems/` as the authoritative
 > implementation reference.
 
 ## Data Flow Diagram
