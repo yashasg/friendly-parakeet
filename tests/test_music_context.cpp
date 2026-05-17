@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "components/music.h"
+#include "systems/audio_resources.h"
 
 namespace {
 

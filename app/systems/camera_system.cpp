@@ -1,4 +1,5 @@
 #include "camera_system.h"
+#include "camera_resources.h"
 #include "all_systems.h"
 #include "shape_mesh.h"
 #include "../components/rendering.h"

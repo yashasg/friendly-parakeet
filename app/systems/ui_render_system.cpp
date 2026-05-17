@@ -10,7 +10,7 @@
 #include "../components/game_state.h"
 #include "../components/settings.h"
 #include "../components/song_state.h"
-#include "../components/text_resources.h"
+#include "text_resources.h"
 #include "../components/ui.h"
 #include "../constants.h"
 #include "../tags/tags.h"
