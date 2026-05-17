@@ -6,13 +6,13 @@ Active — governs the integration boundary between rguilayout-authored `.rgl` l
 
 ## Overview
 
-rguilayout is a visual editor that produces `.rgl` project files describing UI controls (rectangles, labels, buttons, dummy frames) with anchors and styles. **This project does not consume `rguilayout`'s native code-export path.** Instead, `tools/rguilayout/codegen.py` parses the committed `.rgl` files directly and emits per-screen entity-spawner C++ sources under `app/ui/generated/`. Each control row in the `.rgl` becomes one ECS entity carrying atomic components plus per-screen and per-kind existential tags. The runtime UI is then a uniform pass over those entities — there is no screen-by-screen render dispatch.
+rguilayout is a visual editor that produces `.rgl` project files describing UI controls (rectangles, labels, buttons, dummy frames) with anchors and styles. **This project does not consume `rguilayout`'s native code-export path.** Instead, `tools/rguilayout/codegen.py` parses the committed `.rgl` files directly and emits per-screen entity-spawner C++ sources under `app/systems/generated/`. Each control row in the `.rgl` becomes one ECS entity carrying atomic components plus per-screen and per-kind existential tags. The runtime UI is then a uniform pass over those entities — there is no screen-by-screen render dispatch.
 
 **Key principle:** The `.rgl` file is the source of truth for UI layout. Codegen output is regenerated deterministically at CMake configure time; hand-written code never creates UI entities outside the spawner contract.
 
 ## Goal: Codegen-Emitted Entity Spawners as the Integration Boundary
 
-The codegen output — per-screen `spawn_<screen>_screen(reg)` / `despawn_<screen>_screen(reg)` functions emitted to `app/ui/generated/<screen>_screen.cpp` — is the single contract between:
+The codegen output — per-screen `spawn_<screen>_screen(reg)` / `despawn_<screen>_screen(reg)` functions emitted to `app/systems/generated/<screen>_screen.cpp` — is the single contract between:
 
 - **Upstream (authoring + codegen):** rguilayout `.rgl` files in `content/ui/screens/` and `tools/rguilayout/codegen.py`.
 - **Downstream (runtime):** `app/systems/screen_lifecycle_system.cpp` (calls the spawners on phase tag changes) and `app/systems/ui_render_system.cpp` / `app/systems/ui_update_system.cpp` (consume the resulting entities).
@@ -26,7 +26,7 @@ The codegen output — per-screen `spawn_<screen>_screen(reg)` / `despawn_<scree
          |
          | tools/rguilayout/codegen.py runs at CMake configure time
          v
-[app/ui/generated/<screen>_screen.cpp + screen_spawners.h] (committed codegen output)
+[app/systems/generated/<screen>_screen.cpp + screen_spawners.h] (committed codegen output)
          |
          | linked into shapeshifter_lib
          v
@@ -59,7 +59,7 @@ The codegen output — per-screen `spawn_<screen>_screen(reg)` / `despawn_<scree
 
 ### 2. Codegen-Emitted Entity Spawner
 
-`tools/rguilayout/codegen.py` parses each `.rgl` and writes `app/ui/generated/<screen>_screen.cpp`:
+`tools/rguilayout/codegen.py` parses each `.rgl` and writes `app/systems/generated/<screen>_screen.cpp`:
 
 - One self-contained C++ source per screen. No `.h` per screen — the entire surface is the two function declarations in `screen_spawners.h`.
 - Includes only `components/actions.h`, `components/ui.h`, `tags/tags.h`, and `<entt/entt.hpp>` (and `<string>` where labels are present).
@@ -114,7 +114,7 @@ Concrete reasons the project owns the codegen rather than relying on rguilayout'
 Every codegen-emitted source follows the same shape:
 
 ```cpp
-// app/ui/generated/<screen>_screen.cpp  (auto-generated; do not edit)
+// app/systems/generated/<screen>_screen.cpp  (auto-generated; do not edit)
 #include "components/actions.h"
 #include "components/ui.h"
 #include "tags/tags.h"
@@ -141,7 +141,7 @@ void despawn_<screen>_screen(entt::registry& reg) {
 }
 ```
 
-Forward declarations for every pair live in `app/ui/generated/screen_spawners.h`, which is the single header `screen_lifecycle_system.cpp` includes.
+Forward declarations for every pair live in `app/systems/generated/screen_spawners.h`, which is the single header `screen_lifecycle_system.cpp` includes.
 
 **No `LayoutState` struct, no `Init` / `Render` functions, no `GuiLayout_*` symbols** — the project does not consume rguilayout's native template output, so those names do not appear anywhere in `app/`.
 
@@ -183,7 +183,7 @@ content/ui/screens/
   song_complete.rgl
   settings.rgl
 
-app/ui/
+app/systems/
   generated/
     title_screen.cpp          # Codegen output: spawn_/despawn_ pair.
     tutorial_screen.cpp
@@ -203,7 +203,7 @@ app/util/
 **Naming conventions:**
 
 - `.rgl` files: `<screen>.rgl`, lowercase with underscores.
-- Codegen output: `app/ui/generated/<screen>_screen.cpp` and `<screen>_screen.cpp` exposes `spawn_<screen>_screen` / `despawn_<screen>_screen`.
+- Codegen output: `app/systems/generated/<screen>_screen.cpp` and `<screen>_screen.cpp` exposes `spawn_<screen>_screen` / `despawn_<screen>_screen`.
 - Per-screen tags: `<Screen>ScreenTag` in `app/tags/tags.h` (CamelCase derived from the file name).
 
 **Current pattern:** Every migrated screen is one `.rgl` + one codegen-emitted `.cpp` + one row in the `screen_lifecycle_system.cpp` lifecycle table + one entry in `app/tags/tags.h`. Adding a new screen requires touching exactly those four sites; no boilerplate render-dispatch code is needed.
@@ -214,7 +214,7 @@ These are explicitly out of scope for the codegen integration:
 
 1. **Hand-written widget mirrors:** Do NOT create `UIWidgetTag` / `UIRectangle` / `UIButtonState` entities to mirror codegen output. The codegen output IS the entity set.
 2. **Layout-data copying:** Do NOT read codegen-emitted rectangles and store them in `reg.ctx()` layout caches or hand-written structs. If a system needs a rectangle, query the spawner-emitted entity directly.
-3. **Hand-editing codegen output:** `app/ui/generated/*_screen.cpp` and `screen_spawners.h` are final. Any layout change is made in the `.rgl` and codegen is regenerated.
+3. **Hand-editing codegen output:** `app/systems/generated/*_screen.cpp` and `screen_spawners.h` are final. Any layout change is made in the `.rgl` and codegen is regenerated.
 4. **Adopting rguilayout's native exporter:** Do not add a CMake target for the native `--template` flag. The project's codegen path is the only emitter.
 5. **Per-screen render dispatch:** Do not add `switch (phase)` / per-screen `render_*` functions in `ui_render_system.cpp`. The renderer queries by per-kind tag, not by screen.
 6. **No committed standalone scratch files:** Any temporary standalone rguilayout exports must live in `build/rguilayout-scratch/` (or an ignored scratch path) and must not be committed.
@@ -226,7 +226,7 @@ This integration replaced two earlier UI shapes in sequence:
 1. **Adapter-pattern files** (`app/ui/adapters/<screen>_adapter.cpp`) — removed before any official release of this layer.
 2. **Per-screen render-callback files** (one C++ TU per screen, deleted in #1308 once #1287 entity-driven UI shipped end-to-end). Staging shape used while the rguilayout-native-exporter approach was prototyped. Today there is no per-screen render-callback layer.
 
-The current pattern (codegen + entity spawner + uniform render pass) is the only shape under `app/ui/`.
+The current pattern (codegen + entity spawner + uniform render pass) is the only shape used; the historical `app/ui/` folder no longer exists (relocated to `app/systems/generated/` in #1325 per the Section-7 folder allowlist).
 
 ### Incorrect Pattern (Avoid)
 
@@ -277,11 +277,11 @@ The build wires the pipeline as follows:
 # 1. Discover .rgl sources.
 file(GLOB RGL_SOURCES CONFIGURE_DEPENDS content/ui/screens/*.rgl)
 
-# 2. Codegen: .rgl → app/ui/generated/<screen>_screen.cpp + screen_spawners.h.
+# 2. Codegen: .rgl → app/systems/generated/<screen>_screen.cpp + screen_spawners.h.
 add_custom_command(
     OUTPUT  ${RGUILAYOUT_GENERATED_SOURCES}
     COMMAND python3 ${CMAKE_SOURCE_DIR}/tools/rguilayout/codegen.py
-            --output-dir   ${CMAKE_SOURCE_DIR}/app/ui/generated
+            --output-dir   ${CMAKE_SOURCE_DIR}/app/systems/generated
             --actions-header ${CMAKE_SOURCE_DIR}/app/components/actions.h
             ${RGL_SOURCES}
     DEPENDS ${RGL_SOURCES} ${CMAKE_SOURCE_DIR}/tools/rguilayout/codegen.py
@@ -297,7 +297,7 @@ set_source_files_properties(
 
 # 4. Link codegen output + raygui impl into shapeshifter_lib.
 add_library(shapeshifter_lib STATIC
-    ${SYSTEM_SOURCES} ${UTIL_SOURCES} ${UI_SOURCES} ${ENTITY_SOURCES}
+    ${SYSTEM_SOURCES} ${UTIL_SOURCES} ${ENTITY_SOURCES}
     ${RGUILAYOUT_GENERATED_SOURCES}
 )
 ```
@@ -316,7 +316,7 @@ add_library(shapeshifter_lib STATIC
 ## Validation Checklist
 
 - [ ] All screen `.rgl` files are authored and committed in `content/ui/screens/`.
-- [ ] All `<screen>_screen.cpp` files are committed in `app/ui/generated/` and were produced by running codegen on the corresponding `.rgl`.
+- [ ] All `<screen>_screen.cpp` files are committed in `app/systems/generated/` and were produced by running codegen on the corresponding `.rgl`.
 - [ ] No codegen output is hand-edited; any layout change regenerates via `cmake --build`.
 - [ ] Every button name in every `.rgl` appears in `app/components/actions.h`'s `ActionId` enum.
 - [ ] `screen_lifecycle_system.cpp`'s lifecycle table has one row per migrated screen.

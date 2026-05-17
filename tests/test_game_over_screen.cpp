@@ -76,7 +76,7 @@ TEST_CASE("game_over: rgl declares SCORE and HIGH SCORE labels alongside slots (
 // (the legacy header survives until OoS-B but no longer drives runtime).
 TEST_CASE("game_over: generated spawner emits SCORE and HIGH SCORE labels (#533)",
           "[game_over][ui][issue533]") {
-    const std::string spawner = read_file("app/ui/generated/game_over_screen.cpp");
+    const std::string spawner = read_file("app/systems/generated/game_over_screen.cpp");
     REQUIRE_FALSE(spawner.empty());
     CHECK(spawner.find("\"SCORE\"") != std::string::npos);
     CHECK(spawner.find("\"HIGH SCORE\"") != std::string::npos);

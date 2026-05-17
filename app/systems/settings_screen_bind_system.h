@@ -7,7 +7,7 @@
 //
 // Writes per-frame Settings UI data into the entities spawned by
 // `spawn_settings_screen()` (codegen, see
-// `app/ui/generated/settings_screen.cpp`):
+// `app/systems/generated/settings_screen.cpp`):
 //
 //   * AudioOffsetDisplay label  → "%+d ms" from `SettingsState::audio_offset_ms`
 //   * HapticsToggle      label  → "[X] HAPTICS: ON" / "[ ] HAPTICS: OFF"

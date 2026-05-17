@@ -48,7 +48,7 @@
 > handlers that call `request_phase_transition<NextPhase*Tag>`),
 > `app/systems/game_phase_transition.{h,cpp}` (the swap mechanic), and
 > `app/systems/screen_lifecycle_system.{h,cpp}` (per-tag spawn/despawn
-> dispatch into `app/ui/generated/screen_spawners.h`).
+> dispatch into `app/systems/generated/screen_spawners.h`).
 > The diagram below mirrors current shipped routing.
 
 ```

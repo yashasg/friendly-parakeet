@@ -187,10 +187,10 @@ class ScreenTagsTableTests(unittest.TestCase):
 class GeneratedSourceTests(unittest.TestCase):
 
     def test_committed_outputs_match_codegen(self):
-        """Every committed app/ui/generated/<stem>_screen.cpp must equal the
-        output of running codegen on the current .rgl source. Prevents drift
-        between source and generated files."""
-        generated_dir = REPO_ROOT / "app" / "ui" / "generated"
+        """Every committed app/systems/generated/<stem>_screen.cpp must equal
+        the output of running codegen on the current .rgl source. Prevents
+        drift between source and generated files."""
+        generated_dir = REPO_ROOT / "app" / "systems" / "generated"
         for rgl in sorted(RGL_DIR.glob("*.rgl")):
             layout = codegen.parse_rgl(rgl)
             expected = codegen.emit_spawner_cpp(layout, rgl)
@@ -202,7 +202,7 @@ class GeneratedSourceTests(unittest.TestCase):
                 msg=(
                     f"{cpp} is stale relative to {rgl}. Run:\n"
                     f"  python3 tools/rguilayout/codegen.py "
-                    f"--output-dir app/ui/generated "
+                    f"--output-dir app/systems/generated "
                     f"--actions-header app/components/actions.h "
                     f"content/ui/screens/*.rgl"
                 ),

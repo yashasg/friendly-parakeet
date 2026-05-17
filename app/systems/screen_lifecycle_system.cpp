@@ -2,7 +2,7 @@
 
 #include "../components/game_state.h"
 #include "../tags/tags.h"
-#include "../ui/generated/screen_spawners.h"
+#include "generated/screen_spawners.h"
 #include "level_select_dynamic_spawn_system.h"
 
 // Per Fabian existential processing (#1202/#1204): the mapping

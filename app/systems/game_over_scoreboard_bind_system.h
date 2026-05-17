@@ -7,7 +7,7 @@
 // Writes per-frame score / high-score / new-best / previous-best / death-
 // reason text into the dynamic-text label slots spawned by
 // `spawn_game_over_screen()` (codegen, see
-// `app/ui/generated/game_over_screen.cpp`). The slot entities are identified
+// `app/systems/generated/game_over_screen.cpp`). The slot entities are identified
 // by their canonical (x, y) position baked from
 // `content/ui/screens/game_over.rgl`; the bind table is a per-slot row of
 // (x, y, write fn) — no `switch` over a discriminator (Fabian Principle 1).
