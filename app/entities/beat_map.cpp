@@ -1,4 +1,5 @@
 #include "beat_map.h"
+#include "../util/app_dir_path.h"
 #include "../util/rhythm_math.h"
 #include "../util/shape_lane_mapping.h"
 #include <nlohmann/json.hpp>
@@ -14,19 +15,6 @@
 using json = nlohmann::json;
 namespace {
 constexpr const char* kValidationConstantsPath = "content/constants.json";
-
-std::string constants_path_for_app_dir(const std::string& app_dir) {
-    if (app_dir.empty()) {
-        return kValidationConstantsPath;
-    }
-    const char last = app_dir.back();
-    if (last == '/' || last == '\\') {
-        return app_dir + kValidationConstantsPath;
-    }
-    return app_dir + "/" + kValidationConstantsPath;
-}
-
-
 
 std::string type_error_message(const char* field, const char* expected, const json& value) {
     return std::string("'") + field + "' must be " + expected + " (got " + value.type_name() + ")";
@@ -241,8 +229,9 @@ static bool try_load_constants_from(const std::string& path, ValidationConstants
 
 ValidationConstants load_validation_constants(const std::string& app_dir) {
     ValidationConstants vc;
-    const std::string exe_relative_path =
-        constants_path_for_app_dir(app_dir.empty() ? std::string(GetApplicationDirectory()) : app_dir);
+    const std::string exe_relative_path = util::join_app_dir(
+        app_dir.empty() ? std::string_view(GetApplicationDirectory()) : std::string_view(app_dir),
+        kValidationConstantsPath);
     if (try_load_constants_from(exe_relative_path, vc)) {
         return vc;
     }
