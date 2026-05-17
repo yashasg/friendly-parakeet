@@ -41,6 +41,22 @@ void init_popup_display_label(PopupDisplay& pd, const Color& base, const char* t
     std::snprintf(pd.text, sizeof(pd.text), "%s", text);
 }
 
+// Shared body for the four per-timing-tier spawners (#1443). All four
+// previously had byte-identical bodies that differed only by the tag type,
+// the color literal, and the label argument forwarded to
+// `init_popup_display_label`. The public per-tier symbols remain (tests and
+// call sites use them directly) and now thin-call into this impl.
+template <typename TimingTag>
+entt::entity spawn_score_popup_timed(entt::registry& reg, float x, float y, int points,
+                                     Color color, const char* label) {
+    auto popup = create_popup_archetype(reg, x, y, points, color);
+    reg.emplace<TimingTag>(popup);
+    PopupDisplay pd{};
+    init_popup_display_label(pd, color, label);
+    reg.emplace<PopupDisplay>(popup, pd);
+    return popup;
+}
+
 }  // namespace
 
 void init_popup_display_untimed(PopupDisplay& pd,
@@ -68,43 +84,23 @@ void init_popup_display_bad(PopupDisplay& pd, const Color& base) {
 }
 
 entt::entity spawn_score_popup_perfect(entt::registry& reg, float x, float y, int points) {
-    const Color color{80, 255, 220, 255};  // bright cyan
-    auto popup = create_popup_archetype(reg, x, y, points, color);
-    reg.emplace<TimingPerfectTag>(popup);
-    PopupDisplay pd{};
-    init_popup_display_perfect(pd, color);
-    reg.emplace<PopupDisplay>(popup, pd);
-    return popup;
+    return spawn_score_popup_timed<TimingPerfectTag>(reg, x, y, points,
+                                                     Color{80, 255, 220, 255}, "PERFECT");
 }
 
 entt::entity spawn_score_popup_good(entt::registry& reg, float x, float y, int points) {
-    const Color color{140, 255, 80, 255};  // lime green
-    auto popup = create_popup_archetype(reg, x, y, points, color);
-    reg.emplace<TimingGoodTag>(popup);
-    PopupDisplay pd{};
-    init_popup_display_good(pd, color);
-    reg.emplace<PopupDisplay>(popup, pd);
-    return popup;
+    return spawn_score_popup_timed<TimingGoodTag>(reg, x, y, points,
+                                                  Color{140, 255, 80, 255}, "GOOD");
 }
 
 entt::entity spawn_score_popup_ok(entt::registry& reg, float x, float y, int points) {
-    const Color color{255, 200, 60, 255};  // amber
-    auto popup = create_popup_archetype(reg, x, y, points, color);
-    reg.emplace<TimingOkTag>(popup);
-    PopupDisplay pd{};
-    init_popup_display_ok(pd, color);
-    reg.emplace<PopupDisplay>(popup, pd);
-    return popup;
+    return spawn_score_popup_timed<TimingOkTag>(reg, x, y, points,
+                                                Color{255, 200, 60, 255}, "OK");
 }
 
 entt::entity spawn_score_popup_bad(entt::registry& reg, float x, float y, int points) {
-    const Color color{255, 90, 70, 255};  // red-orange
-    auto popup = create_popup_archetype(reg, x, y, points, color);
-    reg.emplace<TimingBadTag>(popup);
-    PopupDisplay pd{};
-    init_popup_display_bad(pd, color);
-    reg.emplace<PopupDisplay>(popup, pd);
-    return popup;
+    return spawn_score_popup_timed<TimingBadTag>(reg, x, y, points,
+                                                 Color{255, 90, 70, 255}, "BAD");
 }
 
 entt::entity spawn_score_popup_untimed(entt::registry& reg, float x, float y, int points) {
