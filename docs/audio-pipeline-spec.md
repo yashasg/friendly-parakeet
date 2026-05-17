@@ -1,13 +1,17 @@
 
 # SHAPESHIFTER: Audio & Content Data Pipeline — Implementation Specification
 
-> Historical implementation plan. The current runtime uses `EnergyState`,
-> dispatcher-based `PlaySfxEvent` / `PlayHapticEvent` audio routing, and CMake
-> content copy rules; use `README.md`, `design-docs/beatmap-integration.md`,
-> and the code under `app/components/audio.h`, `app/systems/audio_resources.h`
-> (where `MusicContext` actually lives — relocated from the never-shipped
-> `app/components/music.h` per #1351), and `app/systems/` as the authoritative
-> implementation reference.
+> **STATUS:** Historical implementation log. The body below preserves the
+> original plan-of-record (including the never-shipped
+> `app/components/music.h` proposal under § Change 3), but the runtime
+> shipped differently: `MusicContext` lives in
+> `app/systems/audio_resources.h` — not `app/components/music.h`, which
+> was never created (see #1351). The rest of the runtime uses
+> `EnergyState` plus dispatcher-based `PlaySfxEvent` / `PlayHapticEvent`
+> routing and CMake content copy rules. For current truth see
+> `README.md`, `design-docs/beatmap-integration.md`,
+> `app/components/audio.h`, `app/systems/audio_resources.h`, and
+> `app/systems/`.
 
 ## Data Flow Diagram
 
