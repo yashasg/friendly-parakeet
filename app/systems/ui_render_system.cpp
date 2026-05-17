@@ -151,8 +151,14 @@ void render_ui_entities(entt::registry& reg) {
                          label.text.data());
                 GuiSetAlpha(1.0f);
 
-                // Track number (1-based).
-                char track_buf[4];
+                // Track number (1-based). LEVEL_COUNT is small (3 today,
+                // grows linearly with content) but `LevelIndex::value` is
+                // a plain `int`; size the buffer to fit any 32-bit
+                // integer + sign + null so GCC's
+                // `-Werror=format-truncation` is satisfied without
+                // adding a clamp that would silently misrender on a
+                // malformed entity.
+                char track_buf[12];
                 std::snprintf(track_buf, sizeof(track_buf), "%d", idx.value + 1);
                 GuiSetStyle(DEFAULT, TEXT_SIZE, kLevelCardTrackSize);
                 GuiSetAlpha(0.4f);
