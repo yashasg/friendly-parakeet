@@ -1,8 +1,9 @@
 // Regression test for #513: the Tutorial "DODGE LANES" hint must vary with
 // the runtime input-capability flag, not the compile-time PLATFORM_HAS_KEYBOARD
-// macro. The previous compile-time #ifdef in app/systems/generated/tutorial_layout.h
-// shipped keyboard-only copy to touch-only Web browsers because the
-// Web build defines PLATFORM_HAS_KEYBOARD (CMakeLists.txt:198).
+// macro. The previous compile-time #ifdef (since replaced by the runtime
+// switch in app/util/tutorial_dodge_hint.h) shipped keyboard-only copy to
+// touch-only Web browsers because the Web build defines PLATFORM_HAS_KEYBOARD
+// (CMakeLists.txt:198).
 
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
