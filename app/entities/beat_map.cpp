@@ -263,19 +263,27 @@ static std::optional<Shape> parse_shape(const std::string& s) {
 // is not a valid required shape" message.
 using ShapeBinAccessor = std::vector<BeatEntry>* (*)(BeatMap&);
 
-std::vector<BeatEntry>* sg_circle_sink  (BeatMap& m) { return &m.shape_gate_circle_beats; }
-std::vector<BeatEntry>* sg_square_sink  (BeatMap& m) { return &m.shape_gate_square_beats; }
-std::vector<BeatEntry>* sg_triangle_sink(BeatMap& m) { return &m.shape_gate_triangle_beats; }
-std::vector<BeatEntry>* sp_circle_sink  (BeatMap& m) { return &m.split_path_circle_beats; }
-std::vector<BeatEntry>* sp_square_sink  (BeatMap& m) { return &m.split_path_square_beats; }
-std::vector<BeatEntry>* sp_triangle_sink(BeatMap& m) { return &m.split_path_triangle_beats; }
-std::vector<BeatEntry>* null_shape_sink (BeatMap& m) { (void)m; return nullptr; }
+// One template instantiation per non-null sink slot (issue #1456 finishes the
+// dedupe started by #1420/#1421). The six per-(kind, shape) bodies previously
+// differed only by which `BeatMap` data-member pointer was named; the function
+// pointer stored in `kShapeGateSinks` / `kSplitPathSinks` still has the
+// `std::vector<BeatEntry>* (*)(BeatMap&)` signature required by `ShapeBinAccessor`.
+template <std::vector<BeatEntry> BeatMap::*Field>
+std::vector<BeatEntry>* shape_field_sink(BeatMap& m) { return &(m.*Field); }
+
+std::vector<BeatEntry>* null_shape_sink(BeatMap& m) { (void)m; return nullptr; }
 
 inline constexpr std::array<ShapeBinAccessor, kShapeCount> kShapeGateSinks{
-    &sg_circle_sink, &sg_square_sink, &sg_triangle_sink, &null_shape_sink
+    &shape_field_sink<&BeatMap::shape_gate_circle_beats>,
+    &shape_field_sink<&BeatMap::shape_gate_square_beats>,
+    &shape_field_sink<&BeatMap::shape_gate_triangle_beats>,
+    &null_shape_sink
 };
 inline constexpr std::array<ShapeBinAccessor, kShapeCount> kSplitPathSinks{
-    &sp_circle_sink, &sp_square_sink, &sp_triangle_sink, &null_shape_sink
+    &shape_field_sink<&BeatMap::split_path_circle_beats>,
+    &shape_field_sink<&BeatMap::split_path_square_beats>,
+    &shape_field_sink<&BeatMap::split_path_triangle_beats>,
+    &null_shape_sink
 };
 
 // ── Per-kind beat-entry sinks (issue #1202/#1204) ───────────
