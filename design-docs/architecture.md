@@ -1058,7 +1058,7 @@ int main(int argc, char* argv[]) {
 
     // ── TIMING ────────────────────────────────────────────────
     constexpr float FIXED_DT     = 1.0f / 60.0f;   // 16.67ms
-    constexpr float MAX_ACCUM    = 0.1f;            // cap = 6 frames
+    constexpr float kMaxFrameDt  = 0.1f;            // cap = 6 frames (single canonical hitch cap, #1352)
     float           accumulator  = 0.0f;
     double          prev_time    = GetTime();
 
@@ -1067,11 +1067,11 @@ int main(int argc, char* argv[]) {
 
         // ── DELTA TIME ────────────────────────────────────────
         double now = GetTime();
-        float raw_dt = static_cast<float>(now - prev_time);
+        float raw_dt = clamp_frame_dt(static_cast<float>(now - prev_time));
         prev_time = now;
         accumulator += raw_dt;
-        if (accumulator > MAX_ACCUM) {
-            accumulator = MAX_ACCUM;   // prevent spiral of death
+        if (accumulator > kMaxFrameDt) {
+            accumulator = kMaxFrameDt;   // prevent spiral of death
         }
 
         compute_screen_transform(reg);

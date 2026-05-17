@@ -44,8 +44,7 @@
 #include <string>
 #include <utility>
 
-static constexpr float FIXED_DT  = 1.0f / 60.0f;
-static constexpr float MAX_ACCUM = 0.1f;
+static constexpr float FIXED_DT = 1.0f / 60.0f;
 
 namespace {
 
@@ -280,9 +279,9 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
     auto* session_log = reg.ctx().find<SessionLog>();
     if (session_log) session_log_begin_frame(*session_log);
 
-    float raw_dt = GetFrameTime();
+    float raw_dt = clamp_frame_dt(GetFrameTime());
     accumulator += raw_dt;
-    if (accumulator > MAX_ACCUM) accumulator = MAX_ACCUM;
+    if (accumulator > kMaxFrameDt) accumulator = kMaxFrameDt;
 
     compute_screen_transform(reg);
     input_system(reg, raw_dt);
