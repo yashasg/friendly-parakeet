@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdio>
 
 // Atomic UI components produced by the rguilayout codegen pipeline (#1193).
 // Each control row in a `.rgl` layout file becomes one ECS entity carrying:
@@ -62,6 +63,18 @@ inline void ui_label_set(UiLabel& label, const char* src) noexcept {
         label.text[i] = src[i];
     }
     label.text[i] = '\0';
+}
+
+// One-source helper for the common "format a plain int into the slot's
+// `UiLabel`" pattern used by terminal scoreboard binders (#1436 family —
+// game_over / song_complete `bind_score` / `bind_high_score`). Lives in
+// the components header so per-`*BindContext` binders can share one
+// implementation without reintroducing an anonymous-namespace symbol
+// name reuse across CMake Unity chunks (#1329).
+inline void ui_label_set_int(UiLabel& label, int value) noexcept {
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "%d", value);
+    ui_label_set(label, buf);
 }
 
 struct OnPress {

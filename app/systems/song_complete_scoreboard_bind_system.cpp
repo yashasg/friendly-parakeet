@@ -33,15 +33,11 @@ struct SongCompleteBindContext {
 using SongCompleteSlotBindFn = void (*)(const SongCompleteBindContext&, UiLabel&);
 
 void bind_score(const SongCompleteBindContext& ctx, UiLabel& label) {
-    char buf[32];
-    std::snprintf(buf, sizeof(buf), "%d", ctx.score.score);
-    ui_label_set(label, buf);
+    ui_label_set_int(label, ctx.score.score);
 }
 
 void bind_high_score(const SongCompleteBindContext& ctx, UiLabel& label) {
-    char buf[32];
-    std::snprintf(buf, sizeof(buf), "%d", ctx.current.value);
-    ui_label_set(label, buf);
+    ui_label_set_int(label, ctx.current.value);
 }
 
 void bind_new_best(const SongCompleteBindContext& ctx, UiLabel& label) {
