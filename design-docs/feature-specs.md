@@ -453,7 +453,11 @@ from BPM/lead-time math and stays constant within a song.
   spawn_time = calibrated_arrival_time - lead_time
                     │
                     ▼
-  spawn_rhythm_obstacle(... BeatInfo{beat_index, arrival, spawn})
+  spawn_<kind>_rhythm(... BeatInfo{beat_index, arrival, spawn})
+   ├─ spawn_shape_gate_rhythm  (kind = shape_gate)
+   └─ spawn_split_path_rhythm  (kind = split_path)
+  (defined in app/entities/obstacle_entity.h; the scheduler
+   skips spawn for onset_marker per the metadata-only branch above)
 ```
 
 ## User Stories
