@@ -6,8 +6,6 @@
 #include "generated/screen_spawners.h"
 #include "../util/level_content_config.h"
 
-#include <cstdio>
-
 // Geometry constants — single source of truth, mirrored by the matching
 // renderer block in `ui_render_system.cpp`. Edits here must keep the
 // renderer constants in sync (kept as separate constexpr there to avoid
