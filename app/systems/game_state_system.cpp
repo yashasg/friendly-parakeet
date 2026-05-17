@@ -81,8 +81,8 @@ void game_state_system(entt::registry& reg, float dt) {
     //
     // Events are enqueued earlier in the same frame by input_system and the
     // gameplay HUD input collector before the fixed-step loop. Shape presses
-    // drain before movement so same-frame mobile tap+swipe combo obstacles
-    // resolve deterministically.
+    // drain before movement so a same-frame mobile tap + swipe both resolve
+    // deterministically.
     //
     // ⚠ Do NOT call disp.clear<>() on any of these queues before this point
     //   within a frame.  Pre-tick systems enqueue same-frame events that
