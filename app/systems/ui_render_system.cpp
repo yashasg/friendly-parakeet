@@ -24,7 +24,6 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
-#include <string>
 
 // ═════════════════════════════════════════════════════════════════════════════
 // UI render system — 2D overlay pass
