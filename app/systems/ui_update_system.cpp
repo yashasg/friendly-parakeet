@@ -212,11 +212,10 @@ void apply_difficulty_action(entt::registry& reg, entt::entity entity) {
     lss.selected_difficulty = diff_idx->value;
 }
 
-// Gameplay HUD pause action (issue #1297). Replaces the legacy
-// `gameplay_hud_apply_button_presses` Pause branch, which called
-// `request_phase_transition<NextPhasePausedTag>` directly. Per
-// `gameplay_hud_apply_button_presses`, the legacy controller silently
-// skipped Pause outside `GamePhasePlayingTag`; the same guard lives here.
+// Gameplay HUD pause action (issue #1297). The pre-migration Pause path
+// called `request_phase_transition<NextPhasePausedTag>` directly and
+// silently skipped Pause outside `GamePhasePlayingTag`; the same guard
+// lives here.
 void pause_button_action(entt::registry& reg, entt::entity /*entity*/) {
     if (!reg.ctx().contains<GamePhasePlayingTag>()) return;
     request_phase_transition<NextPhasePausedTag>(reg);

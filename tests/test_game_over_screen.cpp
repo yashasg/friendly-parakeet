@@ -1,8 +1,6 @@
 // Game Over screen entity-driven UI tests (issue #1293, refs #1287, #1193 OoS-A).
 //
-// The legacy `app/ui/screen_controllers/game_over_screen_controller.cpp`
-// render path was removed from `app/systems/ui_render_system.cpp` this
-// cycle. The hook-based scoreboard tests that mocked the layout-render +
+// The hook-based scoreboard tests that mocked the layout-render +
 // value-draw hooks have been replaced with bind-system + lifecycle
 // assertions that operate on the entity-driven UI (`UiLabelTag` entities
 // spawned by `spawn_game_over_screen()`).
