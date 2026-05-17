@@ -179,11 +179,11 @@ set_source_files_properties(${RGUILAYOUT_GENERATED_SOURCES}
 
 # raygui is header-only and requires one implementation owner TU. Keep the
 # `RAYGUI_IMPLEMENTATION` macro rooted in a tiny dedicated source file
-# (`app/ui/raygui_impl.cpp`) so deleting any other screen-related TU never
+# (`app/util/raygui_impl.cpp`) so deleting any other screen-related TU never
 # breaks the build. Skipping unity-build inclusion guarantees the macro is
-# emitted exactly once.
+# emitted exactly once. Picked up by the `app/util/*.cpp` glob above.
 set_source_files_properties(
-    app/ui/raygui_impl.cpp
+    app/util/raygui_impl.cpp
     PROPERTIES
         COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION
         SKIP_UNITY_BUILD_INCLUSION TRUE

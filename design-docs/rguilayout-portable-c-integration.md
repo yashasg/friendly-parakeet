@@ -84,11 +84,11 @@ Per-screen bind systems (`gameplay_hud_bind_system`, `game_over_scoreboard_bind_
 
 ### 4. RAYGUI_IMPLEMENTATION Ownership
 
-raygui is a header-only single-file library that compiles its implementation only when `#define RAYGUI_IMPLEMENTATION` is set in exactly one translation unit. That TU is `app/ui/raygui_impl.cpp`. CMake attaches the macro via `COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION` on that source and excludes it from unity batching:
+raygui is a header-only single-file library that compiles its implementation only when `#define RAYGUI_IMPLEMENTATION` is set in exactly one translation unit. That TU is `app/util/raygui_impl.cpp`. CMake attaches the macro via `COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION` on that source and excludes it from unity batching:
 
 ```cmake
 set_source_files_properties(
-    app/ui/raygui_impl.cpp
+    app/util/raygui_impl.cpp
     PROPERTIES
         COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION
         SKIP_UNITY_BUILD_INCLUSION TRUE
@@ -184,7 +184,6 @@ content/ui/screens/
   settings.rgl
 
 app/ui/
-  raygui_impl.cpp             # Single RAYGUI_IMPLEMENTATION TU; excluded from unity.
   tutorial_dodge_hint.h       # Hand-written tutorial helper.
   generated/
     title_screen.cpp          # Codegen output: spawn_/despawn_ pair.
@@ -196,6 +195,9 @@ app/ui/
     song_complete_screen.cpp
     settings_screen.cpp
     screen_spawners.h         # Forward declarations for every pair.
+
+app/util/
+  raygui_impl.cpp             # Single RAYGUI_IMPLEMENTATION TU; excluded from unity.
 ```
 
 **Naming conventions:**
@@ -287,7 +289,7 @@ add_custom_command(
 
 # 3. raygui implementation owner — single TU, excluded from unity.
 set_source_files_properties(
-    app/ui/raygui_impl.cpp
+    app/util/raygui_impl.cpp
     PROPERTIES
         COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION
         SKIP_UNITY_BUILD_INCLUSION TRUE
@@ -318,7 +320,7 @@ add_library(shapeshifter_lib STATIC
 - [ ] No codegen output is hand-edited; any layout change regenerates via `cmake --build`.
 - [ ] Every button name in every `.rgl` appears in `app/components/actions.h`'s `ActionId` enum.
 - [ ] `screen_lifecycle_system.cpp`'s lifecycle table has one row per migrated screen.
-- [ ] `CMakeLists.txt` defines `RAYGUI_IMPLEMENTATION` on exactly one source (`app/ui/raygui_impl.cpp`) and excludes it from unity.
+- [ ] `CMakeLists.txt` defines `RAYGUI_IMPLEMENTATION` on exactly one source (`app/util/raygui_impl.cpp`) and excludes it from unity.
 - [ ] No system under `app/` creates UI entities outside the codegen-emitted spawners.
 - [ ] Build is warning-free (native and WASM).
 - [x] Legacy adapter / per-screen-render-callback folders have been deleted (#1308); the entity-driven UI is the only shape.

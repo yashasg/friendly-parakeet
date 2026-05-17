@@ -92,7 +92,8 @@ end-to-end by ECS:
 The legacy `app/ui/screen_controllers/*` OOP bridge and the matching
 `app/ui/generated/*_layout.h` god-struct headers were deleted in #1308 (refs
 #1287 OoS-B / #1193). The single `RAYGUI_IMPLEMENTATION` translation unit
-now lives at `app/ui/raygui_impl.cpp`.
+now lives at `app/util/raygui_impl.cpp` (moved from `app/ui/` in #1317
+sub-PR 1, completing the Section-7 folder-allowlist sweep).
 
 ## Doctrine
 
