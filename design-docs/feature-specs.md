@@ -608,9 +608,8 @@ void obstacle_despawn_system(entt::registry& reg, float dt);
   │  BEAT_PERIOD                 │ 60 / BPM  │ per song            │
   │  SCROLL_SPEED                │ derived   │ BPM + lead-time     │
   │  AUDIO_OFFSET_MS            │ settings  │ calibration         │
-  │  SHAPE_GATE_BASE_PTS        │ 200       │ scoring base        │
-  │  COMBO_GATE_BASE_PTS        │ 200       │ supported kind      │
-  │  SPLIT_PATH_BASE_PTS        │ 300       │ supported kind      │
+  │  PTS_SHAPE_GATE             │ 200       │ scoring base        │
+  │  PTS_SPLIT_PATH             │ 300       │ scoring base        │
   └───────────────────────────────────────────────────────────────┘
 ```
 
