@@ -119,7 +119,12 @@ struct UiLabelAlpha {
 // (which knows the beat scheduler and obstacle distances) and the lane
 // button render pass (which knows the button geometry).
 //
-// `visible == false` means no ring draws this frame. Otherwise:
+// `ApproachRing` is the per-button envelope written by
+// `approach_ring_envelope_system`; presence + the
+// `ApproachRingVisibleTag` companion (in `app/tags/tags.h`) together
+// drive the render pass. When the envelope is inactive the system
+// removes the tag (and clears the row); the renderer joins on the tag
+// so the per-frame check is a view filter, not a `try_get` + bool branch.
 //   - `radius` is the ring radius around the button center.
 //   - `alpha_scale` is the global multiplier on the ring color alpha.
 //   - `color_*` are the precomputed tier color (Far / Near / Perfect —
@@ -127,7 +132,6 @@ struct UiLabelAlpha {
 //     into the data the renderer needs, matching Fabian's principle that
 //     the consumer should not branch on labels).
 struct ApproachRing {
-    bool          visible     = false;
     float         radius      = 0.0f;
     float         alpha_scale = 0.0f;
     unsigned char color_r     = 0;

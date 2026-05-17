@@ -38,14 +38,19 @@ void write_envelope_for(entt::registry& reg,
         const auto cue = gameplay_hud_ring_cue(nearest_dist, perfect_dist,
                                                 good_dist, ok_dist);
         if (!cue.visible) {
-            reg.emplace_or_replace<ApproachRing>(entity, ApproachRing{});
+            reg.remove<ApproachRing>(entity);
+            reg.remove<ApproachRingVisibleTag>(entity);
             continue;
         }
         const float ratio = gameplay_hud_ring_ratio(nearest_dist, perfect_dist, ok_dist);
         const auto env = approach_ring_envelope(ratio, btn_radius,
                                                 max_ring_radius, reduce_motion);
+        if (env.alpha_scale <= 0.0f) {
+            reg.remove<ApproachRing>(entity);
+            reg.remove<ApproachRingVisibleTag>(entity);
+            continue;
+        }
         ApproachRing ring{};
-        ring.visible     = env.alpha_scale > 0.0f;
         ring.radius      = env.radius;
         ring.alpha_scale = env.alpha_scale;
         ring.color_r     = cue.color.r;
@@ -53,6 +58,7 @@ void write_envelope_for(entt::registry& reg,
         ring.color_b     = cue.color.b;
         ring.color_a     = cue.color.a;
         reg.emplace_or_replace<ApproachRing>(entity, ring);
+        reg.emplace_or_replace<ApproachRingVisibleTag>(entity);
     }
 }
 
@@ -63,9 +69,11 @@ void approach_ring_envelope_system(entt::registry& reg) {
     if (lane_view.begin() == lane_view.end()) return;
     if (!reg.ctx().contains<GamePhasePlayingTag>()) {
         // Clear envelope so the renderer doesn't draw a stale ring after
-        // pause/resume cycles. Empty `ApproachRing` is the "no ring" state.
+        // pause/resume cycles. Absence of `ApproachRingVisibleTag` (and
+        // the optional `ApproachRing` row) is the "no ring" state.
         for (auto entity : lane_view) {
-            reg.emplace_or_replace<ApproachRing>(entity, ApproachRing{});
+            reg.remove<ApproachRing>(entity);
+            reg.remove<ApproachRingVisibleTag>(entity);
         }
         return;
     }

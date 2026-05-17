@@ -407,7 +407,7 @@ void render_ui_entities(entt::registry& reg) {
                                          icon);
 
                 const auto* ring = r.template try_get<ApproachRing>(entity);
-                if (ring == nullptr || !ring->visible) continue;
+                if (ring == nullptr || !r.template all_of<ApproachRingVisibleTag>(entity)) continue;
                 const Color base_color{ring->color_r, ring->color_g,
                                        ring->color_b, ring->color_a};
                 const Color ring_color = Fade(base_color,

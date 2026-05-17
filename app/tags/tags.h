@@ -335,3 +335,11 @@ struct LaneButtonTag {};
 // Presence on a UI entity IS the "draw pulse this frame" signal —
 // Fabian existential processing.
 struct ChainBgPulseTag {};
+
+// ApproachRing visibility marker (issue #1331). Emplaced by
+// `approach_ring_envelope_system` alongside `ApproachRing` when the
+// envelope is active for that frame; removed when not. The renderer's
+// lane-button pass joins on `<ApproachRing, ApproachRingVisibleTag>` so
+// the per-frame check is a view filter, not a `try_get` + bool branch —
+// the per-frame existence is the visibility data (Principle 4).
+struct ApproachRingVisibleTag {};
