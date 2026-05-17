@@ -12,10 +12,23 @@ inline constexpr int DIFFICULTY_COUNT = 3;
 inline constexpr int DEFAULT_LEVEL_INDEX = 0;
 inline constexpr int DEFAULT_DIFFICULTY_INDEX = 1;
 
-extern const LevelInfo LEVELS[LEVEL_COUNT];
-extern const char* const LEVEL_KEYS[LEVEL_COUNT];
-extern const char* const DIFFICULTY_NAMES[DIFFICULTY_COUNT];
-extern const char* const DIFFICULTY_KEYS[DIFFICULTY_COUNT];
+inline constexpr LevelInfo LEVELS[LEVEL_COUNT] = {
+    {"STOMPER", "content/beatmaps/1_stomper_beatmap.json"},
+    {"DRAMA", "content/beatmaps/2_drama_beatmap.json"},
+    {"MENTAL CORRUPTION", "content/beatmaps/3_mental_corruption_beatmap.json"},
+};
+
+inline constexpr const char* const LEVEL_KEYS[LEVEL_COUNT] = {
+    "1_stomper", "2_drama", "3_mental_corruption",
+};
+
+inline constexpr const char* const DIFFICULTY_NAMES[DIFFICULTY_COUNT] = {
+    "EASY", "MEDIUM", "HARD",
+};
+
+inline constexpr const char* const DIFFICULTY_KEYS[DIFFICULTY_COUNT] = {
+    "easy", "medium", "hard",
+};
 
 [[nodiscard]] constexpr bool is_valid_level_index(int index) noexcept {
     return index >= 0 && index < LEVEL_COUNT;
