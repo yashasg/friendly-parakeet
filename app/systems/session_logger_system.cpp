@@ -6,7 +6,6 @@
 #include "../util/shape_tag.h"
 
 #include <cstdarg>
-#include <cmath>
 #include <string_view>
 #include <utility>
 
