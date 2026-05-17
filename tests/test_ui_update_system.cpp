@@ -38,7 +38,7 @@
 #include "systems/ui_update_system.h"
 #include "tags/tags.h"
 #include "ui/generated/screen_spawners.h"
-#include "ui/tutorial_dodge_hint.h"
+#include "util/tutorial_dodge_hint.h"
 #include "util/level_content_config.h"
 
 namespace {
