@@ -120,7 +120,6 @@ endforeach()
 file(GLOB SYSTEM_SOURCES CONFIGURE_DEPENDS app/systems/*.cpp)
 file(GLOB UTIL_SOURCES CONFIGURE_DEPENDS app/util/*.cpp)
 file(GLOB UI_SOURCES CONFIGURE_DEPENDS app/ui/*.cpp)
-file(GLOB UI_SCREEN_CONTROLLER_SOURCES CONFIGURE_DEPENDS app/ui/screen_controllers/*.cpp)
 file(GLOB ENTITY_SOURCES CONFIGURE_DEPENDS app/entities/*.cpp)
 # Exclude files requiring a live raylib context from the library. They are
 # compiled directly into the executable targets.
@@ -129,7 +128,6 @@ list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)ui_render_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)input_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)song_playback_system\\.cpp$")
 list(FILTER SYSTEM_SOURCES EXCLUDE REGEX "(^|/)camera_system\\.cpp$")
-list(FILTER UI_SOURCES EXCLUDE REGEX "(^|/)raygui_impl\\.cpp$")
 
 # ── rguilayout codegen (issue #1193) ─────────────────────────
 # Each .rgl in content/ui/screens/ produces a <stem>_screen.cpp under
@@ -179,9 +177,13 @@ add_custom_command(
 set_source_files_properties(${RGUILAYOUT_GENERATED_SOURCES}
     PROPERTIES GENERATED TRUE)
 
-# raygui is header-only and requires one implementation owner TU.
+# raygui is header-only and requires one implementation owner TU. Keep the
+# `RAYGUI_IMPLEMENTATION` macro rooted in a tiny dedicated source file
+# (`app/ui/raygui_impl.cpp`) so deleting any other screen-related TU never
+# breaks the build. Skipping unity-build inclusion guarantees the macro is
+# emitted exactly once.
 set_source_files_properties(
-    app/ui/screen_controllers/title_screen_controller.cpp
+    app/ui/raygui_impl.cpp
     PROPERTIES
         COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION
         SKIP_UNITY_BUILD_INCLUSION TRUE
@@ -220,7 +222,7 @@ set(SHAPESHIFTER_MACOS_FRAMEWORKS
     "-framework CoreVideo"
 )
 
-add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${UTIL_SOURCES} ${UI_SOURCES} ${UI_SCREEN_CONTROLLER_SOURCES} ${ENTITY_SOURCES} ${RGUILAYOUT_GENERATED_SOURCES})
+add_library(shapeshifter_lib STATIC ${SYSTEM_SOURCES} ${UTIL_SOURCES} ${UI_SOURCES} ${ENTITY_SOURCES} ${RGUILAYOUT_GENERATED_SOURCES})
 target_include_directories(shapeshifter_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/app
     ${CMAKE_BINARY_DIR}/generated

@@ -77,8 +77,8 @@ const Font& popup_font_for_size(const TextContext& ctx, FontSize font_size) {
 constexpr int kEntityLabelTextSize  = 24;
 constexpr int kEntityButtonTextSize = 28;
 // Paused overlay headline ("PAUSED") needs a larger size than the default
-// raygui DEFAULT::TEXT_SIZE; matched against the legacy
-// `paused_layout.h` constant.
+// raygui DEFAULT::TEXT_SIZE; matches the legacy paused-layout constant
+// that this screen replaces (issue #1290 / #1308).
 constexpr float kPausedHeadlineHeight = 80.0f;
 constexpr int   kPausedHeadlineSize   = 56;
 
@@ -440,10 +440,9 @@ void render_ui_entities(entt::registry& reg) {
     //
     // The lane divider is a non-text dummy-rec slot baked into the
     // `.rgl` at (0, 1120, 720, 4). It renders as a 1-px horizontal line
-    // at the top edge of those bounds (matches legacy
-    // `render_gameplay_hud_screen_ui` line draw). Identified by a
-    // 720-wide, 4-tall dummy-rec under `GameplayHudTag` — no separate
-    // tag is necessary since the geometry is unique within the HUD.
+    // at the top edge of those bounds. Identified by a 720-wide, 4-tall
+    // dummy-rec under `GameplayHudTag` — no separate tag is necessary
+    // since the geometry is unique within the HUD.
     {
         constexpr Color kLaneDividerColor{40, 40, 60, 200};
         constexpr float kLaneDividerWidth  = constants::SCREEN_W_F;
@@ -663,8 +662,8 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     // Entity-driven render pass — issue #1287. Iterates every spawned UI
     // entity for the active screen (the screen lifecycle system already
     // partitions by `GamePhase*Tag`, so this pass is screen-agnostic).
-    // With #1297 (Gameplay HUD) landed, every screen renders through
-    // `render_ui_entities` — no `screen_controllers/` paths remain.
+    // Every screen renders here; the legacy `app/ui/screen_controllers/*`
+    // dispatch was deleted in #1308.
 
     render_ui_entities(reg);
 

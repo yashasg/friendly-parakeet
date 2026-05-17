@@ -11,13 +11,16 @@
 // discriminator (Fabian Principle 1; `ActionId` is in the enum allowlist
 // specifically as a lookup-key index).
 //
-// Migration boundary: until all 8 screens migrate to the entity-driven
-// path, only screens whose buttons are actually spawned participate;
-// un-migrated screens continue to dispatch via their legacy
-// `screen_controllers/*` cpp. See #1287 for the per-screen sub-issue
-// ladder.
-//
-// Honours the `gs.phase_timer > UI_ENTRY_DEBOUNCE` debounce that legacy
-// controllers apply so a click on the previous phase's button does not
-// fire on the entry frame of the new phase.
+// Honours the per-active-phase input-delay table (Game Over uses
+// `GAME_OVER_INPUT_DELAY`, Song Complete uses `SONG_COMPLETE_INPUT_DELAY`,
+// every other screen uses the shared `UI_ENTRY_DEBOUNCE`) so a click on
+// the previous phase's button does not fire on the entry frame of the
+// new phase.
 void ui_update_system(entt::registry& reg);
+
+// Tutorial-screen "Continue" action (issue #1291). Marks FTUE complete,
+// persists the settings entity, and requests the Playing phase. Invoked
+// by the `ContinueButton` row of `kActionHandlers` in
+// `ui_update_system.cpp`; exposed here so the FTUE end-to-end test in
+// `tests/test_game_state_extended.cpp` can drive it directly.
+void tutorial_screen_continue(entt::registry& reg);

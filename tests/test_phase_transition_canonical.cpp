@@ -251,23 +251,27 @@ TEST_CASE("phase_transition: enforcement catches non-UI/non-input direct callers
     const std::vector<SourceRecord> fixtures = {
         {"app/systems/game_state_system.cpp", "void ok(entt::registry& reg){ enter_phase<GamePhasePausedTag>(reg); }"},
         {"app/systems/rogue_system.cpp", "void bad(entt::registry& reg){ enter_phase<GamePhaseTitleTag>(reg); }"},
-        {"app/ui/screen_controllers/title_screen_controller.cpp", "void ui(entt::registry& reg){ request_phase_transition<NextPhasePausedTag>(reg); }"},
+        {"app/systems/ui_update_system.cpp", "void ui(entt::registry& reg){ request_phase_transition<NextPhasePausedTag>(reg); }"},
     };
 
     const auto offenders = collect_enter_phase_offenders(fixtures, canonical_enter_phase_allowlist());
     REQUIRE(offenders == std::vector<std::string>{"app/systems/rogue_system.cpp"});
 }
 
-TEST_CASE("phase_transition: Tutorial and Paused controllers guard entry input",
+TEST_CASE("phase_transition: entity-driven UI dispatch guards entry input",
           "[phase_transition][ui]") {
+    // Legacy `app/ui/screen_controllers/*` controllers (deleted in #1308)
+    // gated their button reads on `gs.phase_timer > constants::UI_ENTRY_DEBOUNCE`.
+    // The same guard now lives in `ui_update_system.cpp`'s
+    // `effective_debounce` table, with end-screen overrides for Game Over
+    // and Song Complete.
     const fs::path root = find_repo_root();
-    const std::string tutorial =
-        read_file(root / "app/ui/screen_controllers/tutorial_screen_controller.cpp");
-    const std::string paused =
-        read_file(root / "app/ui/screen_controllers/paused_screen_controller.cpp");
+    const std::string ui_update =
+        read_file(root / "app/systems/ui_update_system.cpp");
 
-    REQUIRE(tutorial.find("constants::UI_ENTRY_DEBOUNCE") != std::string::npos);
-    REQUIRE(paused.find("constants::UI_ENTRY_DEBOUNCE") != std::string::npos);
+    REQUIRE(ui_update.find("constants::UI_ENTRY_DEBOUNCE") != std::string::npos);
+    REQUIRE(ui_update.find("constants::GAME_OVER_INPUT_DELAY") != std::string::npos);
+    REQUIRE(ui_update.find("constants::SONG_COMPLETE_INPUT_DELAY") != std::string::npos);
 }
 
 TEST_CASE("phase_transition matcher catches whitespace variants and ignores strings/comments",

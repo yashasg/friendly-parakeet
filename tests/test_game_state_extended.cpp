@@ -2,9 +2,9 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "systems/game_phase_transition.h"
 #include "systems/game_state_system.h"
+#include "systems/ui_update_system.h"
 #include "tags/tags.h"
 #include "test_helpers.h"
-#include "ui/screen_controllers/tutorial_screen_controller.h"
 
 // ── game_state_system: SongComplete transitions ──────────────
 
