@@ -39,7 +39,6 @@
 #include "systems/ui_update_system.h"
 
 #include <raylib.h>
-#include <algorithm>
 #include <cstdlib>
 #include <string>
 #include <utility>
