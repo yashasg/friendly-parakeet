@@ -772,11 +772,16 @@ if (!song) return;  // no rhythm context — skip
   • Removed: HP bar (HP mechanic never shipped)
 ```
 
-## Phase 5 — Audio playback (PLANNED)
+## Phase 5 — Audio playback (DONE)
 ```
-  • song_playback_system: sync song_time to SDL_mixer playback position
-  • audio_system: load + play audio file from BeatMap.song_path
-  • Beat pulse VFX on beat_tick event
+  • song_playback_system: syncs song_time to the raylib music stream via
+    GetMusicTimePlayed(); pumps UpdateMusicStream() every frame; starts /
+    pauses / resumes / stops the stream from per-phase ctx-tags.
+  • play_session.cpp: LoadMusicStream(BeatMap.song_path) per play session;
+    UnloadMusicStream on session end (MusicContext destructor).
+  • Beat pulse VFX: floor_visuals::pulse_for_beat() in
+    components/camera_resources.h decays per-beat against song_time
+    each frame (FLOOR_PULSE_DECAY = 0.15s).
 ```
 
 ## Phase 6 — Results screen (PLANNED)
