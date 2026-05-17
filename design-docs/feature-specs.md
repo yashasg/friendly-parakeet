@@ -78,7 +78,7 @@ The Input System translates raw touch / mouse / keyboard events into game action
 - As a player, I want to **swipe up** so that my character can jump when vertical movement is supported.
 - As a player, I want to **swipe down** so that my character can slide when vertical movement is supported.
 - As a player, I want to **tap a shape button** so that my character shifts to that shape instantly.
-- As a player, I want to **swipe AND tap nearly simultaneously** (combo obstacles) and have both actions register.
+- As a player, I want to **swipe AND tap nearly simultaneously** so that quick shape changes during movement both register in the same frame.
 - As a player, I want **accidental micro-touches** (jitter) to be ignored so I don't misfire.
 
 ## Acceptance Criteria
@@ -279,10 +279,8 @@ void game_state_system(entt::registry& reg, float dt);
   │  ZONE_SPLIT_Y           │  0.80      │  fraction of screen │
   │  MIN_SWIPE_DIST_DP      │  50        │  density-indep px   │
   │  MAX_SWIPE_TIME_SEC     │  0.300     │  seconds            │
-  │  TAP_DEBOUNCE_SEC       │  0.100     │  seconds            │
   │  BUTTON_HIT_PADDING_DP  │  12        │  expand hit-rect    │
   │  MAX_SIMULTANEOUS_TOUCH │  2         │  fingers tracked    │
-  │  INPUT_BUFFER_SIZE      │  2         │  1 swipe + 1 tap    │
   └───────────────────────────────────────────────────────────┘
 ```
 
