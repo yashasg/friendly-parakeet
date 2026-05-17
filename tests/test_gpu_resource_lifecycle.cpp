@@ -15,6 +15,7 @@
 #include <type_traits>
 
 #include "components/audio.h"
+#include "systems/sfx_bank_resources.h"
 #include "systems/audio_resources.h"
 #include "components/camera_resources.h"
 #include "systems/camera_resources.h"

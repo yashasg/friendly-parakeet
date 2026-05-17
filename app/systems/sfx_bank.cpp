@@ -1,4 +1,5 @@
 #include "sfx_bank.h"
+#include "sfx_bank_resources.h"
 #include "../components/audio.h"
 
 #include <raylib.h>

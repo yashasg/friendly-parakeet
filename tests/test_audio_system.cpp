@@ -4,6 +4,7 @@
 
 #include "components/audio.h"
 #include "systems/sfx_bank.h"
+#include "systems/sfx_bank_resources.h"
 #include "test_helpers.h"
 
 TEST_CASE("audio_system: drains queued SFX safely without playable sounds", "[audio]") {

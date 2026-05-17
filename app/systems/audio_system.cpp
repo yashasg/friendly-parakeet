@@ -1,6 +1,7 @@
 #include "all_systems.h"
 #include "audio_routing.h"
 #include "audio_events.h"
+#include "sfx_bank_resources.h"
 
 #include <raylib.h>
 
