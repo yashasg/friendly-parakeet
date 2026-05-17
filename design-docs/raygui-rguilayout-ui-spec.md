@@ -221,7 +221,7 @@ The UI pipeline is wired into `shapeshifter_lib` as follows:
 - `tools/rguilayout/` is the vendored authoring/tooling location. `tools/rguilayout/codegen.py` is invoked at CMake configure time to regenerate `app/ui/generated/<screen>_screen.cpp` + `screen_spawners.h` from `content/ui/screens/*.rgl`. The authoring GUI is not run in CI.
 - `.rgl` layout sources live in `content/ui/screens/` unless a future global/root layout source is justified.
 - Codegen output `.cpp` files under `app/ui/generated/` are added to `shapeshifter_lib` via the `RGUILAYOUT_GENERATED_SOURCES` list in `CMakeLists.txt`.
-- `app/ui/raygui_impl.cpp` is the single-TU owner of `RAYGUI_IMPLEMENTATION`. The macro is set via `COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION` on that source file, and the file is excluded from unity batching (`SKIP_UNITY_BUILD_INCLUSION TRUE`) so the raygui implementation stays isolated.
+- `app/util/raygui_impl.cpp` is the single-TU owner of `RAYGUI_IMPLEMENTATION`. The macro is set via `COMPILE_DEFINITIONS RAYGUI_IMPLEMENTATION` on that source file, and the file is excluded from unity batching (`SKIP_UNITY_BUILD_INCLUSION TRUE`) so the raygui implementation stays isolated.
 - All other UI consumer TUs (`ui_render_system.cpp`, `ui_update_system.cpp`, `screen_lifecycle_system.cpp`, the per-screen bind systems) live in `app/systems/` and pull in raygui headers normally without defining the implementation macro.
 
 The native build (`shapeshifter`, `shapeshifter_tests`) and WASM build compile the spawner sources and raygui implementation together and stay warning-clean under `-Wall -Wextra -Werror`.
@@ -251,7 +251,7 @@ The native build (`shapeshifter`, `shapeshifter_tests`) and WASM build compile t
 
 ### Phase 3: Build integration — done
 
-raygui codegen build support, spawner compilation, native CI coverage, and WASM CI coverage are in place. `RAYGUI_IMPLEMENTATION` ownership lives on `app/ui/raygui_impl.cpp` and that TU is excluded from unity batching.
+raygui codegen build support, spawner compilation, native CI coverage, and WASM CI coverage are in place. `RAYGUI_IMPLEMENTATION` ownership lives on `app/util/raygui_impl.cpp` and that TU is excluded from unity batching.
 
 ### Phase 4: Menus and overlays — done
 
