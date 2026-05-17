@@ -211,7 +211,10 @@ The current obstacle components already match the beatmap schema:
 ```
 
 **No new per-entity components required for shape_gate.** The beat scheduler
-creates the standard runtime obstacle archetypes via `spawn_rhythm_obstacle()`.
+creates the standard runtime obstacle archetypes via the kind-specific
+`spawn_<kind>_rhythm()` helpers in `app/entities/obstacle_entity.h`
+(`spawn_shape_gate_rhythm`, `spawn_split_path_rhythm`,
+`spawn_onset_marker_rhythm`).
 
 ---
 ---
@@ -321,8 +324,11 @@ void song_playback_system(entt::registry& reg, float dt) {
 
 ```
   Spawns obstacle entities from BeatMap.beats[] when song_time
-  crosses spawn_time thresholds. It uses spawn_rhythm_obstacle(), so
-  collision, scoring, render, and despawn all work unchanged.
+  crosses spawn_time thresholds. It calls the kind-specific
+  spawn_<kind>_rhythm() helpers (spawn_shape_gate_rhythm,
+  spawn_split_path_rhythm, spawn_onset_marker_rhythm) in
+  app/entities/obstacle_entity.h, so collision, scoring, render,
+  and despawn all work unchanged.
 ```
 
 ## 3.5 Runtime obstacle source — ✅ BEAT-SCHEDULED
