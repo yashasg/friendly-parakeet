@@ -74,26 +74,31 @@ It is idempotent — running twice on unchanged inputs produces zero file writes
 
 Add new entries to `RGL_TYPES` in `codegen.py` to extend the table.
 
-## Coexistence with the legacy `*_layout.h` pipeline
+## Runtime pipeline
 
-The codegen change is the foundation for a larger ECS refactor of the UI
-layer. Until the follow-up issues land, the new spawner functions coexist
-with:
+Once each spawner is compiled in, the per-screen entity lifecycle is owned
+end-to-end by ECS:
 
-- `app/ui/generated/*_layout.h` — legacy god-struct headers (manually-extracted).
-- `app/ui/screen_controllers/*` — legacy OOP bridges consuming the headers.
-- `app/systems/ui_render_system.cpp` — legacy render path dispatching on `GamePhase`.
+- `app/systems/screen_lifecycle_system.{h,cpp}` — converges the spawned entity
+  set toward the active `GamePhase*Tag` ctx mirror. One row per screen in
+  `kLifecycleRows`.
+- `app/systems/ui_render_system.cpp` — `render_ui_entities` iterates the
+  entity views directly (`UiLabelTag` / `UiButtonTag` / `UiDummyRecTag`); no
+  `GamePhase` switch.
+- `app/systems/ui_update_system.cpp` — hit-tests `UiButtonTag` entities
+  against the pointer-release event and dispatches `OnPress::action` through
+  the per-`ActionId` function-pointer table (`kActionHandlers`).
 
-These will be replaced by an entity-driven render / input system in follow-up
-work; see #1193 "Out of scope" for the full list. No screen entity is spawned
-or consumed at runtime today — the generated `.cpp` files are compiled to keep
-codegen drift visible.
+The legacy `app/ui/screen_controllers/*` OOP bridge and the matching
+`app/ui/generated/*_layout.h` god-struct headers were deleted in #1308 (refs
+#1287 OoS-B / #1193). The single `RAYGUI_IMPLEMENTATION` translation unit
+now lives at `app/ui/raygui_impl.cpp`.
 
 ## Doctrine
 
 Each generated control entity carries atomic components only — no
-`*LayoutState` god-struct exists anywhere in the new pipeline. Tags replace
+`*LayoutState` god-struct exists anywhere in the pipeline. Tags replace
 discriminator enums per Fabian's existential processing (`.squad/decisions.md`
-§ "DoD source-text grounding"). The render and input systems will use
-`view<UiButtonTag, ScreenTag>()` joins; they will never `switch` on a
-kind or a screen identifier.
+§ "DoD source-text grounding"). The render and input systems use
+`view<UiButtonTag, ScreenTag>()` joins; they never `switch` on a kind or a
+screen identifier.

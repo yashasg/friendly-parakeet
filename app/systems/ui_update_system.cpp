@@ -18,15 +18,19 @@
 
 #include <raylib.h>  // CheckCollisionPointRec, Rectangle, Vector2
 
-// Tutorial screen continue action (issue #1291).
-//
-// Defined in `app/ui/screen_controllers/tutorial_screen_controller.cpp`.
+// Tutorial screen continue action (issue #1291; moved out of the deleted
+// `app/ui/screen_controllers/tutorial_screen_controller.cpp` per #1308).
 // Marks FTUE complete + persists settings + requests Playing phase.
-// Forward-declared at namespace scope so the anonymous-namespace
-// handler below can call it without a header dependency on the legacy
-// controller. The controller file itself stays in tree until OoS-B
-// removes all legacy controllers in one PR.
-void tutorial_screen_continue(entt::registry& reg);
+// Exposed via `ui_update_system.h` so the FTUE end-to-end test in
+// `tests/test_game_state_extended.cpp` can drive it directly; the
+// `ContinueButton` row of `kActionHandlers` below dispatches to it.
+void tutorial_screen_continue(entt::registry& reg) {
+    if (auto* settings_ptr = find_settings_state(reg)) {
+        settings::mark_ftue_complete(*settings_ptr);
+        settings::mark_dirty_and_save(reg, *settings_ptr);
+    }
+    request_phase_transition<NextPhasePlayingTag>(reg);
+}
 
 // ── ActionId dispatch table ─────────────────────────────────────────────────
 //
@@ -45,15 +49,16 @@ using ActionHandler = void (*)(entt::registry&, entt::entity);
 
 // ── Per-action handlers ─────────────────────────────────────────────
 //
-// `noop_action_handler` covers actions that have no consumer yet (e.g. the
-// 6 screens still on the legacy controller path). The legacy controller
-// renders the button and reads the press flag itself, so a no-op here
-// avoids double dispatch. Migrating a screen means replacing its row's
-// handler from `noop_action_handler` to the real per-action transform.
+// `noop_action_handler` fills the `ActionId::None` slot so the lookup
+// table is dense (every `ActionId` ordinal maps to a valid handler).
+// Real handlers below own the effect of "the user pressed this button"
+// for each migrated screen.
 
 void noop_action_handler(entt::registry& /*reg*/, entt::entity /*entity*/) {
-    // No consumer for this action yet — the owning screen has not migrated
-    // off the legacy `screen_controllers/*` path. See #1287.
+    // `ActionId::None` is the sentinel "no action" value used by buttons
+    // whose press is consumed by a screen-specific bind system rather
+    // than the central `kActionHandlers` table (e.g. level-select cards
+    // — see Pass C of `ui_update_system`). Dispatching it is a no-op.
 }
 
 // Paused screen actions (migrated this cycle).
@@ -96,9 +101,10 @@ void level_select_button_action(entt::registry& reg, entt::entity /*entity*/) {
     reg.ctx().insert_or_assign(EndChoiceLevelSelect{});
 }
 
-// Tutorial screen action (issue #1291). Calls the forward-declared
-// `tutorial_screen_continue` (defined in the legacy controller TU, will
-// move out in OoS-B).
+// Tutorial screen action (issue #1291). Dispatches to
+// `tutorial_screen_continue` (defined above; previously lived in
+// `app/ui/screen_controllers/tutorial_screen_controller.cpp` until #1308
+// deleted that folder).
 void continue_button_action(entt::registry& reg, entt::entity /*entity*/) {
     tutorial_screen_continue(reg);
 }

@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "ui/screen_controllers/screen_controller_base.h"
 #include "util/rhythm_math.h"
 
 // ── timing_multiplier_from_delta_abs ─────────────────────────
@@ -200,25 +199,4 @@ TEST_CASE("make_rhythm_player: starts as Hexagon", "[helpers]") {
     CHECK(reg.all_of<ShapeHexagonTag>(player));
     CHECK(reg.all_of<TargetShapeHexagonTag>(player));
     CHECK(window_phase_is_idle(reg, player));
-}
-
-namespace {
-struct DummyScreenController {
-    int init_calls = 0;
-    void init() { ++init_calls; }
-};
-}
-
-TEST_CASE("screen_controller helper keeps controller state in registry context", "[ui][architecture]") {
-    entt::registry reg_a;
-    entt::registry reg_b;
-
-    auto& a1 = screen_controller<DummyScreenController>(reg_a);
-    auto& a2 = screen_controller<DummyScreenController>(reg_a);
-    auto& b1 = screen_controller<DummyScreenController>(reg_b);
-
-    CHECK(&a1 == &a2);
-    CHECK(&a1 != &b1);
-    CHECK(a1.init_calls == 1);
-    CHECK(b1.init_calls == 1);
 }
