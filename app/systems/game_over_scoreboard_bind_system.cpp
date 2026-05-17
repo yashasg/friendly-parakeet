@@ -17,36 +17,40 @@ namespace {
 // debounce window before `game_state_enter_terminal_phase_game_over`
 // populates it. `EnergyDepletedDeath` is a presence-only ctx tag (no
 // payload) so we carry a bool for it.
-struct BindContext {
+//
+// Per-binder prefix (`GameOver*`) avoids an anonymous-namespace ODR
+// collision with the sibling `*_bind_system.cpp` files when CMake Unity
+// chunking happens to place two binders in the same jumbo TU (issue #1329).
+struct GameOverBindContext {
     const ScoreState& score;
     const CurrentSongHighScore& current;
     const TerminalResultState* result;
     bool energy_depleted;
 };
 
-using SlotBindFn = void (*)(const BindContext&, UiLabel&);
+using GameOverSlotBindFn = void (*)(const GameOverBindContext&, UiLabel&);
 
-bool is_new_best(const BindContext& ctx) {
+bool is_new_best(const GameOverBindContext& ctx) {
     return ctx.result != nullptr && ctx.result->new_best;
 }
 
-void bind_score(const BindContext& ctx, UiLabel& label) {
+void bind_score(const GameOverBindContext& ctx, UiLabel& label) {
     char buf[32];
     std::snprintf(buf, sizeof(buf), "%d", ctx.score.score);
     ui_label_set(label, buf);
 }
 
-void bind_high_score(const BindContext& ctx, UiLabel& label) {
+void bind_high_score(const GameOverBindContext& ctx, UiLabel& label) {
     char buf[32];
     std::snprintf(buf, sizeof(buf), "%d", ctx.current.value);
     ui_label_set(label, buf);
 }
 
-void bind_new_best(const BindContext& ctx, UiLabel& label) {
+void bind_new_best(const GameOverBindContext& ctx, UiLabel& label) {
     ui_label_set(label, is_new_best(ctx) ? "NEW BEST!" : "");
 }
 
-void bind_prev_best(const BindContext& ctx, UiLabel& label) {
+void bind_prev_best(const GameOverBindContext& ctx, UiLabel& label) {
     if (!is_new_best(ctx)) {
         ui_label_set(label, "");
         return;
@@ -58,7 +62,7 @@ void bind_prev_best(const BindContext& ctx, UiLabel& label) {
 
 // Reason slot at y=685 — shown only when NOT new-best (legacy
 // `reason_y = 685.0f` branch in `draw_game_over_scoreboard`).
-void bind_reason(const BindContext& ctx, UiLabel& label) {
+void bind_reason(const GameOverBindContext& ctx, UiLabel& label) {
     if (!ctx.energy_depleted || is_new_best(ctx)) {
         ui_label_set(label, "");
         return;
@@ -69,7 +73,7 @@ void bind_reason(const BindContext& ctx, UiLabel& label) {
 // Reason slot at y=742 — shown only when new-best (legacy
 // `reason_y = 742.0f` branch in `draw_game_over_scoreboard`; the reason
 // moves down to clear room for "NEW BEST!" + "PREV N").
-void bind_reason_new_best(const BindContext& ctx, UiLabel& label) {
+void bind_reason_new_best(const GameOverBindContext& ctx, UiLabel& label) {
     if (!ctx.energy_depleted || !is_new_best(ctx)) {
         ui_label_set(label, "");
         return;
@@ -82,13 +86,13 @@ void bind_reason_new_best(const BindContext& ctx, UiLabel& label) {
 // into the spawn block, so a layout edit that moves a slot will silently
 // miss its bind (caught by a visible empty placeholder in playtest before
 // any production build).
-struct SlotRow {
+struct GameOverSlotRow {
     float x;
     float y;
-    SlotBindFn fn;
+    GameOverSlotBindFn fn;
 };
 
-constexpr std::array<SlotRow, 6> kGameOverSlots = {{
+constexpr std::array<GameOverSlotRow, 6> kGameOverSlots = {{
     {210.0f, 540.0f, &bind_score},
     {210.0f, 634.0f, &bind_high_score},
     {110.0f, 665.0f, &bind_new_best},
@@ -103,7 +107,7 @@ void game_over_scoreboard_bind_system(entt::registry& reg) {
     auto view = reg.view<GameOverScreenTag, UiLabelTag, UiPosition, UiLabel>();
     if (view.begin() == view.end()) return;
 
-    const BindContext ctx{
+    const GameOverBindContext ctx{
         reg.ctx().get<ScoreState>(),
         reg.ctx().get<CurrentSongHighScore>(),
         reg.ctx().find<TerminalResultState>(),
