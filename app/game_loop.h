@@ -1,5 +1,4 @@
 #pragma once
-#include <cstdint>
 #include <entt/entt.hpp>
 #include "util/level_content_config.h"
 #include "systems/test_player.h"
