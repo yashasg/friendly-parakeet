@@ -31,6 +31,16 @@ void apply_base_alpha(PopupDisplay& pd, const Color& base) {
     pd.a = base.a;
 }
 
+// Shared body for the four per-timing-tier init helpers (#1440). All four
+// previously had byte-identical bodies that differed only by the label
+// literal; the public per-tier symbols remain (tests and call sites use
+// them directly) and now thin-call into this impl.
+void init_popup_display_label(PopupDisplay& pd, const Color& base, const char* text) {
+    apply_base_alpha(pd, base);
+    pd.font_size = FontSize::Medium;
+    std::snprintf(pd.text, sizeof(pd.text), "%s", text);
+}
+
 }  // namespace
 
 void init_popup_display_untimed(PopupDisplay& pd,
@@ -42,27 +52,19 @@ void init_popup_display_untimed(PopupDisplay& pd,
 }
 
 void init_popup_display_perfect(PopupDisplay& pd, const Color& base) {
-    apply_base_alpha(pd, base);
-    pd.font_size = FontSize::Medium;
-    std::snprintf(pd.text, sizeof(pd.text), "%s", "PERFECT");
+    init_popup_display_label(pd, base, "PERFECT");
 }
 
 void init_popup_display_good(PopupDisplay& pd, const Color& base) {
-    apply_base_alpha(pd, base);
-    pd.font_size = FontSize::Medium;
-    std::snprintf(pd.text, sizeof(pd.text), "%s", "GOOD");
+    init_popup_display_label(pd, base, "GOOD");
 }
 
 void init_popup_display_ok(PopupDisplay& pd, const Color& base) {
-    apply_base_alpha(pd, base);
-    pd.font_size = FontSize::Medium;
-    std::snprintf(pd.text, sizeof(pd.text), "%s", "OK");
+    init_popup_display_label(pd, base, "OK");
 }
 
 void init_popup_display_bad(PopupDisplay& pd, const Color& base) {
-    apply_base_alpha(pd, base);
-    pd.font_size = FontSize::Medium;
-    std::snprintf(pd.text, sizeof(pd.text), "%s", "BAD");
+    init_popup_display_label(pd, base, "BAD");
 }
 
 entt::entity spawn_score_popup_perfect(entt::registry& reg, float x, float y, int points) {
