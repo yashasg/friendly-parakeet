@@ -71,9 +71,7 @@ TEST_CASE("game_over: rgl declares SCORE and HIGH SCORE labels alongside slots (
 }
 
 // Issue #1293 + #533: codegen must materialize the SCORE / HIGH SCORE
-// labels into the generated spawner so the runtime renders them. Replaces
-// the legacy snapshot test against `app/ui/generated/game_over_layout.h`
-// (the legacy header survives until OoS-B but no longer drives runtime).
+// labels into the generated spawner so the runtime renders them.
 TEST_CASE("game_over: generated spawner emits SCORE and HIGH SCORE labels (#533)",
           "[game_over][ui][issue533]") {
     const std::string spawner = read_file("app/systems/generated/game_over_screen.cpp");
