@@ -340,8 +340,7 @@ void ui_update_system(entt::registry& reg) {
     // Debounce: ignore button presses inside the active phase's input-delay
     // window so a click that opened the phase does not also dismiss it,
     // and so end-screen prompts honour their longer settling time before
-    // accepting input (matches legacy controller behaviour, e.g.
-    // `paused_screen_controller.cpp` and `song_complete_screen_controller.cpp`).
+    // accepting input.
     const auto& gs = reg.ctx().get<GameState>();
     if (gs.phase_timer <= effective_debounce(reg)) return;
 

@@ -7,9 +7,8 @@
 
 #include <raylib.h>
 
-// Per-shape flat 2D draw table (issue #1202/#1204 mechanic; relocated out of
-// `gameplay_hud_screen_controller.cpp` for shared use by `ui_render_system`
-// per the Title-screen migration in #1294).
+// Per-shape flat 2D draw table (issue #1202/#1204 mechanic). Shared by
+// `ui_render_system` per the Title-screen migration in #1294.
 //
 // Each former `switch (shape)` case is its own row in a function-pointer
 // column indexed by `shape_index(shape)`. The dispatcher reads the column

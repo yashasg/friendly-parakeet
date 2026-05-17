@@ -19,9 +19,8 @@ constexpr float kHighScoreSlotX =  60.0f, kHighScoreSlotY = 50.0f;
 constexpr float kChainSlotX     =  80.0f, kChainSlotY     = 80.0f;
 constexpr float kEnergyLabelX   =  10.0f, kEnergyLabelY   = 745.0f;
 
-// Font sizes mirror the legacy `render_gameplay_hud_screen_ui` text
-// renders (the values pre-migration were `GuiSetStyle(DEFAULT, TEXT_SIZE, …)`
-// switches with these literals).
+// Font sizes match the pre-#1308 `GuiSetStyle(DEFAULT, TEXT_SIZE, …)`
+// values for visual parity.
 constexpr int kScoreFontSize        = 28;
 constexpr int kHighScoreFontSize    = 18;
 constexpr int kChainFontSizeRegular = 18;
