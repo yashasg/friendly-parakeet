@@ -7,10 +7,17 @@
 #include <new>
 
 namespace platform::ios {
+
+// UIKit's `UIImpactFeedbackStyle` declares Light/Medium/Heavy as the contiguous
+// integral values 0/1/2 — the only styles we ever pass through this bridge
+// (see `kIOSPatternByEvent` below). Future vendor extensions (Soft/Rigid on
+// iOS 13+) fall outside this range and collapse to the Light slot via
+// `generator_slot_for_style`. Keep this constant in sync with the slot count
+// referenced in #1323 if a new style is ever added to the pattern table.
+constexpr std::size_t kHapticsGeneratorSlotCount = 3;
+
 struct HapticsIOSState {
-    UIImpactFeedbackGenerator* light = nil;
-    UIImpactFeedbackGenerator* medium = nil;
-    UIImpactFeedbackGenerator* heavy = nil;
+    std::array<UIImpactFeedbackGenerator*, kHapticsGeneratorSlotCount> generators{};
 };
 
 namespace {
@@ -44,28 +51,23 @@ IOSPattern ios_pattern_for_event(HapticEvent event) {
     return kIOSPatternByEvent[idx];
 }
 
+// Fabian Principle 1 / issue #1323: positional slot lookup replaces a
+// label→pointer `switch` over `UIImpactFeedbackStyle`. UIKit guarantees
+// `Light=0/Medium=1/Heavy=2` (the only styles we pass); any out-of-range
+// vendor extension (`Soft`/`Rigid`, iOS 13+) collapses to the Light slot.
+std::size_t generator_slot_for_style(UIImpactFeedbackStyle style) noexcept {
+    const auto idx = static_cast<std::size_t>(style);
+    return idx < kHapticsGeneratorSlotCount ? idx : 0;
+}
+
 UIImpactFeedbackGenerator* generator_for_style(HapticsIOSState& state,
                                                 UIImpactFeedbackStyle style) {
-    UIImpactFeedbackGenerator** slot = nullptr;
-    switch (style) {
-        case UIImpactFeedbackStyleLight:
-            slot = &state.light;
-            break;
-        case UIImpactFeedbackStyleMedium:
-            slot = &state.medium;
-            break;
-        case UIImpactFeedbackStyleHeavy:
-            slot = &state.heavy;
-            break;
-        default:
-            slot = &state.light;
-            break;
+    UIImpactFeedbackGenerator*& slot =
+        state.generators[generator_slot_for_style(style)];
+    if (slot == nil) {
+        slot = [[UIImpactFeedbackGenerator alloc] initWithStyle:style];
     }
-
-    if (*slot == nil) {
-        *slot = [[UIImpactFeedbackGenerator alloc] initWithStyle:style];
-    }
-    return *slot;
+    return slot;
 }
 
 void destroy_generator(UIImpactFeedbackGenerator*& generator) {
@@ -119,9 +121,9 @@ void haptics_ios_trigger(HapticsIOSState& state, HapticEvent event) noexcept {
 
 void haptics_ios_reset(HapticsIOSState& state) noexcept {
     @autoreleasepool {
-        destroy_generator(state.light);
-        destroy_generator(state.medium);
-        destroy_generator(state.heavy);
+        for (auto& generator : state.generators) {
+            destroy_generator(generator);
+        }
     }
 }
 
