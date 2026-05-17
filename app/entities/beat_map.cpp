@@ -258,24 +258,24 @@ static std::optional<Shape> parse_shape(const std::string& s) {
 // The former `BeatEntry::shape` discriminator is encoded by which per-shape
 // vector receives the entry. The sink table is indexed by `shape_index()`;
 // Shape::Hexagon is not a valid required shape for shape_gate / split_path,
-// so its slot returns nullptr — the loader treats nullptr as a parse error
-// and emits a "Shape 'hexagon' is not a valid required shape" message.
+// so its slot points at `null_shape_sink` (shared between both tables) —
+// the loader treats nullptr as a parse error and emits a "Shape 'hexagon'
+// is not a valid required shape" message.
 using ShapeBinAccessor = std::vector<BeatEntry>* (*)(BeatMap&);
 
 std::vector<BeatEntry>* sg_circle_sink  (BeatMap& m) { return &m.shape_gate_circle_beats; }
 std::vector<BeatEntry>* sg_square_sink  (BeatMap& m) { return &m.shape_gate_square_beats; }
 std::vector<BeatEntry>* sg_triangle_sink(BeatMap& m) { return &m.shape_gate_triangle_beats; }
-std::vector<BeatEntry>* sg_hexagon_sink (BeatMap& m) { (void)m; return nullptr; }
 std::vector<BeatEntry>* sp_circle_sink  (BeatMap& m) { return &m.split_path_circle_beats; }
 std::vector<BeatEntry>* sp_square_sink  (BeatMap& m) { return &m.split_path_square_beats; }
 std::vector<BeatEntry>* sp_triangle_sink(BeatMap& m) { return &m.split_path_triangle_beats; }
-std::vector<BeatEntry>* sp_hexagon_sink (BeatMap& m) { (void)m; return nullptr; }
+std::vector<BeatEntry>* null_shape_sink (BeatMap& m) { (void)m; return nullptr; }
 
 inline constexpr std::array<ShapeBinAccessor, kShapeCount> kShapeGateSinks{
-    &sg_circle_sink, &sg_square_sink, &sg_triangle_sink, &sg_hexagon_sink
+    &sg_circle_sink, &sg_square_sink, &sg_triangle_sink, &null_shape_sink
 };
 inline constexpr std::array<ShapeBinAccessor, kShapeCount> kSplitPathSinks{
-    &sp_circle_sink, &sp_square_sink, &sp_triangle_sink, &sp_hexagon_sink
+    &sp_circle_sink, &sp_square_sink, &sp_triangle_sink, &null_shape_sink
 };
 
 // ── Per-kind beat-entry sinks (issue #1202/#1204) ───────────
