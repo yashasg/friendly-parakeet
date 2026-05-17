@@ -60,16 +60,25 @@ void bind_audio_offset(const SettingsBindContext& ctx, entt::registry& /*reg*/,
     format_offset(ctx.audio_offset_ms, label);
 }
 
+// Shared body for the two toggle binders below. Differs across the two
+// callers only in the `name` literal + the `on` bool source on `ctx`;
+// folded so the per-tier symbols stay distinct (the position-keyed
+// `kSettingsScreenSlots` table references them as function pointers)
+// without two byte-identical bodies.
+void bind_toggle_impl(entt::registry& reg, entt::entity e, UiLabel& label,
+                      const char* name, bool on) {
+    format_toggle(label, name, on);
+    reg.emplace_or_replace<UiToggleState>(e, UiToggleState{on});
+}
+
 void bind_haptics_toggle(const SettingsBindContext& ctx, entt::registry& reg,
                          entt::entity e, UiLabel& label) {
-    format_toggle(label, "HAPTICS", ctx.haptics_on);
-    reg.emplace_or_replace<UiToggleState>(e, UiToggleState{ctx.haptics_on});
+    bind_toggle_impl(reg, e, label, "HAPTICS", ctx.haptics_on);
 }
 
 void bind_motion_toggle(const SettingsBindContext& ctx, entt::registry& reg,
                         entt::entity e, UiLabel& label) {
-    format_toggle(label, "MOTION", ctx.motion_on);
-    reg.emplace_or_replace<UiToggleState>(e, UiToggleState{ctx.motion_on});
+    bind_toggle_impl(reg, e, label, "MOTION", ctx.motion_on);
 }
 
 using SettingsSlotBindFn = void (*)(const SettingsBindContext&, entt::registry&,
