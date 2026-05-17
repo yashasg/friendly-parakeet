@@ -83,9 +83,8 @@ namespace constants {
 
     // ── Scoring ───────────────────────────────────────
     constexpr int   PTS_SHAPE_GATE    = 200;
-    constexpr int   PTS_LANE_BLOCK    = 100;
-    constexpr int   PTS_COMBO_GATE    = 200;
     constexpr int   PTS_SPLIT_PATH    = 300;
+    constexpr int   PTS_PER_SECOND    = 10;
     constexpr float CHAIN_MULT_STEP    = 0.05f;
     constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20; // caps at 2.0x
 
