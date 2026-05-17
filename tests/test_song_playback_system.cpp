@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "components/music.h"
+#include "systems/audio_resources.h"
 
 TEST_CASE("music stream helpers validate and identify unloadable rejected handles",
           "[song_playback][music][issue651]") {

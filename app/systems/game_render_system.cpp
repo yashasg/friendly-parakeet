@@ -1,6 +1,7 @@
 #include "all_systems.h"
 #include "runtime_systems.h"
 #include "floor_render_system.h"
+#include "camera_resources.h"
 #include "../components/render_mesh.h"
 #include "../components/game_state.h"
 #include "../tags/tags.h"

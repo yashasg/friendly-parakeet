@@ -2,12 +2,19 @@
 
 #include <raylib.h>
 
+// Audio runtime resource owner: holds the raylib Music handle and playback
+// state for the active song. Lives in registry context (not on an entity)
+// and is read/written 1–2× per frame by song_playback_system only.
+//
+// Relocated out of `app/components/music.h` (issue #1351) because this is a
+// ctx-singleton RAII wrapper, not entity-owned plain data — `app/components/`
+// stays reserved for atomic, queryable entity-owned tables per
+// .squad/decisions.md §"app/components parallel audit verdict (consolidated)".
+
 inline bool music_stream_is_playable(const Music& music) {
     return IsMusicValid(music) && music.stream.buffer != nullptr;
 }
 
-// Singleton: holds the raylib Music handle and playback state.
-// Cold data — read/written 1-2x per frame by song_playback_system only.
 struct MusicContext {
     Music stream{};        // raylib Music handle (zero-initialized)
     bool  loaded  = false; // LoadMusicStream succeeded

@@ -2,8 +2,17 @@
 
 #include <raylib.h>
 
-// Authoritative runtime text asset state kept in registry context.
-// UI/domain enums remain in app/components/text.h.
+// Authoritative runtime text-asset resource owner: holds the raylib Font
+// handles for small/medium/large pre-loaded faces. Lives in registry context
+// (not on an entity); destructor unloads the GPU font textures.
+//
+// Relocated out of `app/components/text_resources.h` (issue #1351) because
+// this is a ctx-singleton RAII wrapper, not entity-owned plain data —
+// `app/components/` stays reserved for atomic, queryable entity-owned tables
+// per .squad/decisions.md §"app/components parallel audit verdict
+// (consolidated)". UI/domain enums (FontSize) remain in
+// `app/components/text.h`.
+
 struct TextContext {
     Font font_small{};
     Font font_medium{};
