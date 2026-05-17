@@ -102,18 +102,16 @@ See `rhythm-design.md` for the full timing-window grading table and `rhythm-spec
 
 ## Obstacle Types
 
-| Obstacle        | Status          | Player Action Required    | Timed? | Base Points |
-|-----------------|-----------------|---------------------------|--------|-------------|
-| Shape Gate      | Shipped         | Tap correct shape button  | YES    | `PTS_SHAPE_GATE = 200` |
-| Split Path      | Future design   | Shape + correct lane      | YES    | `PTS_SPLIT_PATH = 300` |
+| Obstacle        | Status                                          | Player Action Required    | Timed? | Base Points |
+|-----------------|-------------------------------------------------|---------------------------|--------|-------------|
+| Shape Gate      | Shipped                                         | Tap correct shape button  | YES    | `PTS_SHAPE_GATE = 200` |
+| Split Path      | Shipped runtime; no shipped beatmap authors yet | Shape + correct lane      | YES    | `PTS_SPLIT_PATH = 300` |
 
-Shipped beatmaps currently use required `shape_gate` obstacles only. They may also include non-blocking `onset_marker` rows for authored onset metadata; runtime skips those rows and they do not score, block, or count as required obstacles.
+Both archetypes are fully wired through the runtime: factories (`spawn_shape_gate_*` / `spawn_split_path_*` in `app/entities/obstacle_entity.{h,cpp}`), per-kind tags (`ShapeGateTag` / `SplitPathTag` in `app/tags/tags.h`), beatmap parsing (`shape_gate` and `split_path` kinds in `app/entities/beat_map.cpp`), the rhythm scheduler (`schedule_split_path_bin` in `app/systems/beat_scheduler_system.cpp`), and scoring constants (`PTS_SHAPE_GATE`, `PTS_SPLIT_PATH` in `app/constants.h`).
 
-`PTS_SPLIT_PATH` exists in `app/constants.h` so that future split-path content can ship without re-tuning, but no split-path archetype is currently parsed from beatmaps. Earlier archetypes from pre-shipped design drafts are not present in code or content, and their associated scoring constants have been removed.
+Shipped beatmap content (`content/beatmaps/*_beatmap.json`) currently uses required `shape_gate` obstacles only. Beatmaps may also include non-blocking `onset_marker` rows for authored onset metadata; runtime skips those rows and they do not score, block, or count as required obstacles. Split-path beats are absent from shipped beatmap files, but the parser and scheduler recognise the `split_path` kind as soon as authoring adds it.
 
-### Future Split-Path Obstacles
-
-If split-path obstacles return, their timing and scoring rules need a new committed design pass before content ships. Earlier drafts also explored combo obstacles (two timed actions, e.g. switch to ● and swipe left, with independent timing grades) but that archetype is not on the current roadmap.
+Earlier archetypes from pre-shipped design drafts (Lane Block, Combo Gate, Lane Push, Low Bar / High Bar) are not present in code or content; see `architecture.md` § 5.3–5.4 for the archived archetype notes. Their associated scoring constants have been removed. Earlier drafts also explored combo obstacles (two timed actions, e.g. switch to ● and swipe left, with independent timing grades); that archetype is not on the current roadmap.
 
 ---
 
