@@ -784,9 +784,24 @@ if (!song) return;  // no rhythm context — skip
     each frame (FLOOR_PULSE_DECAY = 0.15s).
 ```
 
-## Phase 6 — Results screen (PLANNED)
+## Phase 6 — Results screen (DONE; letter-grade PLANNED)
 ```
-  • SongResults: perfect_count/good_count/ok_count/bad_count/miss_count/max_chain/total_notes
-  • Grade calculation: S/A/B/C/D/F from accuracy %
-  • Results screen: shown on song completion or MISS game-over
+  • SongResults singleton: perfect_count / good_count / ok_count /
+    bad_count / miss_count / max_chain / total_notes defined in
+    components/song_state.h; scoring_system.cpp increments the
+    appropriate counter on every graded ShapeGate resolution.
+  • Phase tags: GamePhaseSongCompleteTag / GamePhaseGameOverTag in
+    tags/tags.h; game_state_terminal_phase_system.cpp enters the
+    SongComplete phase on song completion and the GameOver phase on
+    a MISS game-over.
+  • Song-complete screen: song_complete_scoreboard_bind_system.cpp
+    binds score / high score / new-best / perfect+good /
+    ok+bad+miss / max-chain / energy slots from ScoreState +
+    SongResults + CurrentSongHighScore.
+  • Game-over screen: game_over_scoreboard_bind_system.cpp binds
+    score / high score / new-best from ScoreState +
+    CurrentSongHighScore (no per-tier breakdown on the MISS path).
+  • S/A/B/C/D/F letter grade from accuracy %: PLANNED (no
+    grade-calculation system shipped yet; SongResults carries the
+    raw counts a future letter-grade system would need).
 ```
