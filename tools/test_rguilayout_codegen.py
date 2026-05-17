@@ -87,6 +87,38 @@ class EmitterTests(unittest.TestCase):
             self.assertNotIn("UiKind::", out, f"{rgl} introduced UiKind enum")
             self.assertNotIn("LayoutState", out, f"{rgl} mentions LayoutState")
 
+    def test_emit_attaches_toggle_tag_to_settings_toggles(self):
+        # Settings migration (#1295): HapticsToggle and ReduceMotionToggle
+        # must carry UiToggleTag so ui_render_system applies the two-cue
+        # ON/OFF style.
+        layout = codegen.parse_rgl(RGL_DIR / "settings.rgl")
+        out = codegen.emit_spawner_cpp(layout, RGL_DIR / "settings.rgl")
+        self.assertRegex(
+            out,
+            re.compile(
+                r"// HapticsToggle.*?UiToggleTag",
+                re.DOTALL,
+            ),
+        )
+        self.assertRegex(
+            out,
+            re.compile(
+                r"// ReduceMotionToggle.*?UiToggleTag",
+                re.DOTALL,
+            ),
+        )
+        # Non-toggle Settings buttons (AudioOffsetMinus / AudioOffsetPlus /
+        # CloseButton) must NOT receive UiToggleTag.
+        for name in ("AudioOffsetMinus", "AudioOffsetPlus", "CloseButton"):
+            block_re = re.compile(
+                r"// " + name + r".*?(?=\n\s*\{|\Z)",
+                re.DOTALL,
+            )
+            m = block_re.search(out)
+            self.assertIsNotNone(m, f"{name} block not found")
+            self.assertNotIn("UiToggleTag", m.group(0),
+                             f"{name} should not carry UiToggleTag")
+
     def test_emit_is_deterministic(self):
         layout = codegen.parse_rgl(RGL_DIR / "settings.rgl")
         first = codegen.emit_spawner_cpp(layout, RGL_DIR / "settings.rgl")

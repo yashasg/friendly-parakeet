@@ -68,3 +68,13 @@ inline void ui_label_set(UiLabel& label, const char* src) noexcept {
 struct OnPress {
     ActionId action = ActionId::None;
 };
+
+// Two-state toggle data for buttons carrying `UiToggleTag` (Settings
+// screen, issue #1295). The bind system (e.g.
+// `settings_screen_bind_system`) writes the current ON/OFF state each
+// frame from the underlying domain data (`SettingsState::haptics_enabled`,
+// `!SettingsState::reduce_motion`, …). `ui_render_system` reads it to
+// pick the two-cue colour + icon-prefix row.
+struct UiToggleState {
+    bool on = false;
+};

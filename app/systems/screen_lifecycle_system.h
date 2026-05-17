@@ -21,5 +21,5 @@
 // this system. See #1287 for the per-screen sub-issue ladder.
 //
 // Migrated so far: Paused (#1290 pilot), Tutorial (#1291), Song Complete (#1292),
-// Game Over (#1293), Title (#1294).
+// Game Over (#1293), Title (#1294), Settings (#1295).
 void screen_lifecycle_system(entt::registry& reg);

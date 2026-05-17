@@ -2,11 +2,14 @@
 
 #include "../components/actions.h"
 #include "../components/game_state.h"
+#include "../components/settings.h"
 #include "../components/ui.h"
 #include "../constants.h"
 #include "../tags/tags.h"
 #include "game_phase_transition.h"
+#include "haptics_backend.h"
 #include "input.h"
+#include "settings_system.h"
 
 #include <array>
 #include <cstddef>
@@ -112,6 +115,61 @@ void settings_button_action(entt::registry& reg, entt::entity /*entity*/) {
     request_phase_transition<NextPhaseSettingsTag>(reg);
 }
 
+// Settings screen actions (issue #1295).
+//
+// AudioOffsetMinus / AudioOffsetPlus step `SettingsState::audio_offset_ms`
+// by `AUDIO_OFFSET_STEP_MS` and clamp to [MIN, MAX]. CloseButton routes
+// back to Title (no other screen currently emits ActionId::CloseButton).
+// HapticsToggle / ReduceMotionToggle flip their respective bool and
+// persist via `settings::mark_dirty_and_save`. Enabling haptics also
+// warms up the platform backend (latency-sensitive first vibration,
+// matches legacy controller).
+
+void audio_offset_step_action(entt::registry& reg, int delta) {
+    auto* st = find_settings_state(reg);
+    if (st == nullptr) return;
+    const auto before = st->audio_offset_ms;
+    const int candidate = static_cast<int>(st->audio_offset_ms) + delta;
+    const int clamped = (candidate < SettingsState::MIN_AUDIO_OFFSET_MS)
+                      ? SettingsState::MIN_AUDIO_OFFSET_MS
+                      : ((candidate > SettingsState::MAX_AUDIO_OFFSET_MS)
+                         ? SettingsState::MAX_AUDIO_OFFSET_MS
+                         : candidate);
+    st->audio_offset_ms = static_cast<int16_t>(clamped);
+    if (st->audio_offset_ms != before) {
+        settings::mark_dirty_and_save(reg, *st);
+    }
+}
+
+void audio_offset_minus_action(entt::registry& reg, entt::entity /*entity*/) {
+    audio_offset_step_action(reg, -SettingsState::AUDIO_OFFSET_STEP_MS);
+}
+
+void audio_offset_plus_action(entt::registry& reg, entt::entity /*entity*/) {
+    audio_offset_step_action(reg, +SettingsState::AUDIO_OFFSET_STEP_MS);
+}
+
+void close_button_action(entt::registry& reg, entt::entity /*entity*/) {
+    request_phase_transition<NextPhaseTitleTag>(reg);
+}
+
+void haptics_toggle_action(entt::registry& reg, entt::entity /*entity*/) {
+    auto* st = find_settings_state(reg);
+    if (st == nullptr) return;
+    st->haptics_enabled = !st->haptics_enabled;
+    settings::mark_dirty_and_save(reg, *st);
+    if (st->haptics_enabled) {
+        platform::haptics::warmup(reg);
+    }
+}
+
+void reduce_motion_toggle_action(entt::registry& reg, entt::entity /*entity*/) {
+    auto* st = find_settings_state(reg);
+    if (st == nullptr) return;
+    st->reduce_motion = !st->reduce_motion;
+    settings::mark_dirty_and_save(reg, *st);
+}
+
 // ── Dispatch table ──────────────────────────────────────────────────
 //
 // Order must match the `ActionId` enumerator order in
@@ -120,19 +178,19 @@ void settings_button_action(entt::registry& reg, entt::entity /*entity*/) {
 
 constexpr std::array<ActionHandler, 17> kActionHandlers = {
     /* None                 */ &noop_action_handler,
-    /* AudioOffsetMinus     */ &noop_action_handler,
-    /* AudioOffsetPlus      */ &noop_action_handler,
-    /* CloseButton          */ &noop_action_handler,
+    /* AudioOffsetMinus     */ &audio_offset_minus_action,
+    /* AudioOffsetPlus      */ &audio_offset_plus_action,
+    /* CloseButton          */ &close_button_action,
     /* ContinueButton       */ &continue_button_action,
     /* DifficultyEasy       */ &noop_action_handler,
     /* DifficultyHard       */ &noop_action_handler,
     /* DifficultyMedium     */ &noop_action_handler,
     /* ExitButton           */ &exit_button_action,
-    /* HapticsToggle        */ &noop_action_handler,
+    /* HapticsToggle        */ &haptics_toggle_action,
     /* LevelSelectButton    */ &level_select_button_action,
     /* MenuButton           */ &menu_button_action,
     /* PauseButton          */ &noop_action_handler,
-    /* ReduceMotionToggle   */ &noop_action_handler,
+    /* ReduceMotionToggle   */ &reduce_motion_toggle_action,
     /* RestartButton        */ &restart_button_action,
     /* ResumeButton         */ &resume_button_action,
     /* SettingsButton       */ &settings_button_action,

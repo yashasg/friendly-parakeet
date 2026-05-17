@@ -13,7 +13,6 @@
 #include "../tags/tags.h"
 #include "../util/shape_draw_2d.h"
 
-#include "../ui/screen_controllers/settings_screen_controller.h"
 #include "../ui/screen_controllers/level_select_screen_controller.h"
 #include "../ui/screen_controllers/gameplay_hud_screen_controller.h"
 #include <raygui.h>
@@ -93,15 +92,74 @@ void render_ui_entities(entt::registry& reg) {
     // `ui_update_system`; ignoring the return value keeps that path the
     // single source of truth for button activation.
     //
-    // `UiHiddenOnWebTag` entities (Title-screen ExitButton on Web per #511)
-    // are skipped to keep the button invisible on Web — their bounds still
-    // act as a tap-anywhere dead-zone via `title_start_tap_system`.
+    // Toggle buttons (`UiToggleTag`, Settings screen #1295) need two-cue
+    // ON/OFF styling per A11Y issue #390: green border + dim green fill
+    // when on, grey border + dark fill when off (the icon-prefix cue is
+    // baked into `UiLabel::text` by `settings_screen_bind_system`).
+    // Plain (non-toggle) buttons render in a second pass with the default
+    // raygui style. `UiHiddenOnWebTag` entities (Title-screen ExitButton
+    // on Web per #511) are skipped to keep the button invisible on Web —
+    // their bounds still act as a tap-anywhere dead-zone via
+    // `title_start_tap_system`.
     {
         GuiSetStyle(DEFAULT, TEXT_SIZE, kEntityButtonTextSize);
-        auto view = reg.view<UiPosition, UiBounds, UiLabel, UiButtonTag>(
+
+        // ── Pass A: toggle buttons (per-entity colour override) ───
+        constexpr int kToggleStyleProps[] = {
+            BORDER_COLOR_NORMAL, BASE_COLOR_NORMAL, TEXT_COLOR_NORMAL,
+            BORDER_COLOR_FOCUSED, BASE_COLOR_FOCUSED, TEXT_COLOR_FOCUSED,
+        };
+        constexpr std::size_t kToggleStylePropCount =
+            sizeof(kToggleStyleProps) / sizeof(kToggleStyleProps[0]);
+        int saved_button_style[kToggleStylePropCount];
+        for (std::size_t i = 0; i < kToggleStylePropCount; ++i) {
+            saved_button_style[i] = GuiGetStyle(BUTTON, kToggleStyleProps[i]);
+        }
+
+        constexpr Color kToggleOnBorder  {  64, 200, 110, 255 };
+        constexpr Color kToggleOnBase    {  20,  64,  36, 255 };
+        constexpr Color kToggleOffBorder { 130, 130, 130, 255 };
+        constexpr Color kToggleOffBase   {  36,  36,  36, 255 };
+        constexpr Color kToggleTextColor { 230, 230, 230, 255 };
+
+        auto toggle_view = reg.view<UiPosition, UiBounds, UiLabel,
+                                    UiButtonTag, UiToggleTag>(
 #ifdef PLATFORM_WEB
             entt::exclude<UiHiddenOnWebTag>
 #endif
+        );
+        for (auto entity : toggle_view) {
+            const auto& pos = toggle_view.template get<UiPosition>(entity);
+            const auto& sz  = toggle_view.template get<UiBounds>(entity);
+            const auto& lbl = toggle_view.template get<UiLabel>(entity);
+            // `UiToggleState` is written each frame by the per-screen bind
+            // system; if missing (frame 0 race before the bind runs) treat
+            // as OFF — safe default, harmless visual flicker.
+            const auto* state = reg.try_get<UiToggleState>(entity);
+            const bool on = (state != nullptr) && state->on;
+
+            const Color border = on ? kToggleOnBorder : kToggleOffBorder;
+            const Color base   = on ? kToggleOnBase   : kToggleOffBase;
+            GuiSetStyle(BUTTON, BORDER_COLOR_NORMAL,  ColorToInt(border));
+            GuiSetStyle(BUTTON, BORDER_COLOR_FOCUSED, ColorToInt(border));
+            GuiSetStyle(BUTTON, BASE_COLOR_NORMAL,    ColorToInt(base));
+            GuiSetStyle(BUTTON, BASE_COLOR_FOCUSED,   ColorToInt(base));
+            GuiSetStyle(BUTTON, TEXT_COLOR_NORMAL,    ColorToInt(kToggleTextColor));
+            GuiSetStyle(BUTTON, TEXT_COLOR_FOCUSED,   ColorToInt(kToggleTextColor));
+            (void)GuiButton(Rectangle{pos.x, pos.y, sz.w, sz.h}, lbl.text.data());
+        }
+
+        for (std::size_t i = 0; i < kToggleStylePropCount; ++i) {
+            GuiSetStyle(BUTTON, kToggleStyleProps[i], saved_button_style[i]);
+        }
+
+        // ── Pass B: plain (non-toggle) buttons, default raygui style ──
+        auto view = reg.view<UiPosition, UiBounds, UiLabel, UiButtonTag>(
+            entt::exclude<UiToggleTag
+#ifdef PLATFORM_WEB
+                          , UiHiddenOnWebTag
+#endif
+                          >
         );
         for (auto [e, pos, sz, label] : view.each()) {
             (void)e;
@@ -215,12 +273,12 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     //
     // Paused was migrated to the entity-driven path (#1287 pilot);
     // Tutorial migrated in #1291; Song Complete migrated in #1292; Game
-    // Over migrated in #1293; Title migrated in #1294. The remaining three
-    // screens migrate in follow-up sub-issues — see #1287.
+    // Over migrated in #1293; Title migrated in #1294; Settings migrated
+    // in #1295. The remaining two screens migrate in follow-up sub-issues
+    // — see #1287.
     const auto& ctx = reg.ctx();
     if (ctx.contains<GamePhaseLevelSelectTag>())  { render_level_select_screen_ui(reg); }
     if (ctx.contains<GamePhasePlayingTag>())      { render_gameplay_hud_screen_ui(reg); }
-    if (ctx.contains<GamePhaseSettingsTag>())     { render_settings_screen_ui(reg); }
 
     // Restore raw mouse transform for non-UI systems in subsequent frames.
     SetMouseOffset(0, 0);

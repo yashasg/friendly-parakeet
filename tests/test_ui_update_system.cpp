@@ -32,6 +32,7 @@
 #include "systems/screen_lifecycle_system.h"
 #include "systems/settings_system.h"
 #include "systems/song_complete_scoreboard_bind_system.h"
+#include "systems/settings_screen_bind_system.h"
 #include "systems/title_start_tap_system.h"
 #include "systems/tutorial_dodge_hint_bind_system.h"
 #include "systems/ui_update_system.h"
@@ -884,3 +885,301 @@ TEST_CASE("ui_update_system: PLATFORM_WEB skips UiHiddenOnWebTag entities (#511,
     CHECK_FALSE(any_next_phase_pending(reg));
 }
 #endif
+
+// ── Settings screen migration (#1295) ────────────────────────────────────
+
+namespace {
+
+void prime_settings_entry(entt::registry& reg) {
+    sync_game_phase_tags<GamePhaseSettingsTag>(reg);
+    spawn_settings_screen(reg);
+    reg.ctx().get<GameState>().phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.05f;
+    clear_next_phase_tags(reg);
+}
+
+}  // namespace
+
+TEST_CASE("screen_lifecycle_system: spawns Settings entities on phase entry, "
+          "despawns on exit",
+          "[ui][screen_lifecycle_system][issue1295]") {
+    entt::registry reg = make_registry();
+    clear_next_phase_tags(reg);
+
+    // Pre-condition: not on Settings.
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<SettingsScreenTag>().size() == 0);
+
+    sync_game_phase_tags<GamePhaseSettingsTag>(reg);
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<SettingsScreenTag>().size() > 0);
+
+    // Idempotent — second tick on the same phase does not double-spawn.
+    const auto count_after_first_spawn = reg.view<SettingsScreenTag>().size();
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<SettingsScreenTag>().size() == count_after_first_spawn);
+
+    sync_game_phase_tags<GamePhaseTitleTag>(reg);
+    screen_lifecycle_system(reg);
+    CHECK(reg.view<SettingsScreenTag>().size() == 0);
+}
+
+TEST_CASE("Settings toggle buttons carry UiToggleTag (issue #1295)",
+          "[ui][settings][codegen][issue1295]") {
+    entt::registry reg;
+    spawn_settings_screen(reg);
+
+    // Exactly two toggle buttons: HapticsToggle + ReduceMotionToggle.
+    auto toggles = reg.view<UiToggleTag, UiButtonTag, SettingsScreenTag>();
+    CHECK(toggles.size_hint() == 2);
+
+    int haptics = 0, motion = 0, other = 0;
+    auto with_action = reg.view<UiToggleTag, OnPress>();
+    for (auto [e, on_press] : with_action.each()) {
+        (void)e;
+        if (on_press.action == ActionId::HapticsToggle) ++haptics;
+        else if (on_press.action == ActionId::ReduceMotionToggle) ++motion;
+        else ++other;
+    }
+    CHECK(haptics == 1);
+    CHECK(motion == 1);
+    CHECK(other == 0);
+
+    // Non-toggle Settings buttons (audio +/- and CloseButton) must NOT
+    // carry the toggle tag — otherwise the render system would apply
+    // the green/grey style to them.
+    auto non_toggle_btns = reg.view<UiButtonTag, SettingsScreenTag>(
+        entt::exclude<UiToggleTag>);
+    int non_toggle_count = 0;
+    for (auto e : non_toggle_btns) { (void)e; ++non_toggle_count; }
+    CHECK(non_toggle_count == 3);
+}
+
+TEST_CASE("ui_update_system: Settings audio offset minus decrements and persists",
+          "[ui][ui_update_system][issue1295]") {
+    entt::registry reg = make_registry();
+    prime_settings_entry(reg);
+
+    auto& settings = settings_state(reg);
+    settings.audio_offset_ms = 50;
+    const auto settings_entity = *reg.view<SettingsTag>().begin();
+    reg.remove<SettingsDirtyTag>(settings_entity);
+
+    auto& input = reg.ctx().get<InputState>();
+    // AudioOffsetMinus bounds from settings.rgl: (180, 560, 72, 77).
+    click_at(input, 216.0f, 600.0f);
+
+    ui_update_system(reg);
+
+    CHECK(settings_state(reg).audio_offset_ms ==
+          50 - SettingsState::AUDIO_OFFSET_STEP_MS);
+    const auto settings_entity_after = *reg.view<SettingsTag>().begin();
+    CHECK(reg.all_of<SettingsDirtyTag>(settings_entity_after));
+    CHECK_FALSE(any_next_phase_pending(reg));
+}
+
+TEST_CASE("ui_update_system: Settings audio offset plus increments and persists",
+          "[ui][ui_update_system][issue1295]") {
+    entt::registry reg = make_registry();
+    prime_settings_entry(reg);
+
+    auto& settings = settings_state(reg);
+    settings.audio_offset_ms = -50;
+    const auto settings_entity = *reg.view<SettingsTag>().begin();
+    reg.remove<SettingsDirtyTag>(settings_entity);
+
+    auto& input = reg.ctx().get<InputState>();
+    // AudioOffsetPlus bounds from settings.rgl: (468, 560, 72, 77).
+    click_at(input, 504.0f, 600.0f);
+
+    ui_update_system(reg);
+
+    CHECK(settings_state(reg).audio_offset_ms ==
+          -50 + SettingsState::AUDIO_OFFSET_STEP_MS);
+    const auto settings_entity_after = *reg.view<SettingsTag>().begin();
+    CHECK(reg.all_of<SettingsDirtyTag>(settings_entity_after));
+}
+
+TEST_CASE("ui_update_system: Settings audio offset clamps at MIN/MAX",
+          "[ui][ui_update_system][issue1295]") {
+    entt::registry reg = make_registry();
+    prime_settings_entry(reg);
+
+    auto& input = reg.ctx().get<InputState>();
+
+    // Clamp at min.
+    settings_state(reg).audio_offset_ms = SettingsState::MIN_AUDIO_OFFSET_MS;
+    click_at(input, 216.0f, 600.0f);  // minus
+    ui_update_system(reg);
+    CHECK(settings_state(reg).audio_offset_ms ==
+          SettingsState::MIN_AUDIO_OFFSET_MS);
+
+    // Clamp at max.
+    settings_state(reg).audio_offset_ms = SettingsState::MAX_AUDIO_OFFSET_MS;
+    click_at(input, 504.0f, 600.0f);  // plus
+    ui_update_system(reg);
+    CHECK(settings_state(reg).audio_offset_ms ==
+          SettingsState::MAX_AUDIO_OFFSET_MS);
+}
+
+TEST_CASE("ui_update_system: Settings close button requests Title phase",
+          "[ui][ui_update_system][issue1295]") {
+    entt::registry reg = make_registry();
+    prime_settings_entry(reg);
+
+    auto& input = reg.ctx().get<InputState>();
+    // CloseButton bounds from settings.rgl: (260, 1040, 200, 100).
+    click_at(input, 360.0f, 1090.0f);
+
+    ui_update_system(reg);
+
+    CHECK(reg.ctx().contains<NextPhaseTitleTag>());
+}
+
+TEST_CASE("ui_update_system: Settings haptics toggle flips haptics_enabled and persists",
+          "[ui][ui_update_system][issue1295]") {
+    entt::registry reg = make_registry();
+    prime_settings_entry(reg);
+
+    settings_state(reg).haptics_enabled = true;
+    const auto settings_entity = *reg.view<SettingsTag>().begin();
+    reg.remove<SettingsDirtyTag>(settings_entity);
+
+    auto& input = reg.ctx().get<InputState>();
+    // HapticsToggle bounds from settings.rgl: (152, 720, 416, 100).
+    click_at(input, 360.0f, 770.0f);
+
+    ui_update_system(reg);
+
+    CHECK_FALSE(settings_state(reg).haptics_enabled);
+    const auto settings_entity_after = *reg.view<SettingsTag>().begin();
+    CHECK(reg.all_of<SettingsDirtyTag>(settings_entity_after));
+}
+
+TEST_CASE("ui_update_system: Settings reduce motion toggle flips reduce_motion",
+          "[ui][ui_update_system][issue1295]") {
+    entt::registry reg = make_registry();
+    prime_settings_entry(reg);
+
+    settings_state(reg).reduce_motion = false;
+    const auto settings_entity = *reg.view<SettingsTag>().begin();
+    reg.remove<SettingsDirtyTag>(settings_entity);
+
+    auto& input = reg.ctx().get<InputState>();
+    // ReduceMotionToggle bounds from settings.rgl: (152, 880, 416, 100).
+    click_at(input, 360.0f, 930.0f);
+
+    ui_update_system(reg);
+
+    CHECK(settings_state(reg).reduce_motion);
+    const auto settings_entity_after = *reg.view<SettingsTag>().begin();
+    CHECK(reg.all_of<SettingsDirtyTag>(settings_entity_after));
+}
+
+TEST_CASE("ui_update_system: Settings click before debounce ignored (issue #1295)",
+          "[ui][ui_update_system][issue1295]") {
+    entt::registry reg = make_registry();
+    sync_game_phase_tags<GamePhaseSettingsTag>(reg);
+    spawn_settings_screen(reg);
+    reg.ctx().get<GameState>().phase_timer = 0.0f;
+    clear_next_phase_tags(reg);
+
+    const auto offset_before = settings_state(reg).audio_offset_ms;
+
+    auto& input = reg.ctx().get<InputState>();
+    click_at(input, 216.0f, 600.0f);  // AudioOffsetMinus centre
+
+    ui_update_system(reg);
+
+    CHECK(settings_state(reg).audio_offset_ms == offset_before);
+}
+
+TEST_CASE("settings_screen_bind_system: writes formatted audio offset text",
+          "[ui][settings_screen_bind_system][issue1295]") {
+    entt::registry reg = make_registry();
+    prime_settings_entry(reg);
+
+    settings_state(reg).audio_offset_ms = -40;
+    settings_screen_bind_system(reg);
+
+    // AudioOffsetDisplay at (252, 560) — see settings.rgl.
+    auto view = reg.view<SettingsScreenTag, UiPosition, UiLabel>();
+    bool found = false;
+    for (auto [e, pos, label] : view.each()) {
+        (void)e;
+        if (pos.x == 252.0f && pos.y == 560.0f) {
+            CHECK(std::string(label.text.data()) == "-40 ms");
+            found = true;
+            break;
+        }
+    }
+    CHECK(found);
+
+    // Positive offset gets a `+` prefix.
+    settings_state(reg).audio_offset_ms = 70;
+    settings_screen_bind_system(reg);
+    for (auto [e, pos, label] : view.each()) {
+        (void)e;
+        if (pos.x == 252.0f && pos.y == 560.0f) {
+            CHECK(std::string(label.text.data()) == "+70 ms");
+            break;
+        }
+    }
+}
+
+TEST_CASE("settings_screen_bind_system: writes toggle labels and UiToggleState",
+          "[ui][settings_screen_bind_system][issue1295]") {
+    entt::registry reg = make_registry();
+    prime_settings_entry(reg);
+
+    settings_state(reg).haptics_enabled = true;
+    settings_state(reg).reduce_motion = false;
+    settings_screen_bind_system(reg);
+
+    auto view = reg.view<SettingsScreenTag, UiToggleTag, UiPosition, UiLabel,
+                         UiToggleState>();
+    int haptics_match = 0;
+    int motion_match = 0;
+    for (auto entity : view) {
+        const auto& pos = view.get<UiPosition>(entity);
+        const auto& label = view.get<UiLabel>(entity);
+        const auto& state = view.get<UiToggleState>(entity);
+        if (pos.x == 152.0f && pos.y == 720.0f) {
+            CHECK(std::string(label.text.data()) == "[X] HAPTICS: ON");
+            CHECK(state.on);
+            ++haptics_match;
+        } else if (pos.x == 152.0f && pos.y == 880.0f) {
+            // motion_on = !reduce_motion → true → label shows MOTION: ON
+            CHECK(std::string(label.text.data()) == "[X] MOTION: ON");
+            CHECK(state.on);
+            ++motion_match;
+        }
+    }
+    CHECK(haptics_match == 1);
+    CHECK(motion_match == 1);
+
+    // Flip both — verify off-state cue.
+    settings_state(reg).haptics_enabled = false;
+    settings_state(reg).reduce_motion = true;
+    settings_screen_bind_system(reg);
+    for (auto entity : view) {
+        const auto& pos = view.get<UiPosition>(entity);
+        const auto& label = view.get<UiLabel>(entity);
+        const auto& state = view.get<UiToggleState>(entity);
+        if (pos.x == 152.0f && pos.y == 720.0f) {
+            CHECK(std::string(label.text.data()) == "[ ] HAPTICS: OFF");
+            CHECK_FALSE(state.on);
+        } else if (pos.x == 152.0f && pos.y == 880.0f) {
+            CHECK(std::string(label.text.data()) == "[ ] MOTION: OFF");
+            CHECK_FALSE(state.on);
+        }
+    }
+}
+
+TEST_CASE("settings_screen_bind_system: no-op when Settings entities absent",
+          "[ui][settings_screen_bind_system][issue1295]") {
+    entt::registry reg = make_registry();
+    // No spawn_settings_screen call — the bind must short-circuit.
+    settings_screen_bind_system(reg);
+    SUCCEED("bind ran without spawning Settings entities");
+}

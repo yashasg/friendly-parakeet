@@ -31,6 +31,7 @@
 #include "systems/screen_lifecycle_system.h"
 #include "systems/game_over_scoreboard_bind_system.h"
 #include "systems/song_complete_scoreboard_bind_system.h"
+#include "systems/settings_screen_bind_system.h"
 #include "systems/title_start_tap_system.h"
 #include "systems/tutorial_dodge_hint_bind_system.h"
 #include "systems/ui_update_system.h"
@@ -305,6 +306,7 @@ void game_loop_frame(entt::registry& reg, float& accumulator) {
     tutorial_dodge_hint_bind_system(reg);
     song_complete_scoreboard_bind_system(reg);
     game_over_scoreboard_bind_system(reg);
+    settings_screen_bind_system(reg);
 
     // Camera runs after gameplay systems so transforms reflect current frame
     game_camera_system(reg, raw_dt);
