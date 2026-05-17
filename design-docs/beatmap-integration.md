@@ -190,7 +190,9 @@ struct MusicContext {
 };
 ```
 
-Defined in `app/components/music.h`. It owns the raylib `Music` handle and is
+Defined in `app/systems/audio_resources.h` (relocated from the never-shipped
+`app/components/music.h` per #1351 — it ships beside its owning systems).
+It owns the raylib `Music` handle and is
 emplaced in `reg.ctx()` alongside `SongState`.
 
 ## 2.2 Existing Components — No Changes Needed
