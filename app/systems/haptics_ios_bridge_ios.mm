@@ -2,6 +2,8 @@
 
 #import <UIKit/UIKit.h>
 
+#include <array>
+#include <cstddef>
 #include <new>
 
 namespace platform::ios {
@@ -18,21 +20,28 @@ struct IOSPattern {
     int pulse_count = 1;
 };
 
+// Fabian Principle 1 / issue #1316: enum-as-lookup-key into a static table,
+// mirroring `pattern_for_event` in `haptics_backend.cpp:47-72` (issue #1288).
+// Row order must match the `HapticEvent` declaration in
+// `app/systems/haptics.h`; the `static_assert` pins the table size to the
+// trailing enumerator (`UIButtonTap`).
 IOSPattern ios_pattern_for_event(HapticEvent event) {
-    switch (event) {
-        case HapticEvent::LaneSwitch:
-        case HapticEvent::UIButtonTap:
-        case HapticEvent::ShapeShift:
-        case HapticEvent::JumpLand:
-        case HapticEvent::RetryTap:
-            return {UIImpactFeedbackStyleLight, 1};
-        case HapticEvent::NewHighScore:
-            return {UIImpactFeedbackStyleMedium, 1};
-        case HapticEvent::DeathCrash:
-            return {UIImpactFeedbackStyleHeavy, 2};
-        default:
-            return {UIImpactFeedbackStyleLight, 1};
-    }
+    constexpr std::array<IOSPattern, 7> kIOSPatternByEvent{{
+        /* ShapeShift   */ IOSPattern{UIImpactFeedbackStyleLight,  1},
+        /* LaneSwitch   */ IOSPattern{UIImpactFeedbackStyleLight,  1},
+        /* JumpLand     */ IOSPattern{UIImpactFeedbackStyleLight,  1},
+        /* DeathCrash   */ IOSPattern{UIImpactFeedbackStyleHeavy,  2},
+        /* NewHighScore */ IOSPattern{UIImpactFeedbackStyleMedium, 1},
+        /* RetryTap     */ IOSPattern{UIImpactFeedbackStyleLight,  1},
+        /* UIButtonTap  */ IOSPattern{UIImpactFeedbackStyleLight,  1},
+    }};
+    static_assert(kIOSPatternByEvent.size() ==
+                  static_cast<std::size_t>(HapticEvent::UIButtonTap) + 1,
+                  "kIOSPatternByEvent must cover every HapticEvent enumerator");
+
+    const auto idx = static_cast<std::size_t>(event);
+    if (idx >= kIOSPatternByEvent.size()) return IOSPattern{UIImpactFeedbackStyleLight, 1};
+    return kIOSPatternByEvent[idx];
 }
 
 UIImpactFeedbackGenerator* generator_for_style(HapticsIOSState& state,
