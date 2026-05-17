@@ -8,7 +8,7 @@
 A rhythm game where obstacles ARE the beats. Match shapes and dodge lane blocks in time with the music — the closer to the beat, the higher your score.
 
 Built with **C++20** and **EnTT** using Data-Oriented Design.
-Current architecture direction is direct **raylib/raygui + glm**
+Current architecture direction is direct **raylib/raygui**
 at runtime boundaries, without wrapper abstraction layers.
 
 **[Play in browser](https://yashasg.github.io/friendly-parakeet/)** (WebAssembly)
@@ -246,10 +246,8 @@ The level designer uses song structure (intro/verse/chorus/bridge) to control de
 | Library | Version | Purpose |
 |---------|---------|---------|
 | raylib / raygui | vcpkg | Runtime input, rendering, text, audio, immediate-mode UI |
-| glm | vcpkg | Math data and transforms |
 | [EnTT](https://github.com/skypjack/entt) | 3.16.0 | Entity Component System |
 | [nlohmann-json](https://github.com/nlohmann/json) | 3.12+ | Beatmap JSON parsing |
-| magic_enum | vcpkg | Compile-time enum introspection and naming |
 | [Catch2](https://github.com/catchorg/Catch2) | 3.13+ | Testing framework |
 
 ## CI/CD
