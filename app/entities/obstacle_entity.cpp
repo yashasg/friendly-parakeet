@@ -16,6 +16,32 @@ void finish_obstacle(entt::registry& reg, entt::entity e) {
     reg.emplace<ObstacleTag>(e);
 }
 
+// Shared finalizers for the six per-kind `spawn_*` wrappers below
+// (#1453). All six wrappers were byte-identical apart from which private
+// `create_*` builder they invoked: the non-rhythm trio appended a
+// `Vector2{0, params.speed}` velocity, the rhythm trio appended a
+// `BeatInfo`. Per the byte-identical fold pattern the squad has already
+// merged in #1430 / #1436 / #1440 / #1443 / #1448 / #1416, the public
+// per-kind symbols remain (call sites in `app/systems/beat_scheduler_system.cpp`
+// and several `tests/*.cpp` files reference them by name) and thin-call
+// into one of these two finalizers parameterized on the builder.
+template <typename Builder, typename Params>
+entt::entity spawn_with_velocity(entt::registry& reg, Builder build, const Params& params) {
+    auto e = build(reg, params);
+    reg.emplace<Vector2>(e, Vector2{0.0f, params.speed});
+    finish_obstacle(reg, e);
+    return e;
+}
+
+template <typename Builder, typename Params>
+entt::entity spawn_with_beat(entt::registry& reg, Builder build, const Params& params,
+                             const BeatInfo& beat_info) {
+    auto e = build(reg, params);
+    reg.emplace<BeatInfo>(e, beat_info);
+    finish_obstacle(reg, e);
+    return e;
+}
+
 entt::entity create_shape_gate(entt::registry& reg, const ShapeGateSpawn& params) {
     if (!is_valid_shape(params.shape)) {
         throw std::logic_error("Invalid obstacle shape");
@@ -67,46 +93,28 @@ entt::entity create_onset_marker(entt::registry& reg, const OnsetMarkerSpawn& pa
 } // namespace
 
 entt::entity spawn_shape_gate_obstacle(entt::registry& reg, const ShapeGateSpawn& params) {
-    auto e = create_shape_gate(reg, params);
-    reg.emplace<Vector2>(e, Vector2{0.0f, params.speed});
-    finish_obstacle(reg, e);
-    return e;
+    return spawn_with_velocity(reg, create_shape_gate, params);
 }
 
 entt::entity spawn_split_path_obstacle(entt::registry& reg, const SplitPathSpawn& params) {
-    auto e = create_split_path(reg, params);
-    reg.emplace<Vector2>(e, Vector2{0.0f, params.speed});
-    finish_obstacle(reg, e);
-    return e;
+    return spawn_with_velocity(reg, create_split_path, params);
 }
 
 entt::entity spawn_onset_marker_obstacle(entt::registry& reg, const OnsetMarkerSpawn& params) {
-    auto e = create_onset_marker(reg, params);
-    reg.emplace<Vector2>(e, Vector2{0.0f, params.speed});
-    finish_obstacle(reg, e);
-    return e;
+    return spawn_with_velocity(reg, create_onset_marker, params);
 }
 
 entt::entity spawn_shape_gate_rhythm(entt::registry& reg, const ShapeGateSpawn& params,
                                      const BeatInfo& beat_info) {
-    auto e = create_shape_gate(reg, params);
-    reg.emplace<BeatInfo>(e, beat_info);
-    finish_obstacle(reg, e);
-    return e;
+    return spawn_with_beat(reg, create_shape_gate, params, beat_info);
 }
 
 entt::entity spawn_split_path_rhythm(entt::registry& reg, const SplitPathSpawn& params,
                                      const BeatInfo& beat_info) {
-    auto e = create_split_path(reg, params);
-    reg.emplace<BeatInfo>(e, beat_info);
-    finish_obstacle(reg, e);
-    return e;
+    return spawn_with_beat(reg, create_split_path, params, beat_info);
 }
 
 entt::entity spawn_onset_marker_rhythm(entt::registry& reg, const OnsetMarkerSpawn& params,
                                        const BeatInfo& beat_info) {
-    auto e = create_onset_marker(reg, params);
-    reg.emplace<BeatInfo>(e, beat_info);
-    finish_obstacle(reg, e);
-    return e;
+    return spawn_with_beat(reg, create_onset_marker, params, beat_info);
 }
