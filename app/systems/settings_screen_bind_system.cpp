@@ -24,12 +24,13 @@ constexpr float kReduceMotionToggleY = 880.0f;
 
 // Bind context — owns the per-frame singleton reads so the per-slot
 // `bind_*` functions are pure transforms over their slot's `UiLabel` +
-// `UiToggleState`. Mirrors the `BindContext` shape used by the sibling
+// `UiToggleState`. Mirrors the `*BindContext` shape used by the sibling
 // `game_over_scoreboard_bind_system` / `song_complete_scoreboard_bind_system` /
-// `gameplay_hud_bind_system` binders. Named `SettingsBindContext` (not the
-// bare `BindContext` used by the siblings) so that the Unity-build chunk
-// that currently merges this TU with `song_complete_scoreboard_bind_system`
-// does not hit an anonymous-namespace ODR collision.
+// `gameplay_hud_bind_system` binders.
+//
+// Per-binder prefix (`Settings*`) avoids an anonymous-namespace ODR
+// collision with the sibling `*_bind_system.cpp` files when CMake Unity
+// chunking happens to place two binders in the same jumbo TU (issue #1329).
 struct SettingsBindContext {
     int16_t audio_offset_ms;
     bool    haptics_on;

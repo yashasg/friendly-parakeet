@@ -41,7 +41,10 @@ constexpr int kChainMeaningfulThreshold = 5;
 // Chain visibility threshold (legacy `score->chain_count >= 2`).
 constexpr int kChainVisibleThreshold = 2;
 
-struct BindContext {
+// Per-binder prefix (`GameplayHud*`) avoids an anonymous-namespace ODR
+// collision with the sibling `*_bind_system.cpp` files when CMake Unity
+// chunking happens to place two binders in the same jumbo TU (issue #1329).
+struct GameplayHudBindContext {
     const ScoreState*           score;
     const ScoreDisplay*         display;
     const CurrentSongHighScore* current;
@@ -51,7 +54,7 @@ bool bind_pos_matches(float x, float y, float ex, float ey) noexcept {
     return ex == x && ey == y;
 }
 
-void bind_score(const BindContext& ctx, entt::registry& reg, entt::entity e, UiLabel& label) {
+void bind_score(const GameplayHudBindContext& ctx, entt::registry& reg, entt::entity e, UiLabel& label) {
     if (ctx.display == nullptr) {
         ui_label_set(label, "");
     } else {
@@ -63,7 +66,7 @@ void bind_score(const BindContext& ctx, entt::registry& reg, entt::entity e, UiL
     reg.emplace_or_replace<UiLabelAlpha>(e, UiLabelAlpha{1.0f});
 }
 
-void bind_high_score(const BindContext& ctx, entt::registry& reg, entt::entity e, UiLabel& label) {
+void bind_high_score(const GameplayHudBindContext& ctx, entt::registry& reg, entt::entity e, UiLabel& label) {
     const int32_t high = ctx.current ? ctx.current->value : 0;
     char buf[32];
     std::snprintf(buf, sizeof(buf), "BEST: %d", high);
@@ -72,7 +75,7 @@ void bind_high_score(const BindContext& ctx, entt::registry& reg, entt::entity e
     reg.emplace_or_replace<UiLabelAlpha>(e, UiLabelAlpha{kHighScoreAlpha});
 }
 
-void bind_chain(const BindContext& ctx, entt::registry& reg, entt::entity e, UiLabel& label) {
+void bind_chain(const GameplayHudBindContext& ctx, entt::registry& reg, entt::entity e, UiLabel& label) {
     const int chain = ctx.score ? ctx.score->chain_count : 0;
     if (chain < kChainVisibleThreshold) {
         ui_label_set(label, "");
@@ -94,22 +97,22 @@ void bind_chain(const BindContext& ctx, entt::registry& reg, entt::entity e, UiL
     }
 }
 
-void bind_energy_label(const BindContext& /*ctx*/, entt::registry& reg, entt::entity e, UiLabel& /*label*/) {
+void bind_energy_label(const GameplayHudBindContext& /*ctx*/, entt::registry& reg, entt::entity e, UiLabel& /*label*/) {
     // Static "ENERGY" text is set at spawn time by the codegen; this bind
     // just keeps the per-slot font size + alpha in sync each frame.
     reg.emplace_or_replace<UiLabelFontSize>(e, UiLabelFontSize{kEnergyLabelFontSize});
     reg.emplace_or_replace<UiLabelAlpha>(e, UiLabelAlpha{kEnergyLabelAlpha});
 }
 
-using SlotBindFn = void (*)(const BindContext&, entt::registry&, entt::entity, UiLabel&);
+using GameplayHudSlotBindFn = void (*)(const GameplayHudBindContext&, entt::registry&, entt::entity, UiLabel&);
 
-struct SlotRow {
+struct GameplayHudSlotRow {
     float x;
     float y;
-    SlotBindFn fn;
+    GameplayHudSlotBindFn fn;
 };
 
-constexpr std::array<SlotRow, 4> kGameplayHudSlots = {{
+constexpr std::array<GameplayHudSlotRow, 4> kGameplayHudSlots = {{
     {kScoreSlotX,     kScoreSlotY,     &bind_score},
     {kHighScoreSlotX, kHighScoreSlotY, &bind_high_score},
     {kChainSlotX,     kChainSlotY,     &bind_chain},
@@ -122,7 +125,7 @@ void gameplay_hud_bind_system(entt::registry& reg) {
     auto view = reg.view<GameplayHudTag, UiLabelTag, UiPosition, UiLabel>();
     if (view.begin() == view.end()) return;
 
-    const BindContext ctx{
+    const GameplayHudBindContext ctx{
         reg.ctx().find<ScoreState>(),
         reg.ctx().find<ScoreDisplay>(),
         reg.ctx().find<CurrentSongHighScore>(),

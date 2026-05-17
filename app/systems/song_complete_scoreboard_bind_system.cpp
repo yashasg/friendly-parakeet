@@ -18,7 +18,11 @@ namespace {
 // semantics: a SongResults / EnergyState / TerminalResultState may be
 // absent during the Song Complete debounce window before
 // `game_state_enter_terminal_phase_song_complete` populates them.
-struct BindContext {
+//
+// Per-binder prefix (`SongComplete*`) avoids an anonymous-namespace ODR
+// collision with the sibling `*_bind_system.cpp` files when CMake Unity
+// chunking happens to place two binders in the same jumbo TU (issue #1329).
+struct SongCompleteBindContext {
     const ScoreState& score;
     const CurrentSongHighScore& current;
     const TerminalResultState* result;
@@ -26,21 +30,21 @@ struct BindContext {
     const EnergyState* energy;
 };
 
-using SlotBindFn = void (*)(const BindContext&, UiLabel&);
+using SongCompleteSlotBindFn = void (*)(const SongCompleteBindContext&, UiLabel&);
 
-void bind_score(const BindContext& ctx, UiLabel& label) {
+void bind_score(const SongCompleteBindContext& ctx, UiLabel& label) {
     char buf[32];
     std::snprintf(buf, sizeof(buf), "%d", ctx.score.score);
     ui_label_set(label, buf);
 }
 
-void bind_high_score(const BindContext& ctx, UiLabel& label) {
+void bind_high_score(const SongCompleteBindContext& ctx, UiLabel& label) {
     char buf[32];
     std::snprintf(buf, sizeof(buf), "%d", ctx.current.value);
     ui_label_set(label, buf);
 }
 
-void bind_new_best(const BindContext& ctx, UiLabel& label) {
+void bind_new_best(const SongCompleteBindContext& ctx, UiLabel& label) {
     if (ctx.result == nullptr || !ctx.result->new_best) {
         ui_label_set(label, "");
         return;
@@ -50,7 +54,7 @@ void bind_new_best(const BindContext& ctx, UiLabel& label) {
     ui_label_set(label, buf);
 }
 
-void bind_perfect_good(const BindContext& ctx, UiLabel& label) {
+void bind_perfect_good(const SongCompleteBindContext& ctx, UiLabel& label) {
     const int p = ctx.results ? ctx.results->perfect_count : 0;
     const int g = ctx.results ? ctx.results->good_count : 0;
     char buf[48];
@@ -58,7 +62,7 @@ void bind_perfect_good(const BindContext& ctx, UiLabel& label) {
     ui_label_set(label, buf);
 }
 
-void bind_ok_bad_miss(const BindContext& ctx, UiLabel& label) {
+void bind_ok_bad_miss(const SongCompleteBindContext& ctx, UiLabel& label) {
     const int o = ctx.results ? ctx.results->ok_count   : 0;
     const int b = ctx.results ? ctx.results->bad_count  : 0;
     const int m = ctx.results ? ctx.results->miss_count : 0;
@@ -67,14 +71,14 @@ void bind_ok_bad_miss(const BindContext& ctx, UiLabel& label) {
     ui_label_set(label, buf);
 }
 
-void bind_max_chain(const BindContext& ctx, UiLabel& label) {
+void bind_max_chain(const SongCompleteBindContext& ctx, UiLabel& label) {
     const int c = ctx.results ? ctx.results->max_chain : 0;
     char buf[32];
     std::snprintf(buf, sizeof(buf), "MAX CHAIN %d", c);
     ui_label_set(label, buf);
 }
 
-void bind_energy(const BindContext& ctx, UiLabel& label) {
+void bind_energy(const SongCompleteBindContext& ctx, UiLabel& label) {
     if (ctx.energy == nullptr) {
         ui_label_set(label, "");
         return;
@@ -91,13 +95,13 @@ void bind_energy(const BindContext& ctx, UiLabel& label) {
 // (x, y) into the spawn block, so a layout edit that moves a slot will
 // silently miss its bind (caught by a visible "0" / empty placeholder in
 // playtest before any production build).
-struct SlotRow {
+struct SongCompleteSlotRow {
     float x;
     float y;
-    SlotBindFn fn;
+    SongCompleteSlotBindFn fn;
 };
 
-constexpr std::array<SlotRow, 7> kSongCompleteSlots = {{
+constexpr std::array<SongCompleteSlotRow, 7> kSongCompleteSlots = {{
     {160.0f, 463.0f, &bind_score},
     {160.0f, 573.0f, &bind_high_score},
     {120.0f, 620.0f, &bind_new_best},
@@ -113,7 +117,7 @@ void song_complete_scoreboard_bind_system(entt::registry& reg) {
     auto view = reg.view<SongCompleteScreenTag, UiLabelTag, UiPosition, UiLabel>();
     if (view.begin() == view.end()) return;
 
-    const BindContext ctx{
+    const SongCompleteBindContext ctx{
         reg.ctx().get<ScoreState>(),
         reg.ctx().get<CurrentSongHighScore>(),
         reg.ctx().find<TerminalResultState>(),
