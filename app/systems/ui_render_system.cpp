@@ -62,10 +62,10 @@ const Font& popup_font_for_size(const TextContext& ctx, FontSize font_size) {
 // screen's entities and trivially partitions by tag.
 //
 // Per-screen visual specifics (font size, alignment, label vs centered
-// label, button colour overrides) currently match the legacy raygui
-// defaults; per-screen visual tweaks migrate row-by-row as their screen
-// migrates off the legacy controller path. See #1287 for the per-screen
-// sub-issue ladder.
+// label, button colour overrides) match the raygui defaults the deleted
+// legacy `app/ui/screen_controllers/*` controllers used, kept for visual
+// parity (#1287 entity-driven render path replaced those controllers in
+// #1308; no per-screen migration remains).
 //
 // Migration boundary: a button press dispatch lives in
 // `app/systems/ui_update_system.cpp` — that system hit-tests against
@@ -642,11 +642,6 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
         DrawRectangleRec({0, 0, constants::SCREEN_W_F, constants::SCREEN_H_F},
                          {0, 0, 0, 160});
     }
-
-    // UI rendering is handled by the entity-driven `render_ui_entities`
-    // call below (issue #1287). Screens still on the legacy controller
-    // path render via the per-phase dispatch further down; each will be
-    // migrated off in a follow-up sub-issue.
 
     // Make raygui hit-testing use virtual-space coordinates even when the
     // window is letterboxed/scaled relative to the fixed 720x1280 UI space.
