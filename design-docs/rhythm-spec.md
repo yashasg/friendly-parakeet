@@ -526,7 +526,9 @@ constexpr float BUTTON_W        = 140.0f;   // used for spacing calculation
 constexpr float BUTTON_H        = 100.0f;   // unused by circular rendering
 constexpr float BUTTON_SPACING  = 60.0f;
 
-// Derived in gameplay_hud_screen_controller
+// Derived in approach_ring_envelope_system (app/systems/approach_ring_envelope_system.cpp)
+// using gameplay_hud_ring_cue() from app/util/gameplay_hud_ring.{h,cpp}.
+// Written to each LaneButtonTag entity's ApproachRing component per frame.
 float btn_radius = BUTTON_W / 2.8f;         // ≈ 50px
 float btn_cx = btn_area_x
     + i * (BUTTON_W + BUTTON_SPACING)

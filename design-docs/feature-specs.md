@@ -204,11 +204,12 @@ void wire_input_dispatcher(entt::registry& reg);
 // Entity-driven UI dispatch (issue #1287, completed in #1297): each
 // migrated screen — including the gameplay HUD — relies on
 // `ui_update_system` to hit-test `UiPosition`/`UiBounds`/`OnPress`
-// entities and dispatch the matching action. The legacy
-// `screen_controllers/*_screen_controller.cpp` raygui producers are
-// being removed in lockstep. Gameplay HUD lane buttons (Circle /
-// Square / Triangle) emit `ShapePress*Event`s through this same
-// system; the Pause button enqueues a `NextPhasePausedTag` phase
+// entities and dispatch the matching action. The screen-spawner
+// functions in `app/ui/generated/<screen>_screen.cpp` (codegen output)
+// emplace those entities at phase entry; the prior per-screen raygui
+// producer layer was deleted in #1308. Gameplay HUD lane buttons
+// (Circle / Square / Triangle) emit `ShapePress*Event`s through this
+// same system; the Pause button enqueues a `NextPhasePausedTag` phase
 // transition.
 void ui_update_system(entt::registry& reg);
 
