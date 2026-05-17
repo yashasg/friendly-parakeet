@@ -1,5 +1,6 @@
 #include "test_player_session.h"
 #include "../components/game_state.h"
+#include "../util/app_dir_path.h"
 #include "../util/level_content_config.h"
 #include "../components/obstacle.h"
 #include "../components/scoring.h"
@@ -10,6 +11,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdint>
+#include <string>
 
 namespace {
 struct TestPlayerSessionSignals {
@@ -65,22 +67,23 @@ void test_player_init(entt::registry& reg, SkillConfig skill,
     const double runtime_seconds = GetTime();
     const auto runtime_millis = static_cast<unsigned long long>(runtime_seconds * 1000.0);
     const uint32_t sequence = ++session_state->log_sequence;
-    char log_filename[256];
-    std::snprintf(log_filename, sizeof(log_filename),
-        "%ssession_%s_%s_%s_rt%010llu_n%04u.log",
-        GetApplicationDirectory(),
+    char log_basename[256];
+    std::snprintf(log_basename, sizeof(log_basename),
+        "session_%s_%s_%s_rt%010llu_n%04u.log",
         skill.name,
         level_key,
         difficulty_key,
         runtime_millis, sequence);
-    session_log_open(slog, log_filename);
+    const std::string log_filename =
+        util::join_app_dir(GetApplicationDirectory(), log_basename);
+    session_log_open(slog, log_filename.c_str());
     if (slog.file) {
         std::fprintf(slog.file, "skill=%s level=%s difficulty=%s seed=%u\n\n",
                      skill.name, level_key,
                      difficulty_key, seed);
         std::fflush(slog.file);
     }
-    TraceLog(LOG_INFO, "SESSION LOG: %s", log_filename);
+    TraceLog(LOG_INFO, "SESSION LOG: %s", log_filename.c_str());
 
     auto* signals = reg.ctx().find<TestPlayerSessionSignals>();
     if (!signals) {

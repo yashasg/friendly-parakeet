@@ -2,6 +2,7 @@
 #include "version.h"
 #include "constants.h"
 #include "systems/input.h"
+#include "util/app_dir_path.h"
 #include "components/game_state.h"
 #include "components/scoring.h"
 #include "components/audio.h"
@@ -87,8 +88,8 @@ bool load_text_fonts(TextContext& ctx, const char* font_path) {
 }
 
 bool load_default_text_fonts(TextContext& ctx) {
-    std::string exe_font = std::string(GetApplicationDirectory())
-                         + "content/fonts/LiberationMono-Regular.ttf";
+    std::string exe_font = util::join_app_dir(
+        GetApplicationDirectory(), "content/fonts/LiberationMono-Regular.ttf");
     const char* font_paths[] = {
         exe_font.c_str(),
         "content/fonts/LiberationMono-Regular.ttf",

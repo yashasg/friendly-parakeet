@@ -13,6 +13,7 @@
 #include "high_score_system.h"
 #include "../entities/settings.h"
 #include "../util/rhythm_math.h"
+#include "../util/app_dir_path.h"
 #include "../entities/camera_entity.h"
 #include "../entities/energy_bar_entity.h"
 #include "../entities/player_entity.h"
@@ -146,7 +147,7 @@ void setup_play_session(entt::registry& reg) {
 
     std::vector<BeatMapError> load_errors;
     std::vector<BeatMapError> reported_load_errors;
-    std::string exe_path = std::string(GetApplicationDirectory()) + beatmap_path;
+    std::string exe_path = util::join_app_dir(GetApplicationDirectory(), beatmap_path);
     const char* paths[] = { exe_path.c_str(), beatmap_path };
 
     bool loaded = false;
@@ -231,7 +232,7 @@ void setup_play_session(entt::registry& reg) {
         music->release();
     }
     if (music && !beatmap.song_path.empty()) {
-        std::string exe_audio = std::string(GetApplicationDirectory()) + beatmap.song_path;
+        std::string exe_audio = util::join_app_dir(GetApplicationDirectory(), beatmap.song_path);
         const char* audio_paths[] = { exe_audio.c_str(), beatmap.song_path.c_str() };
         for (const char* path : audio_paths) {
             Music stream = LoadMusicStream(path);
