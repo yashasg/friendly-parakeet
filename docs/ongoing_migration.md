@@ -4,7 +4,7 @@ This file is the authoritative index for migration-related documentation.
 
 ## Current architecture direction
 
-1. Runtime/platform calls use direct **raylib / raygui** and **glm**.
+1. Runtime/platform calls use direct **raylib / raygui**.
 2. ECS components and gameplay systems remain plain data + free functions.
 3. No compatibility wrapper layer should be introduced.
 

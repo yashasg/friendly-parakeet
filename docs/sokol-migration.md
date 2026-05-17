@@ -1,12 +1,12 @@
 # Historical Note: abandoned SDL2 to Sokol migration plan
 
 This document is retained only as historical context. It is not an active
-implementation plan. The current runtime direction is direct **raylib / raygui**
-and **glm**, with no wrapper abstraction layer; see `docs/ongoing_migration.md`
+implementation plan. The current runtime direction is direct **raylib / raygui**,
+with no wrapper abstraction layer; see `docs/ongoing_migration.md`
 for the authoritative migration-document status.
 
 > **Historical only.** This plan is not active. The shipped runtime currently
-> uses direct raylib/raygui APIs with glm, and `docs/ongoing_migration.md`
+> uses direct raylib/raygui APIs, and `docs/ongoing_migration.md`
 > records the authoritative dependency-boundary status. Do not use this file as
 > implementation guidance unless a new issue explicitly reactivates Sokol work.
 
