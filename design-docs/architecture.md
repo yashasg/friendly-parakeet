@@ -291,37 +291,47 @@ struct OnsetMarkerTag {};
 ### 2.4 — WARM: Obstacle Specifics (read by collision/scoring, not by scroll)
 
 ```cpp
-// components/obstacle.h
+// app/components/obstacle.h
 
-/// For ShapeGate / SplitPath: which shape is required. 1 byte.
-struct RequiredShape {
-    Shape shape;
+struct Obstacle {
+    int16_t base_points = 200;
 };
 
-/// For SplitPath: which lane has the opening. 1 byte.
-struct RequiredLane {
-    int8_t lane;    // 0, 1, or 2
+// Owned mesh children for a logical obstacle entity. destroy_obstacle_with_children
+// cleans up in O(count). Lives on the parent obstacle entity.
+struct ObstacleChildren {
+    static constexpr int MAX = 8;
+    entt::entity children[MAX]{};
+    int          count = 0;
 };
-
-/// For ShapeGate: which lane the gate occupies, captured at spawn from the
-/// authored x-position. 1 byte. Read by collision_system rhythm/non-rhythm
-/// ShapeGate views so a player must be in the gate's lane to clear it.
-struct ShapeGateLane {
-    int8_t lane;    // 0, 1, or 2
-};
-
-/// No vertical-bar action component exists in the current runtime.
-/// LowBar/HighBar authoring references are archival/future design notes only.
 ```
 
-`obstacle_kind_from_components()` uses component presence as the source of
-truth for runtime obstacle kind:
+Per-instance obstacle data lives in three table sets that the obstacle factory
+emplaces alongside `Obstacle`; none of them are wrapper structs.
 
-| Runtime kind | Required components | Notes |
+| Concept | Storage | Where |
 | --- | --- | --- |
-| `ShapeGate` | `RequiredShape` + `ShapeGateLane` | Also the fallback for no action components; avoid using the helper for visual-only markers. |
-| `SplitPath` | `RequiredLane` (+ `RequiredShape` on spawned entities) | `RequiredLane` takes precedence in the helper. |
-| `OnsetMarker` | `OnsetMarkerTag` + `NonScorableTag`, no `RequiredShape`/`RequiredLane`/`ShapeGateLane` | Authored kind only; normal beat scheduling skips these entries, and spawned markers are visual-only/non-scoring. |
+| Required shape (ShapeGate / SplitPath) | One of `RequiredShapeCircleTag` / `RequiredShapeSquareTag` / `RequiredShapeTriangleTag` / `RequiredShapeHexagonTag` on the entity. The former `RequiredShape { Shape shape; }` single-column row was collapsed into the tag set per Fabian Principle 2 (issue #1202/#1204). | `app/tags/tags.h:64-67`, helpers in `app/util/shape_tag.h` (`set_required_shape_tag`, `current_required_shape`, `has_required_shape_tag`) |
+| Lane index (ShapeGate or SplitPath) | A raw `int8_t` component on the entity. The former `ShapeGateLane { int8_t lane; }` and `RequiredLane { int8_t lane; }` single-field wrappers were unwrapped per issue #1198 (PR #1275). | `app/components/obstacle.h:24-38` |
+| Kind (ShapeGate vs SplitPath vs OnsetMarker) | Exactly one of `ShapeGateTag` / `SplitPathTag` / `OnsetMarkerTag` on the entity. The former `ObstacleKind` enum was eradicated per Fabian Principle 1 (issue #1202/#1204). | `app/tags/tags.h:82-87` |
+
+The shared `int8_t` slot has no collision because ShapeGate and SplitPath
+archetypes never coexist on the same entity, and the semantics is selected by
+which kind tag is present:
+
+- `ShapeGateTag` present → the `int8_t` is the positional lane (where the
+  shape hole is).
+- `SplitPathTag` present → the `int8_t` is the required dodge lane (where the
+  player must be).
+- `OnsetMarkerTag` present → no `int8_t` component is emplaced; markers are
+  visual-only / non-scoring and carry `NonScorableTag`.
+
+Any future obstacle archetype that needs a lane-shaped value must use its own
+per-archetype component table, not the shared `int8_t` slot.
+
+Runtime dispatch (collision, render, logger, test-player) is via tag-presence
+views — never a `switch` on a discriminator. There is no
+`obstacle_kind_from_components()` helper; presence of the kind tag IS the kind.
 
 ### 2.5 — HOT: Fixed-lifetime FX timers
 
@@ -629,9 +639,10 @@ Jumping              8     HOT        present when mid-jump; collision (y_offset
 Sliding              4     HOT        present when mid-slide; movement, render
 ObstacleTag          0     HOT        scroll, collision, cleanup
 Obstacle             4     WARM       collision, miss_detection, scoring
-RequiredShape        1     WARM       collision, scoring
-RequiredLane         1     WARM       collision
-ShapeGateLane        1     WARM       collision (ShapeGate lane match)
+RequiredShape*Tag    0     WARM       collision, scoring (one of 4 per obstacle; see tags.h)
+int8_t (lane)        1     WARM       collision (semantics selected by ShapeGateTag vs SplitPathTag)
+ShapeGateTag         0     WARM       collision (gate-archetype kind tag)
+SplitPathTag         0     WARM       collision (split-path-archetype kind tag)
 ScoredTag            0     WARM       scoring (consumes), collision/miss exclusions
 MissTag              0     WARM       scoring (miss branch), collision/miss
 ResolvedObstacleTag  0     WARM       collision/miss exclusions after scoring
@@ -899,21 +910,26 @@ Total: ~97 bytes per entity (1 entity)
 
 ```
 ┌─ Shape Gate ──────────────────────────────────────────────┐
-│ ObstacleTag        (tag, 0 bytes)                         │
-│ WorldPosition     { position: {360.0, -120.0} }         │
-│ MotionVelocity     { value: {0.0, 400.0} }               │
-│ Obstacle           { base_points: 200 }                    │
-│ RequiredShape      { shape: Triangle }                     │
-│ ShapeGateLane      { lane: 1 }                             │
-│ Color              { r: 50, g: 205, b: 50, a: 255 }      │
-│ DrawSize           { w: 720, h: 80 }                       │
-│ TagWorldPass       (tag, 0 bytes)                          │
+│ ObstacleTag                (tag, 0 bytes)                 │
+│ ShapeGateTag               (tag, 0 bytes)                 │
+│ RequiredShapeTriangleTag   (tag, 0 bytes)                 │
+│ int8_t                     (1 byte, lane = 1)             │
+│ WorldPosition     { position: {360.0, -120.0} }           │
+│ MotionVelocity    { value: {0.0, 400.0} }                 │
+│ Obstacle          { base_points: 200 }                    │
+│ Color             { r: 50, g: 205, b: 50, a: 255 }        │
+│ DrawSize          { w: 720, h: 80 }                       │
+│ TagWorldPass               (tag, 0 bytes)                 │
 └───────────────────────────────────────────────────────────┘
-Total: ~43 bytes per entity (5–15 active)
+Total: ~42 bytes per entity (5–15 active)
 ```
 
-`ShapeGateLane.lane` is captured at spawn from the authored x-position and
-read by `collision_system` so a player must be in the gate's lane to clear it.
+The entity's raw `int8_t` component is the positional lane (where the
+shape hole is); it is captured at spawn from the authored x-position and read
+by `collision_system` so a player must be in the gate's lane to clear it. The
+shared `int8_t` slot's semantics is selected by which kind tag is present
+(`ShapeGateTag` here); see `app/components/obstacle.h:24-38` for the
+slot-reservation invariant.
 
 ### 5.3 Archived Lane Block / Combo Gate Fixtures
 
@@ -930,17 +946,19 @@ LowBar/HighBar entity archetypes are historical only. The current runtime enum, 
 
 ```
 ┌─ Split Path ──────────────────────────────────────────────┐
-│ ObstacleTag        (tag, 0 bytes)                         │
-│ WorldPosition     { position: {360.0, -120.0} }         │
-│ MotionVelocity     { value: {0.0, 400.0} }               │
-│ Obstacle           { base_points: 300 }                    │
-│ RequiredShape      { shape: Circle }                       │
-│ RequiredLane       { lane: 2 }                             │
-│ Color              { r: 255, g: 215, b: 0, a: 255 }      │
-│ DrawSize           { w: 720, h: 80 }                       │
-│ TagWorldPass       (tag, 0 bytes)                          │
+│ ObstacleTag                (tag, 0 bytes)                 │
+│ SplitPathTag               (tag, 0 bytes)                 │
+│ RequiredShapeCircleTag     (tag, 0 bytes)                 │
+│ int8_t                     (1 byte, lane = 2)             │
+│ WorldPosition     { position: {360.0, -120.0} }           │
+│ MotionVelocity    { value: {0.0, 400.0} }                 │
+│ Obstacle          { base_points: 300 }                    │
+│ Color             { r: 255, g: 215, b: 0, a: 255 }        │
+│ DrawSize          { w: 720, h: 80 }                       │
+│ TagWorldPass               (tag, 0 bytes)                 │
 └───────────────────────────────────────────────────────────┘
-Total: ~44 bytes per entity
+Total: ~42 bytes per entity (with `SplitPathTag` selecting the `int8_t`
+semantics as the required dodge lane — where the player must be).
 ```
 
 ### 5.6 Onset Marker Entity
@@ -960,10 +978,10 @@ Total: ~44 bytes per entity
 Total: ~40 bytes per entity
 ```
 
-Onset markers are visual beat/onset aids. They have no `RequiredShape`,
-`RequiredLane`, or `ShapeGateLane`, so collision views do
-not resolve them; the `NonScorableTag` excludes them from score, chain,
-popup, miss, and energy effects. `OnsetMarkerTag` is the explicit kind
+Onset markers are visual beat/onset aids. They have no `RequiredShape*Tag`,
+no `ShapeGateTag`/`SplitPathTag`, and no `int8_t` lane component, so collision
+views do not resolve them; the `NonScorableTag` excludes them from score,
+chain, popup, miss, and energy effects. `OnsetMarkerTag` is the explicit kind
 marker used by `obstacle_render_entity` and `session_logger` to identify
 onset cues without scanning the rest of the obstacle data. The active beat
 scheduler currently skips `OnsetMarker` entries rather than spawning them
@@ -1144,12 +1162,12 @@ int main(int argc, char* argv[]) {
            │ beat_scheduler_system                               │ WorldPosition │
            │ creates note when spawn_time arrives                └──────┬──────┘
            ▼                                                            │
-    ┌──────────────┐                                                    │
-    │ ObstacleTag  │                                                    │
-    │ Obstacle     │                                                    │
-    │ RequiredShape│                                                    │
-    │ BeatInfo     │ arrival_time from authored beat                    │
-    └──────┬───────┘                                                    │
+    ┌──────────────────┐                                                │
+    │ ObstacleTag      │                                                │
+    │ Obstacle         │                                                │
+    │ RequiredShape*Tag│ one of Circle/Square/Triangle/Hexagon          │
+    │ BeatInfo         │ arrival_time from authored beat                │
+    └──────┬───────────┘                                                │
            │ scroll/motion systems                                      │
            ▼                                                            │
     ┌──────────────┐                                                    │
@@ -1350,8 +1368,8 @@ This entire game state fits in L1 cache (~32-64 KB).
   │  □ Jumping/Sliding (present only when mid-jump/slide; movement + camera + collision, R+W)
   │  □ Obstacle        (collision + scoring, every frame, R)
   │
-  │  ○ RequiredShape   (collision + scoring, per-obstacle, R)
-  │  ○ RequiredLane    (collision, per-obstacle, R)
+  │  ○ RequiredShape*Tag (collision + scoring, per-obstacle, R)
+  │  ○ int8_t lane    (collision, per-obstacle, R; semantics by kind tag)
   │  ○ Color           (render only, R)
   │  ○ DrawSize        (render only, R)
   │
@@ -1735,7 +1753,9 @@ entt::entity spawn_rhythm_shape_gate(entt::registry& reg, Shape required,
     reg.emplace<WorldPosition>(e, WorldPosition{{constants::LANE_X[lane], constants::SPAWN_Y}});
     reg.emplace<BeatInfo>(e, beat_info);
     reg.emplace<Obstacle>(e, int16_t{constants::PTS_SHAPE_GATE});
-    reg.emplace<RequiredShape>(e, required);
+    set_required_shape_tag(reg, e, required);  // app/util/shape_tag.h
+    reg.emplace<ShapeGateTag>(e);
+    reg.emplace<int8_t>(e, lane);                // positional lane
     reg.emplace<Color>(e, shape_color(required));
     reg.emplace<DrawSize>(e, static_cast<float>(constants::SCREEN_W), 80.0f);
     reg.emplace<TagWorldPass>(e);
