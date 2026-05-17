@@ -409,9 +409,18 @@ async function main() {
 
     // Regression coverage for #934: selecting a difficulty before confirming
     // must not leave the browser build in a frozen/scattered gameplay frame.
+    //
+    // #1341: waitForVisualChange returns the first-detected-different hash,
+    // which can be a transient mid-animation frame from the ArrowDown press.
+    // Re-baseline against a settled screenshot (mirrors line 396 for ArrowDown)
+    // so the next visual diff isn't competing with a still-tweening row cursor.
+    // Use the 5000 ms budget that waitForTitlePhase precedent uses elsewhere
+    // for CI runners under GPU contention.
+    await page.waitForTimeout(250);
+    const beforeDifficultyNavigationHash = sha256(await page.screenshot());
     await page.keyboard.press('ArrowRight');
-    const afterDifficultyNavigationHash = await waitForVisualChange(afterLevelSelectNavigationHash, 2500);
-    if (afterLevelSelectNavigationHash === afterDifficultyNavigationHash) {
+    const afterDifficultyNavigationHash = await waitForVisualChange(beforeDifficultyNavigationHash, 5000);
+    if (beforeDifficultyNavigationHash === afterDifficultyNavigationHash) {
       fatal.push('no-visual-response-after-difficulty-navigation');
     }
     if (!(await waitForTitlePhase('LevelSelect', 1500))) {
