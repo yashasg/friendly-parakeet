@@ -35,15 +35,11 @@ bool is_new_best(const GameOverBindContext& ctx) {
 }
 
 void bind_score(const GameOverBindContext& ctx, UiLabel& label) {
-    char buf[32];
-    std::snprintf(buf, sizeof(buf), "%d", ctx.score.score);
-    ui_label_set(label, buf);
+    ui_label_set_int(label, ctx.score.score);
 }
 
 void bind_high_score(const GameOverBindContext& ctx, UiLabel& label) {
-    char buf[32];
-    std::snprintf(buf, sizeof(buf), "%d", ctx.current.value);
-    ui_label_set(label, buf);
+    ui_label_set_int(label, ctx.current.value);
 }
 
 void bind_new_best(const GameOverBindContext& ctx, UiLabel& label) {
