@@ -2,7 +2,7 @@
 
 #include "../components/ui.h"
 #include "../tags/tags.h"
-#include "../ui/tutorial_dodge_hint.h"
+#include "../util/tutorial_dodge_hint.h"
 #include "web_input_policy.h"
 
 namespace {

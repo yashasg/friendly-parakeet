@@ -184,7 +184,6 @@ content/ui/screens/
   settings.rgl
 
 app/ui/
-  tutorial_dodge_hint.h       # Hand-written tutorial helper.
   generated/
     title_screen.cpp          # Codegen output: spawn_/despawn_ pair.
     tutorial_screen.cpp
@@ -198,6 +197,7 @@ app/ui/
 
 app/util/
   raygui_impl.cpp             # Single RAYGUI_IMPLEMENTATION TU; excluded from unity.
+  tutorial_dodge_hint.h       # Hand-written tutorial helper (runtime touch/keyboard hint copy).
 ```
 
 **Naming conventions:**
@@ -327,7 +327,7 @@ add_library(shapeshifter_lib STATIC
 
 ## Open Decisions
 
-1. **`tutorial_dodge_hint.h`:** This hand-written helper currently lives under `app/ui/`. Its final disposition is being tracked separately — folded into the tutorial spawner or moved to `app/util/` depending on whether it's reusable.
+1. **`tutorial_dodge_hint.h`:** Resolved — moved to `app/util/tutorial_dodge_hint.h` (#1317 sub-PR 2). The helper is header-only `inline` and consumed by `app/systems/tutorial_dodge_hint_bind_system.cpp` plus two test TUs; `app/util/` is the right home per the Section-7 folder allowlist.
 2. **Dynamic-content slots:** For per-frame text updates (score, selected song), bind systems mutate `UiLabel.text` on spawner-emitted entities. The convention works; whether to extend it to per-frame `UiBounds` mutation (animations) is open.
 3. **Platform guards:** Currently a single shared spawner emits every entity; platform-only entities (e.g. web-only exit button) are gated by visibility-bind systems that toggle render or hit-test inclusion based on the platform. Confirming this scales to more platform splits is a future task.
 4. **Preloading:** Spawner sources are header-light and parse-light; spawn cost is negligible compared to the rest of the per-phase setup. Pre-allocation has not been needed.

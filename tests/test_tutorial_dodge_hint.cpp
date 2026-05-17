@@ -8,7 +8,7 @@
 #include <cstring>
 
 #include <entt/entt.hpp>
-#include "ui/tutorial_dodge_hint.h"
+#include "util/tutorial_dodge_hint.h"
 #include "systems/web_input_policy.h"
 
 TEST_CASE("tutorial dodge hint copy switches on touch capability (#513)",
