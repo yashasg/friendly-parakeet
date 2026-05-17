@@ -1,12 +1,12 @@
 // Tutorial "DODGE LANES" hint copy — runtime selection.
 //
-// Issue #513: the generated tutorial_layout.h previously selected the hint
-// at compile time via #ifdef PLATFORM_HAS_KEYBOARD. PLATFORM_HAS_KEYBOARD
-// is defined for both Desktop and Web (CMakeLists.txt), so a touch-only
-// mobile browser was being told keyboard-only copy even
-// though the runtime accepts swipes (#499). Selection is now done by the
-// tutorial controller using this pure helper, so the call site is unit
-// testable without an OpenGL context.
+// Issue #513: per-platform copy used to be picked at compile time via
+// `#ifdef PLATFORM_HAS_KEYBOARD`, but PLATFORM_HAS_KEYBOARD is defined for
+// both Desktop and Web (CMakeLists.txt), so a touch-only mobile browser
+// was being told keyboard-only copy even though the runtime accepts swipes
+// (#499). Selection now happens at runtime in
+// `app/systems/tutorial_dodge_hint_bind_system.cpp` via this pure helper,
+// so the call site is unit-testable without an OpenGL context.
 
 #ifndef SHAPESHIFTER_TUTORIAL_DODGE_HINT_H
 #define SHAPESHIFTER_TUTORIAL_DODGE_HINT_H

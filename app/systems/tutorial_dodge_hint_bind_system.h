@@ -7,9 +7,10 @@
 //
 // The .rgl emits a single `DodgeHint` label with empty text (a dynamic-text
 // slot). Runtime selects keyboard vs swipe copy per platform via
-// `web_input_touch_capable`; per-platform text was previously hard-coded
-// behind `#ifdef PLATFORM_HAS_KEYBOARD` in `tutorial_layout.h`, which
-// produced incorrect copy on touch-only Web browsers (#513).
+// `web_input_touch_capable`; before #513 the copy was hard-coded behind
+// `#ifdef PLATFORM_HAS_KEYBOARD`, which produced incorrect copy on
+// touch-only Web browsers. The runtime selector now lives in
+// `tutorial_dodge_hint_text()` (`app/util/tutorial_dodge_hint.h`).
 //
 // Runs after `screen_lifecycle_system` (which spawns the entity) and
 // before `ui_render_system` (which reads `UiLabel::text`). No-op when the
