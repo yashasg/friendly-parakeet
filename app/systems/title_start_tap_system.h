@@ -4,10 +4,8 @@
 
 // Title-screen "tap anywhere to start" gesture (issue #1294 migration).
 //
-// Replaces the legacy `title_screen_controller`'s
-// `read_title_pointer_release` + `title_tap_in_dead_zone` helpers — which
-// were derived from raygui layout-state accessors — with an entity-driven
-// hit-test. The rule preserved across the migration:
+// Replaces a raygui-layout-state-derived pointer-release helper with an
+// entity-driven hit-test. The rule preserved across the migration:
 //
 //   * If the active phase is GamePhaseTitleTag,
 //   * AND `InputState::click || InputState::touch_up` fires this frame,
