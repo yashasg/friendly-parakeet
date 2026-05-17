@@ -18,8 +18,7 @@
 
 #include <raylib.h>  // CheckCollisionPointRec, Rectangle, Vector2
 
-// Tutorial screen continue action (issue #1291; moved out of the deleted
-// `app/ui/screen_controllers/tutorial_screen_controller.cpp` per #1308).
+// Tutorial screen continue action (issue #1291).
 // Marks FTUE complete + persists settings + requests Playing phase.
 // Exposed via `ui_update_system.h` so the FTUE end-to-end test in
 // `tests/test_game_state_extended.cpp` can drive it directly; the
@@ -102,9 +101,7 @@ void level_select_button_action(entt::registry& reg, entt::entity /*entity*/) {
 }
 
 // Tutorial screen action (issue #1291). Dispatches to
-// `tutorial_screen_continue` (defined above; previously lived in
-// `app/ui/screen_controllers/tutorial_screen_controller.cpp` until #1308
-// deleted that folder).
+// `tutorial_screen_continue` (defined above).
 void continue_button_action(entt::registry& reg, entt::entity /*entity*/) {
     tutorial_screen_continue(reg);
 }
