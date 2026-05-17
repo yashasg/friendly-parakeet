@@ -79,10 +79,13 @@
 - Existing settings fields already support baseline toggles:
   - `SettingsState::haptics_enabled`
   - `SettingsState::reduce_motion`
-- Settings UI path:
-  - `app/ui/screen_controllers/settings_screen_controller.cpp`
-- Persisted settings path:
-  - `app/util/settings_persistence.cpp`
+- Settings UI path (entity-driven UI per #1295 / #1317):
+  - `app/systems/settings_screen_bind_system.{h,cpp}`
+  - Codegen-spawned screen entities under `app/systems/generated/`
+- Persisted settings path (split per #1196):
+  - `app/components/settings.h` — `SettingsPersistence`, `SettingsDirtyTag`
+  - `app/systems/settings_system.{h,cpp}` — `settings::mark_dirty_and_save`, `load_settings`
+  - `app/systems/persistence_policy_system.{h,cpp}` — drains the dirty tag
 
 These hooks are the minimum integration points for engineering to satisfy
 A11Y-06, A11Y-08, and A11Y-09.
