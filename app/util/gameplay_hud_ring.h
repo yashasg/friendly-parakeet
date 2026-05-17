@@ -7,8 +7,7 @@
 #include "../constants.h"
 #include "rhythm_math.h"
 
-// Gameplay HUD approach-ring math (issue #1297, extracted from the legacy
-// `gameplay_hud_screen_controller` during the entity-driven UI migration).
+// Gameplay HUD approach-ring math (issue #1297).
 //
 // All helpers below are pure transforms — no registry, no global state —
 // so the envelope system, the renderer, and the unit tests share the same
