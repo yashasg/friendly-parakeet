@@ -33,10 +33,7 @@
 
 ## Overview
 
-The Input System translates raw touch events into game actions (lane
-changes, jump, slide, shape shifts). It owns zone detection, gesture
-recognition, debouncing, and an input buffer so simultaneous/rapid
-inputs resolve deterministically.
+The Input System translates raw touch / mouse / keyboard events into game actions (lane changes, jump, slide, shape shifts). It owns zone detection and gesture recognition, then emits typed input events through the EnTT dispatcher so consumer systems pick them up in raylib's frame order.
 
 ```
   SCREEN ZONES
@@ -90,11 +87,8 @@ inputs resolve deterministically.
 - [ ] A swipe is recognised when `distance >= MIN_SWIPE_DIST` (50 dp) AND `duration <= MAX_SWIPE_TIME` (300 ms).
 - [ ] Swipe direction is the dominant-axis direction of the delta vector, using 45° quadrant boundaries.
 - [ ] A swipe that does not meet distance OR time thresholds is discarded (no action).
-- [ ] A button tap is recognised on touch-up within the same button's hit-rect, with a debounce window of 100 ms.
+- [ ] A button tap is recognised on touch-up within the same button's hit-rect.
 - [ ] Tapping the **already-active** shape button is a no-op (no event emitted).
-- [ ] Two inputs arriving in the same frame (swipe + tap) both resolve: the input buffer holds up to 2 pending actions.
-- [ ] Buffered inputs are consumed in order: **shape change first, then movement**, so combo obstacles work.
-- [ ] If two swipes or two taps arrive in the buffer, only the **latest** of each type is kept.
 - [ ] Multi-touch: at most **2 simultaneous touches** are tracked (one per zone). Third+ fingers are ignored.
 - [ ] On raylib touch events, finger positions are converted from screen coords to logical coords before processing.
 
@@ -272,9 +266,9 @@ void game_state_system(entt::registry& reg, float dt);
 | Player holds finger > 300 ms then lifts | Not a swipe (duration exceeded). Discarded. |
 | Two fingers both in swipe zone | Second touch ignored (one swipe at a time). |
 | Tap on boundary between two buttons | Hit-test uses button center ± half-width. Nearest-center wins. |
-| Rapid double-tap on same button | Debounce: second tap within 100 ms is dropped. |
+| Rapid double-tap on same button | Each tap emits its own event; consumer systems decide whether to re-act. |
 | Tap on already-selected shape | No event emitted. |
-| Simultaneous swipe + tap (combo) | Both buffer slots filled; shape change processed first. |
+| Simultaneous swipe + tap (combo) | Both events are emitted on the dispatcher in raylib's gesture order. |
 
 ## Balancing Parameters
 
