@@ -22,6 +22,22 @@ constexpr float kHapticsToggleY      = 720.0f;
 constexpr float kReduceMotionToggleX = 152.0f;
 constexpr float kReduceMotionToggleY = 880.0f;
 
+// Bind context — owns the per-frame singleton reads so the per-slot
+// `bind_*` functions are pure transforms over their slot's `UiLabel` +
+// `UiToggleState`. Mirrors the `BindContext` shape used by the sibling
+// `game_over_scoreboard_bind_system` / `song_complete_scoreboard_bind_system` /
+// `gameplay_hud_bind_system` binders. Named `SettingsBindContext` (not the
+// bare `BindContext` used by the siblings) so that the Unity-build chunk
+// that currently merges this TU with `song_complete_scoreboard_bind_system`
+// does not hit an anonymous-namespace ODR collision.
+struct SettingsBindContext {
+    int16_t audio_offset_ms;
+    bool    haptics_on;
+    // Display-side inversion: the visible toggle reads "MOTION: ON" when
+    // motion is NOT reduced. Matches the legacy controller (#1295 spec).
+    bool    motion_on;
+};
+
 void format_offset(int16_t offset_ms, UiLabel& label) {
     char buf[16];
     std::snprintf(buf, sizeof(buf), "%+d ms", static_cast<int>(offset_ms));
@@ -38,6 +54,38 @@ void format_toggle(UiLabel& label, const char* name, bool on) {
     ui_label_set(label, buf);
 }
 
+void bind_audio_offset(const SettingsBindContext& ctx, entt::registry& /*reg*/,
+                       entt::entity /*e*/, UiLabel& label) {
+    format_offset(ctx.audio_offset_ms, label);
+}
+
+void bind_haptics_toggle(const SettingsBindContext& ctx, entt::registry& reg,
+                         entt::entity e, UiLabel& label) {
+    format_toggle(label, "HAPTICS", ctx.haptics_on);
+    reg.emplace_or_replace<UiToggleState>(e, UiToggleState{ctx.haptics_on});
+}
+
+void bind_motion_toggle(const SettingsBindContext& ctx, entt::registry& reg,
+                        entt::entity e, UiLabel& label) {
+    format_toggle(label, "MOTION", ctx.motion_on);
+    reg.emplace_or_replace<UiToggleState>(e, UiToggleState{ctx.motion_on});
+}
+
+using SettingsSlotBindFn = void (*)(const SettingsBindContext&, entt::registry&,
+                                    entt::entity, UiLabel&);
+
+struct SettingsSlotRow {
+    float x;
+    float y;
+    SettingsSlotBindFn fn;
+};
+
+constexpr std::array<SettingsSlotRow, 3> kSettingsScreenSlots = {{
+    {kAudioOffsetDisplayX, kAudioOffsetDisplayY, &bind_audio_offset},
+    {kHapticsToggleX,      kHapticsToggleY,      &bind_haptics_toggle},
+    {kReduceMotionToggleX, kReduceMotionToggleY, &bind_motion_toggle},
+}};
+
 }  // namespace
 
 void settings_screen_bind_system(entt::registry& reg) {
@@ -47,23 +95,20 @@ void settings_screen_bind_system(entt::registry& reg) {
     const auto* state = find_settings_state(reg);
     if (state == nullptr) return;
 
-    const bool haptics_on = state->haptics_enabled;
-    // Display-side inversion: the visible toggle reads "MOTION: ON" when
-    // motion is NOT reduced. Matches the legacy controller (#1295 spec).
-    const bool motion_on  = !state->reduce_motion;
+    const SettingsBindContext ctx{
+        state->audio_offset_ms,
+        state->haptics_enabled,
+        !state->reduce_motion,
+    };
 
     for (auto entity : view) {
         const auto& pos = view.get<UiPosition>(entity);
         auto& label = view.get<UiLabel>(entity);
-
-        if (pos.x == kAudioOffsetDisplayX && pos.y == kAudioOffsetDisplayY) {
-            format_offset(state->audio_offset_ms, label);
-        } else if (pos.x == kHapticsToggleX && pos.y == kHapticsToggleY) {
-            format_toggle(label, "HAPTICS", haptics_on);
-            reg.emplace_or_replace<UiToggleState>(entity, UiToggleState{haptics_on});
-        } else if (pos.x == kReduceMotionToggleX && pos.y == kReduceMotionToggleY) {
-            format_toggle(label, "MOTION", motion_on);
-            reg.emplace_or_replace<UiToggleState>(entity, UiToggleState{motion_on});
+        for (const auto& row : kSettingsScreenSlots) {
+            if (pos.x == row.x && pos.y == row.y) {
+                row.fn(ctx, reg, entity, label);
+                break;
+            }
         }
     }
 }
