@@ -5,25 +5,17 @@
 #include "../constants.h"
 #include "../entities/obstacle_render_entity.h"
 
-namespace {
-
-ObstacleDespawnScratch& despawn_scratch_for(entt::registry& reg) {
-    return reg.ctx().get<ObstacleDespawnScratch>();
-}
-
-}  // namespace
-
 // Destroys obstacle entities that have scrolled past the despawn boundary.
 void obstacle_despawn_system(entt::registry& reg, [[maybe_unused]] float dt) {
     // Per-registry scratch retains capacity across frames without sharing mutable
     // state between registries.
-    auto& to_destroy = despawn_scratch_for(reg).to_destroy;
+    auto& scratch = reg.ctx().get<ObstacleDespawnScratch>();
+    auto& to_destroy = scratch.to_destroy;
     to_destroy.clear();
 
     auto view = reg.view<ObstacleTag, WorldPosition>();
     for (auto [entity, wt] : view.each()) {
         if (wt.position.y > constants::DESTROY_Y) {
-            auto& scratch = despawn_scratch_for(reg);
             if (to_destroy.size() >= to_destroy.capacity()) {
                 ++scratch.capacity_exceeded_count;
             }

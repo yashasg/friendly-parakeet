@@ -5,20 +5,13 @@
 #include "../components/transform.h"
 #include "../entities/settings.h"
 
-namespace {
-
-PopupDisplayScratch& popup_scratch_for(entt::registry& reg) {
-    return reg.ctx().get<PopupDisplayScratch>();
-}
-
-}  // namespace
-
 // Per-frame: only fade the alpha channel. Text, font size, and base RGB are
 // set once at spawn via init_popup_display() (#251). The system used to
 // re-snprintf and emplace_or_replace<PopupDisplay> every tick; that re-did
 // static work on every frame for every popup and forced storage churn.
 void popup_display_system(entt::registry& reg, float dt) {
-    auto& expired = popup_scratch_for(reg).expired;
+    auto& scratch = reg.ctx().get<PopupDisplayScratch>();
+    auto& expired = scratch.expired;
     expired.clear();
 
     // Reduce-motion (#534): zero the kinetic envelope of decorative
@@ -46,7 +39,6 @@ void popup_display_system(entt::registry& reg, float dt) {
         if (alpha_ratio > 1.0f) alpha_ratio = 1.0f;
         pd.a = static_cast<uint8_t>(static_cast<float>(col.a) * alpha_ratio);
         if (popup.remaining <= 0.0f) {
-            auto& scratch = popup_scratch_for(reg);
             if (expired.size() >= expired.capacity()) {
                 ++scratch.capacity_exceeded_count;
             }
