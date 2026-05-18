@@ -22,7 +22,7 @@ TEST_CASE("player_action: rhythm mode starts MorphIn on button press from Idle",
     CHECK(reg.all_of<ShapeHexagonTag>(player));
     CHECK(ps.morph_t == 0.0f);
     CHECK(sw.window_start == 5.0f);
-    CHECK(sw.graded == false);
+    CHECK_FALSE(reg.all_of<WindowGraded>(player));
 
     song.song_time += song.morph_duration + 0.01f;
     shape_window_system(reg, song.morph_duration + 0.01f);
@@ -52,7 +52,7 @@ TEST_CASE("player_action: post-song rhythm context still starts window for trail
     CHECK(reg.all_of<TargetShapeSquareTag>(player));
     CHECK(window_phase_is_morph_in(reg, player));
     CHECK(sw.window_start == song.song_time);
-    CHECK(sw.press_time == song.song_time);
+    CHECK(reg.get<Pressed>(player).press_time == song.song_time);
 }
 
 TEST_CASE("player_action: rhythm mode treats same shape during Active as no-op", "[player_rhythm]") {
@@ -63,12 +63,12 @@ TEST_CASE("player_action: rhythm mode treats same shape during Active as no-op",
     set_player_shape_tag(reg, player, Shape::Square);
     sw.window_timer = 0.1f;
     sw.window_start = 1.0f;
-    sw.press_time = 1.0f;
-    sw.graded = true;
+    reg.emplace_or_replace<Pressed>(player, Pressed{1.0f});
+    reg.emplace_or_replace<WindowGraded>(player);
 
     const float initial_window_start = sw.window_start;
     const float initial_window_timer = sw.window_timer;
-    const float initial_press_time = sw.press_time;
+    const float initial_press_time   = reg.get<Pressed>(player).press_time;
 
     auto btn = make_shape_button(reg, Shape::Square);
     press_button(reg, btn);
@@ -78,8 +78,8 @@ TEST_CASE("player_action: rhythm mode treats same shape during Active as no-op",
     CHECK(window_phase_is_active(reg, player));
     CHECK(sw.window_start == initial_window_start);
     CHECK(sw.window_timer == initial_window_timer);
-    CHECK(sw.press_time == initial_press_time);
-    CHECK(sw.graded);
+    CHECK(reg.get<Pressed>(player).press_time == initial_press_time);
+    CHECK(reg.all_of<WindowGraded>(player));
 }
 
 TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "[player_rhythm]") {
@@ -103,7 +103,7 @@ TEST_CASE("player_action: rhythm mode interrupts Active with different shape", "
     CHECK(sw.window_timer == 0.0f);
     CHECK(ps.morph_t == 0.0f);
     CHECK(sw.window_start == 8.0f);
-    CHECK(sw.graded == false);
+    CHECK_FALSE(reg.all_of<WindowGraded>(player));
 }
 
 TEST_CASE("player_action: rhythm mode no action when no tap in queue", "[player_rhythm]") {
@@ -158,7 +158,7 @@ TEST_CASE("player_action: rhythm mode ACCEPTS button press during MorphOut (#209
     CHECK(sw.window_timer == 0.0f);
     CHECK(ps.morph_t == 0.0f);
     CHECK(sw.window_start == 15.0f);
-    CHECK(sw.graded == false);
+    CHECK_FALSE(reg.all_of<WindowGraded>(player));
     CHECK(drain_sfx_events(reg).count > 0);
 }
 

@@ -76,7 +76,7 @@ TEST_CASE("shape_window: MorphOut returns to Idle with Hexagon", "[shape_window]
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_morph_out(reg, player);
     sw.window_start = song.song_time;
-    sw.press_time = song.song_time - 0.25f;
+    reg.emplace_or_replace<Pressed>(player, Pressed{song.song_time - 0.25f});
     ps.morph_t = 0.0f;
 
     // Advance past morph_duration
@@ -86,8 +86,8 @@ TEST_CASE("shape_window: MorphOut returns to Idle with Hexagon", "[shape_window]
     CHECK(window_phase_is_idle(reg, player));
     CHECK(reg.all_of<ShapeHexagonTag>(player));
     CHECK(reg.all_of<TargetShapeHexagonTag>(player));
-    CHECK(sw.press_time == -1.0f);
-    CHECK_FALSE(sw.graded);
+    CHECK_FALSE(reg.all_of<Pressed>(player));
+    CHECK_FALSE(reg.all_of<WindowGraded>(player));
 }
 
 TEST_CASE("shape_window: Idle phase does nothing", "[shape_window][rhythm]") {

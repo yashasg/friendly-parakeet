@@ -52,12 +52,12 @@ TEST_CASE("player_input_rhythm: same shape in Active is no-op", "[player][rhythm
     set_window_phase_active(reg, player);
     sw.window_start = song.song_time - 0.5f;
     sw.window_timer = 0.5f;
-    sw.press_time = song.song_time - 0.5f;
-    sw.graded = true;  // was previously graded
+    reg.emplace_or_replace<Pressed>(player, Pressed{song.song_time - 0.5f});
+    reg.emplace_or_replace<WindowGraded>(player);  // was previously graded
 
     const float initial_window_start = sw.window_start;
     const float initial_window_timer = sw.window_timer;
-    const float initial_press_time = sw.press_time;
+    const float initial_press_time   = reg.get<Pressed>(player).press_time;
 
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
@@ -67,8 +67,8 @@ TEST_CASE("player_input_rhythm: same shape in Active is no-op", "[player][rhythm
     CHECK(window_phase_is_active(reg, player));
     CHECK(sw.window_start == initial_window_start);
     CHECK(sw.window_timer == initial_window_timer);
-    CHECK(sw.press_time == initial_press_time);
-    CHECK(sw.graded);
+    CHECK(reg.get<Pressed>(player).press_time == initial_press_time);
+    CHECK(reg.all_of<WindowGraded>(player));
 }
 
 TEST_CASE("player_input_rhythm: shape change pushes ShapeShift SFX", "[player][rhythm]") {

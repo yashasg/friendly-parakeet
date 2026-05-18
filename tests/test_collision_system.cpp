@@ -282,12 +282,12 @@ TEST_CASE("collision: BAD timing does not adjust window_start", "[collision][rhy
     // Put player in Active phase
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    sw.graded = false;
+    reg.remove<WindowGraded>(player);
     sw.window_timer = 0.0f;
     sw.window_start = song.song_time;
 
-    // press_time anchors grading. Set arrival_time far enough so it's BAD.
-    sw.press_time = song.song_time;
+    // Pressed presence anchors grading. Set arrival_time far enough so it's BAD.
+    reg.emplace_or_replace<Pressed>(player, Pressed{song.song_time});
     float bad_arrival = song.song_time - song.half_window * 1.2f;
 
     // Spawn an obstacle at the player's position
@@ -302,7 +302,7 @@ TEST_CASE("collision: BAD timing does not adjust window_start", "[collision][rhy
     // window_timer should remain unchanged by collision_system
     CHECK(sw.window_timer == 0.0f);
     // graded flag must be set
-    CHECK(sw.graded);
+    CHECK(reg.all_of<WindowGraded>(player));
 }
 
 TEST_CASE("collision: Perfect timing shrinks window via window_start adjustment", "[collision][rhythm]") {
@@ -315,12 +315,12 @@ TEST_CASE("collision: Perfect timing shrinks window via window_start adjustment"
 
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    sw.graded = false;
+    reg.remove<WindowGraded>(player);
     sw.window_timer = 0.0f;
     sw.window_start = song.song_time;
 
-    // Set press_time to right now so the hit is perfect.
-    sw.press_time = song.song_time;
+    // Pressed at song_time so the hit is perfect.
+    reg.emplace_or_replace<Pressed>(player, Pressed{song.song_time});
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
@@ -333,5 +333,5 @@ TEST_CASE("collision: Perfect timing shrinks window via window_start adjustment"
     float remaining = song.window_duration - 0.0f;
     float expected_shift = remaining * 0.50f;
     CHECK_THAT(sw.window_start, Catch::Matchers::WithinAbs(original_window_start - expected_shift, 0.0001f));
-    CHECK(sw.graded);
+    CHECK(reg.all_of<WindowGraded>(player));
 }

@@ -238,10 +238,9 @@ OffsetGameplayResult run_calibrated_on_arrival_hit(int16_t audio_offset_ms) {
     settings.audio_offset_ms = audio_offset_ms;
 
     auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    sw.graded = false;
+    reg.remove<WindowGraded>(player);
 
     auto& song = reg.ctx().get<SongState>();
     song.bpm    = 120.0f;
@@ -266,7 +265,7 @@ OffsetGameplayResult run_calibrated_on_arrival_hit(int16_t audio_offset_ms) {
     auto& wt = reg.get<WorldPosition>(obstacle);
     wt.position.y = constants::PLAYER_Y;
 
-    sw.press_time = info.spawn_time + song.lead_time;
+    reg.emplace_or_replace<Pressed>(player, Pressed{info.spawn_time + song.lead_time});
 
     collision_system(reg, 0.016f);
     REQUIRE(reg.all_of<ScoredTag>(obstacle));

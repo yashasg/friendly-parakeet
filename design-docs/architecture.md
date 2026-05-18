@@ -204,11 +204,19 @@ struct PlayerShape {
 /// no `switch`. See `app/systems/shape_window_system.cpp` for the
 /// canonical transitions.
 struct ShapeWindow {
-    bool  graded       = false;  // a TimingGrade has already been emitted
     float window_timer = 0.0f;   // seconds into the current phase
     float window_start = 0.0f;   // song_time when the current window opened
-    float press_time   = -1.0f;  // song_time of the latest valid press (-1 = none)
 };
+
+/// Recorded press for the current shape window. Presence on the player
+/// entity IS "the window has a recorded press"; `press_time` is always
+/// meaningful while the row exists (Fabian Principle 3 / issue #1533).
+struct Pressed {
+    float press_time = 0.0f;     // song_time of the latest valid press
+};
+/// Marker tag (`WindowGraded`) lives in `app/tags/tags.h`: presence on the
+/// player IS "this press has been graded by collision_system" (replaces the
+/// former `ShapeWindow::graded` bool).
 
 /// Lane occupancy and transition. 8 bytes.
 /// Hot: read by collision_system, player input handlers, player_movement_system.
@@ -907,22 +915,25 @@ In code, reusable construction lives in `app/entities/` factory functions
 │ WorldPosition         { position: {360.0, 920.0} }        │
 │ ShapeHexagonTag        (tag, 0 bytes; current shape)      │
 │ PlayerShape           { morph_t: 1.0 }                    │
-│ ShapeWindow           { graded: 0, window_timer: 0,       │
-│                         window_start: 0, press_time: -1 } │
+│ ShapeWindow           { window_timer: 0, window_start: 0 }│
 │ TargetShapeHexagonTag  (tag, 0 bytes; idle reset)         │
 │ Lane                  { current: 1, target: -1, lerp_t:1 }│
 │ (Jumping/Sliding absent → grounded; rows added on demand) │
 │ (ShapeWindow{MorphIn,Active,MorphOut}Tag absent → Idle)   │
+│ (Pressed{press_time} added on press, removed at MorphOut) │
+│ (WindowGraded tag added when collision_system grades)     │
 │ Color                 { r: 80, g: 180, b: 255, a: 255 }   │
 │ DrawSize              { w: 64, h: 64 }                    │
 │ TagWorldPass           (tag, 0 bytes)                     │
 └───────────────────────────────────────────────────────────┘
-Total: ~48 bytes of component data per entity (1 entity).
+Total: ~40 bytes of component data per entity (1 entity).
 The current shape and shape-window phase are zero-byte tag rows
 (`Shape*Tag` / `ShapeWindow*Tag` / `TargetShape*Tag`) per issue
 #1202/#1204 — the former `PlayerShape::current`, `ShapeWindow::phase`
 (`WindowPhase` enum), and `ShapeWindow::target_shape` fields are
-eradicated.
+eradicated. Per #1533, the former `ShapeWindow::press_time` sentinel and
+`ShapeWindow::graded` bool migrated to the `Pressed` row table and the
+`WindowGraded` zero-column tag respectively (Fabian Principle 3).
 ```
 
 ### 5.2 Shape Gate Entity
