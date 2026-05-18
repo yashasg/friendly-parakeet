@@ -155,10 +155,12 @@ enum class Shape : uint8_t {
 /// Empty tag — marks the single player entity. 0 bytes.
 struct PlayerTag {};
 
-/// Current shape and morph progress. 8 bytes.
+/// Morph animation progress. 4 bytes.
 /// Hot: read by shape_window_system, collision_system, game_camera_system.
+/// The current shape lives as one of `ShapeCircleTag` / `ShapeSquareTag` /
+/// `ShapeTriangleTag` / `ShapeHexagonTag` on the player entity, not a field
+/// on this struct (issue #1202/#1204; see `app/util/shape_tag.h`).
 struct PlayerShape {
-    Shape    current = Shape::Circle;  // active gameplay shape
     float    morph_t = 1.0f;           // 0.0 = morph just started, 1.0 = settled
 };
 
@@ -674,7 +676,7 @@ MotionVelocity       8     HOT        motion, particle effects
 ParticleData        12     HOT        particle expiry/render fade
 ScorePopup          16     HOT        popup expiry/render fade
 PlayerTag            0     HOT        collision/filter
-PlayerShape          8     HOT        shape_window, collision, render, player_action
+PlayerShape          4     HOT        shape_window, collision, render, player_action
 ShapeWindow         24     HOT        shape_window, input dispatcher, collision
 Lane                 1     HOT        collision, render, player_action
 LaneTransition       8     HOT        present when mid-lane-shift; movement, collision, player_action
@@ -1215,7 +1217,7 @@ int main(int argc, char* argv[]) {
     ┌──────────────┐                                             ┌─────────────┐
     │ BeatMap      │                                             │ PlayerShape │
     │ SongState    │                                             │ Lane        │
-    └──────┬───────┘                                             │ VertState   │
+    └──────┬───────┘                                             │ Jump/Slide? │
            │ beat_scheduler_system                               │ WorldPosition │
            │ creates note when spawn_time arrives                └──────┬──────┘
            ▼                                                            │
