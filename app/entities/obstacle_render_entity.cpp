@@ -132,7 +132,8 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
 }
 
 
-void destroy_obstacle_mesh_children(entt::registry& reg, entt::entity parent) {
+void destroy_obstacle_with_children(entt::registry& reg, entt::entity parent) {
+    if (!reg.valid(parent)) return;
     // Collect first then destroy: removing entities mid-iteration would
     // invalidate the MeshChild view's packed-storage iterator.
     entt::entity to_destroy[ObstacleChildren::MAX];
@@ -145,10 +146,5 @@ void destroy_obstacle_mesh_children(entt::registry& reg, entt::entity parent) {
     for (int i = 0; i < destroy_count; ++i) {
         if (reg.valid(to_destroy[i])) reg.destroy(to_destroy[i]);
     }
-}
-
-void destroy_obstacle_with_children(entt::registry& reg, entt::entity parent) {
-    if (!reg.valid(parent)) return;
-    destroy_obstacle_mesh_children(reg, parent);
     reg.destroy(parent);
 }
