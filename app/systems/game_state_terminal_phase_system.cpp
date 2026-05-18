@@ -10,22 +10,6 @@
 
 namespace {
 
-void persist_dirty_high_scores(entt::registry& reg,
-                               const HighScoreState& high_scores,
-                               HighScorePersistence& persistence) {
-    if (!reg.ctx().contains<HighScoreDirtyTag>()) return;
-
-    if (persistence.path.empty()) {
-        persistence.last_save = persistence::Result{persistence::Status::PathUnavailable, {}};
-        return;
-    }
-
-    persistence.last_save = high_score::save_high_scores(high_scores, persistence.path);
-    if (persistence.last_save.ok()) {
-        reg.ctx().erase<HighScoreDirtyTag>();
-    }
-}
-
 bool update_and_persist_high_score(entt::registry& reg) {
     auto& score = reg.ctx().get<ScoreState>();
     auto& current = reg.ctx().get<CurrentSongHighScore>();
@@ -46,7 +30,16 @@ bool update_and_persist_high_score(entt::registry& reg) {
             if (score_exceeds_high_score && recorded_new_high_score && has_active_high_score_key) {
                 reg.ctx().emplace<HighScoreDirtyTag>();
             }
-            persist_dirty_high_scores(reg, *hs, *hp);
+            if (reg.ctx().contains<HighScoreDirtyTag>()) {
+                if (hp->path.empty()) {
+                    hp->last_save = persistence::Result{persistence::Status::PathUnavailable, {}};
+                } else {
+                    hp->last_save = high_score::save_high_scores(*hs, hp->path);
+                    if (hp->last_save.ok()) {
+                        reg.ctx().erase<HighScoreDirtyTag>();
+                    }
+                }
+            }
         }
     } else if (score_exceeds_high_score) {
         current.value = score.score;
@@ -61,31 +54,17 @@ bool update_and_persist_high_score(entt::registry& reg) {
     return recorded_new_high_score;
 }
 
-void emit_terminal_feedback_game_over(entt::registry& reg, bool is_new_high_score) {
-    auto* disp = reg.ctx().find<entt::dispatcher>();
-    if (!disp) return;
-
-    disp->enqueue<PlaySfxEvent>({SFX::Crash});
-    disp->enqueue<PlayHapticEvent>({HapticEvent::DeathCrash});
-    if (is_new_high_score) {
-        disp->enqueue<PlayHapticEvent>({HapticEvent::NewHighScore});
-    }
-}
-
-void emit_terminal_feedback_song_complete(entt::registry& reg, bool is_new_high_score) {
-    auto* disp = reg.ctx().find<entt::dispatcher>();
-    if (!disp) return;
-
-    if (is_new_high_score) {
-        disp->enqueue<PlayHapticEvent>({HapticEvent::NewHighScore});
-    }
-}
-
 }  // namespace
 
 void game_state_enter_terminal_phase_game_over(entt::registry& reg) {
     const bool is_new_high_score = update_and_persist_high_score(reg);
-    emit_terminal_feedback_game_over(reg, is_new_high_score);
+    if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
+        disp->enqueue<PlaySfxEvent>({SFX::Crash});
+        disp->enqueue<PlayHapticEvent>({HapticEvent::DeathCrash});
+        if (is_new_high_score) {
+            disp->enqueue<PlayHapticEvent>({HapticEvent::NewHighScore});
+        }
+    }
 
     enter_phase<GamePhaseGameOverTag>(reg);
 
@@ -97,7 +76,11 @@ void game_state_enter_terminal_phase_game_over(entt::registry& reg) {
 
 void game_state_enter_terminal_phase_song_complete(entt::registry& reg) {
     const bool is_new_high_score = update_and_persist_high_score(reg);
-    emit_terminal_feedback_song_complete(reg, is_new_high_score);
+    if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
+        if (is_new_high_score) {
+            disp->enqueue<PlayHapticEvent>({HapticEvent::NewHighScore});
+        }
+    }
 
     enter_phase<GamePhaseSongCompleteTag>(reg);
 }
