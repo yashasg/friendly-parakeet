@@ -39,12 +39,6 @@ struct SettingsBindContext {
     bool    motion_on;
 };
 
-void format_offset(int16_t offset_ms, UiLabel& label) {
-    char buf[16];
-    std::snprintf(buf, sizeof(buf), "%+d ms", static_cast<int>(offset_ms));
-    ui_label_set(label, buf);
-}
-
 void format_toggle(UiLabel& label, const char* name, bool on) {
     // Two-cue ON/OFF (issue #390): icon-prefix `[X]` vs `[ ]` plus the
     // explicit ON/OFF suffix. The colour cue lives in `ui_render_system`
@@ -57,7 +51,10 @@ void format_toggle(UiLabel& label, const char* name, bool on) {
 
 void bind_audio_offset(const SettingsBindContext& ctx, entt::registry& /*reg*/,
                        entt::entity /*e*/, UiLabel& label) {
-    format_offset(ctx.audio_offset_ms, label);
+    char buf[16];
+    std::snprintf(buf, sizeof(buf), "%+d ms",
+                  static_cast<int>(ctx.audio_offset_ms));
+    ui_label_set(label, buf);
 }
 
 // Shared body for the two toggle binders below. Differs across the two
