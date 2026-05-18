@@ -16,8 +16,7 @@
 SessionLog::SessionLog(SessionLog&& other) noexcept
     : file{other.file},
       frame{other.frame},
-      buffer{std::move(other.buffer)},
-      last_logged_beat{other.last_logged_beat}
+      buffer{std::move(other.buffer)}
 {
     other.file = nullptr;
     if (buffer.capacity() < kMaxLogBufferBytes) {
@@ -31,7 +30,6 @@ SessionLog& SessionLog::operator=(SessionLog&& other) noexcept {
         file = other.file;
         frame = other.frame;
         buffer = std::move(other.buffer);
-        last_logged_beat = other.last_logged_beat;
         other.file = nullptr;
         if (buffer.capacity() < kMaxLogBufferBytes) {
             buffer.reserve(kMaxLogBufferBytes);

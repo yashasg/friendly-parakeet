@@ -418,13 +418,21 @@ struct SongState {
     float half_window     = 0.15f;
     float morph_duration  = 0.1f;
     float song_time       = 0.0f;
-    int   current_beat    = -1;
     bool  playing         = false;
     bool  finished        = false;
     bool  restart_music   = false;
     size_t next_spawn_idx = 0;  // (legacy doc shape — actual SongState has fourteen
                                 //  per-(kind, shape, time-source) cursors per #1533;
                                 //  see rhythm-spec.md and app/components/song_state.h)
+};
+
+/// Singleton row table: presence in `reg.ctx()` IS "at least one beat
+/// has been crossed for the current session". The legacy
+/// `SongState::current_beat = -1` sentinel was a NULL column in disguise
+/// (Fabian Principle 3 / issue #1545); membership now expresses
+/// "any beat crossed yet" while `last_crossed` is always meaningful.
+struct BeatCursor {
+    int last_crossed = 0;
 };
 
 /// Singleton: survival meter displayed by the HUD energy bar.
@@ -756,7 +764,7 @@ system in the same frame (unidirectional data flow).
  │  ┌─ PHASE 3: PLAYBACK + PLAYING TICK ────────────────────┐
  │  │                                                        │
  │  │  5. song_playback_system  Advance SongState.song_time  │
- │  │                           and current_beat from music. │
+ │  │                           and BeatCursor from music.   │
  │  │                                                        │
  │  │  6. tick_playing_systems  Runs only in Playing phase:  │
  │  │                                                        │
@@ -1727,7 +1735,7 @@ app/
 │   ├── particle.h               ← ParticleData, ParticleTag
 │   ├── rhythm.h                 ← BeatInfo, TimingGrade (precision only;
 │   │                              tier is a `Timing*Tag` from `tags.h`)
-│   └── song_state.h             ← SongState
+│   └── song_state.h             ← SongState, BeatCursor (row table, issue #1545)
 │
 ├── systems/                     ← all system free functions
 │   ├── input.h                  ← InputState, TouchSlot, InputSourceMouse, InputSourceTouch (singleton hardware-capture state)

@@ -29,6 +29,8 @@
 #include "systems/runtime_systems.h"
 #include "systems/input_routing.h"
 #include "systems/input_system_private.h"
+#include "systems/session_logger_system.h"
+#include "components/song_state.h"
 
 // Sets up a registry with all singletons in their default state.
 //
@@ -308,6 +310,44 @@ inline entt::registry make_rhythm_registry() {
     reg.ctx().get<EnergyState>() = EnergyState{};
     reg.ctx().get<SongResults>() = SongResults{};
     return reg;
+}
+
+// ── BeatCursor / LastLoggedBeat helpers (issue #1545) ─────────────────────
+// The legacy `SongState::current_beat = -1` and
+// `SessionLog::last_logged_beat = -1` sentinels migrated to ctx-singleton
+// row tables (Fabian Principle 3). These helpers preserve the legacy
+// `song.current_beat = N` / `log.last_logged_beat = N` ergonomic in tests:
+//   - N >= 0 → row exists with that value;
+//   - N <  0 → row absent (legacy "fresh-session" semantics).
+
+inline void set_beat_cursor(entt::registry& reg, int beat) {
+    if (beat < 0) {
+        if (reg.ctx().contains<BeatCursor>()) {
+            reg.ctx().erase<BeatCursor>();
+        }
+    } else {
+        reg.ctx().insert_or_assign(BeatCursor{beat});
+    }
+}
+
+inline int beat_cursor_value(const entt::registry& reg) {
+    const auto* c = reg.ctx().find<BeatCursor>();
+    return c ? c->last_crossed : -1;
+}
+
+inline void set_last_logged_beat(entt::registry& reg, int beat) {
+    if (beat < 0) {
+        if (reg.ctx().contains<LastLoggedBeat>()) {
+            reg.ctx().erase<LastLoggedBeat>();
+        }
+    } else {
+        reg.ctx().insert_or_assign(LastLoggedBeat{beat});
+    }
+}
+
+inline int last_logged_beat_value(const entt::registry& reg) {
+    const auto* l = reg.ctx().find<LastLoggedBeat>();
+    return l ? l->beat : -1;
 }
 
 // Creates a player entity in lane 1 (center) with default shape (Circle)

@@ -346,7 +346,6 @@ TEST_CASE("init_song_state: resets playback state", "[init_song]") {
 
     SongState state;
     state.song_time = 50.0f;
-    state.current_beat = 10;
     state.playing = true;
     state.finished = true;
     state.next_shape_gate_circle_idx = 5;
@@ -356,7 +355,9 @@ TEST_CASE("init_song_state: resets playback state", "[init_song]") {
     init_song_state(state, map);
 
     CHECK(state.song_time == 0.0f);
-    CHECK(state.current_beat == -1);
+    // BeatCursor lives in `reg.ctx()` (issue #1545); init_song_state operates
+    // on the plain `SongState` value alone and intentionally does not touch
+    // the cursor — `setup_play_session` owns the per-session cursor reset.
     CHECK_FALSE(state.playing);
     CHECK_FALSE(state.finished);
     CHECK(state.next_shape_gate_circle_idx == 0);

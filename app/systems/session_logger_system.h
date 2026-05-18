@@ -20,7 +20,11 @@ struct SessionLog {
     FILE*       file  = nullptr;
     uint32_t    frame = 0;
     std::string buffer;        // buffered log lines, flushed once per frame
-    int         last_logged_beat = -1;  // beat_log_system tracks last emitted beat
+    // The former `int last_logged_beat = -1` cursor migrated to the
+    // `LastLoggedBeat` ctx-singleton row table below (Fabian Principle 3 /
+    // issue #1545): membership IS "at least one beat has been emitted",
+    // and `beat` is always meaningful while the row exists. Reset path:
+    // test_player_session erases any prior row when re-opening the log.
 
     SessionLog() { buffer.reserve(kMaxLogBufferBytes); }
     SessionLog(const SessionLog&) = delete;
@@ -30,6 +34,19 @@ struct SessionLog {
     ~SessionLog();
 
     void release();
+};
+
+// ── Last Logged Beat (singleton row table, lives in registry context) ────────
+// Presence in `reg.ctx()` IS "at least one beat has been emitted to the
+// session log for the current session"; `beat` is the highest beat index
+// emitted, always meaningful while the row exists. Per Fabian Principle 3
+// (.squad/decisions.md § 9 / issue #1545): the former
+// `SessionLog::last_logged_beat = -1` sentinel was a NULL column in
+// disguise. Producer/consumer with `BeatCursor` (see song_state.h):
+// beat_log_system advances `LastLoggedBeat::beat` toward
+// `BeatCursor::last_crossed`, emitting a `BEAT` line per integer step.
+struct LastLoggedBeat {
+    int beat = 0;
 };
 
 // ── Free functions ───────────────────────────────────────────

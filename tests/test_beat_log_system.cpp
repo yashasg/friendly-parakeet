@@ -12,7 +12,6 @@ static SessionLog make_open_log() {
     log.file  = std::fopen("/dev/null", "w");
 #endif
     log.frame = 0;
-    log.last_logged_beat = -1;
     return log;
 }
 
@@ -40,7 +39,7 @@ TEST_CASE("beat_log: no-op when SessionLog absent", "[beat_log]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 0.6f;
-    song.current_beat = 1;
+    set_beat_cursor(reg, 1);
 
     // No SessionLog in context — must not crash
     beat_log_system(reg, 0.0f);
@@ -49,68 +48,63 @@ TEST_CASE("beat_log: no-op when SessionLog absent", "[beat_log]") {
 
 TEST_CASE("beat_log: no-op when log file is null", "[beat_log]") {
     auto reg = make_rhythm_registry();
-    auto& song = reg.ctx().get<SongState>();
-    song.current_beat = 3;
+    set_beat_cursor(reg, 3);
 
     SessionLog log;  // file = nullptr
     reg.ctx().emplace<SessionLog>(std::move(log));
 
     beat_log_system(reg, 0.0f);
-    auto& stored = reg.ctx().get<SessionLog>();
-    // last_logged_beat must not have advanced when file is null
-    CHECK(stored.last_logged_beat == -1);
+    // LastLoggedBeat must not have been emplaced when file is null
+    CHECK(last_logged_beat_value(reg) == -1);
 }
 
 TEST_CASE("beat_log: no-op when not in Playing phase", "[beat_log]") {
     auto reg = make_rhythm_registry();
     set_test_phase<GamePhaseTitleTag>(reg);
-    auto& song = reg.ctx().get<SongState>();
-    song.current_beat = 2;
+    set_beat_cursor(reg, 2);
 
     auto slog = make_open_log();
     reg.ctx().emplace<SessionLog>(std::move(slog));
 
     tick_playing_systems(reg, 0.0f);
-    CHECK(reg.ctx().get<SessionLog>().last_logged_beat == -1);
+    CHECK(last_logged_beat_value(reg) == -1);
 }
 
 TEST_CASE("beat_log: no-op when song not playing", "[beat_log]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     song.playing = false;
-    song.current_beat = 2;
+    set_beat_cursor(reg, 2);
 
     auto slog = make_open_log();
     reg.ctx().emplace<SessionLog>(std::move(slog));
 
     beat_log_system(reg, 0.0f);
-    CHECK(reg.ctx().get<SessionLog>().last_logged_beat == -1);
+    CHECK(last_logged_beat_value(reg) == -1);
 }
 
-// ── beat_log_system: advances last_logged_beat ───────────────
+// ── beat_log_system: advances LastLoggedBeat ─────────────────
 
-TEST_CASE("beat_log: logs new beat and advances last_logged_beat", "[beat_log]") {
+TEST_CASE("beat_log: logs new beat and advances LastLoggedBeat", "[beat_log]") {
     auto reg = make_rhythm_registry();
-    auto& song = reg.ctx().get<SongState>();
-    song.current_beat = 1;
+    set_beat_cursor(reg, 1);
 
     auto slog = make_open_log();
     reg.ctx().emplace<SessionLog>(std::move(slog));
 
     beat_log_system(reg, 0.0f);
-    CHECK(reg.ctx().get<SessionLog>().last_logged_beat == 1);
+    CHECK(last_logged_beat_value(reg) == 1);
 }
 
 TEST_CASE("beat_log: catches up multiple beats in one call", "[beat_log]") {
     auto reg = make_rhythm_registry();
-    auto& song = reg.ctx().get<SongState>();
-    song.current_beat = 5;  // jumped ahead 6 beats from -1
+    set_beat_cursor(reg, 5);  // jumped ahead 6 beats from absent cursor
 
     auto slog = make_open_log();
     reg.ctx().emplace<SessionLog>(std::move(slog));
 
     beat_log_system(reg, 0.0f);
-    CHECK(reg.ctx().get<SessionLog>().last_logged_beat == 5);
+    CHECK(last_logged_beat_value(reg) == 5);
 }
 
 TEST_CASE("beat_log: falls back when authored beat_times are shorter than current beat", "[beat_log]") {
@@ -119,7 +113,7 @@ TEST_CASE("beat_log: falls back when authored beat_times are shorter than curren
     song.offset = 0.25f;
     song.beat_period = 0.5f;
     song.song_time = 1.75f;
-    song.current_beat = 3;
+    set_beat_cursor(reg, 3);
 
     auto& map = beat_map(reg);
     map.beat_times = {0.25f};
@@ -130,23 +124,22 @@ TEST_CASE("beat_log: falls back when authored beat_times are shorter than curren
     beat_log_system(reg, 0.0f);
 
     auto& stored = reg.ctx().get<SessionLog>();
-    CHECK(stored.last_logged_beat == 3);
+    CHECK(last_logged_beat_value(reg) == 3);
     CHECK(stored.buffer.find("BEAT 0 expected=0.250") != std::string::npos);
     CHECK(stored.buffer.find("BEAT 3 expected=1.750") != std::string::npos);
 }
 
 TEST_CASE("beat_log: does not re-log already-logged beats", "[beat_log]") {
     auto reg = make_rhythm_registry();
-    auto& song = reg.ctx().get<SongState>();
-    song.current_beat = 3;
+    set_beat_cursor(reg, 3);
 
     auto slog = make_open_log();
-    slog.last_logged_beat = 3;  // already logged
     reg.ctx().emplace<SessionLog>(std::move(slog));
+    set_last_logged_beat(reg, 3);  // already logged
 
     beat_log_system(reg, 0.0f);
-    // last_logged_beat must remain 3 (no spurious advance)
-    CHECK(reg.ctx().get<SessionLog>().last_logged_beat == 3);
+    // LastLoggedBeat must remain 3 (no spurious advance)
+    CHECK(last_logged_beat_value(reg) == 3);
 }
 
 // ── song_playback_system: no logging dependency ───────────────
@@ -155,36 +148,36 @@ TEST_CASE("song_playback: does not write to SessionLog", "[song_playback][beat_l
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 0.0f;
-    song.current_beat = -1;
+    set_beat_cursor(reg, -1);
 
     // Place a SessionLog with open file so any accidental write would be detectable
     auto slog = make_open_log();
-    slog.last_logged_beat = -1;
     reg.ctx().emplace<SessionLog>(std::move(slog));
+    set_last_logged_beat(reg, -1);
 
     // Advance past two beats
     song_playback_system(reg, 1.1f);
 
-    // Playback advanced current_beat
-    CHECK(song.current_beat >= 1);
-    // But last_logged_beat must remain -1 — playback didn't touch the log
-    CHECK(reg.ctx().get<SessionLog>().last_logged_beat == -1);
+    // Playback advanced the beat cursor
+    CHECK(beat_cursor_value(reg) >= 1);
+    // But LastLoggedBeat must remain absent — playback didn't touch the log
+    CHECK(last_logged_beat_value(reg) == -1);
 }
 
-TEST_CASE("beat_log: last_logged_beat advances after beat_log_system runs", "[beat_log]") {
+TEST_CASE("beat_log: LastLoggedBeat advances after beat_log_system runs", "[beat_log]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 0.0f;
-    song.current_beat = -1;
+    set_beat_cursor(reg, -1);
 
     auto slog = make_open_log();
     reg.ctx().emplace<SessionLog>(std::move(slog));
 
     song_playback_system(reg, 1.1f);
     // Still not logged yet (beat_log hasn't run)
-    CHECK(reg.ctx().get<SessionLog>().last_logged_beat == -1);
+    CHECK(last_logged_beat_value(reg) == -1);
 
     beat_log_system(reg, 0.0f);
     // Now it matches
-    CHECK(reg.ctx().get<SessionLog>().last_logged_beat == song.current_beat);
+    CHECK(last_logged_beat_value(reg) == beat_cursor_value(reg));
 }

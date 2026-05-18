@@ -166,6 +166,7 @@ void setup_play_session(entt::registry& reg) {
         erase_ctx_if_exists<ScoreDisplay>(reg);
         erase_ctx_if_exists<CurrentSongHighScore>(reg);
         erase_ctx_if_exists<SongState>(reg);
+        erase_ctx_if_exists<BeatCursor>(reg);
         erase_ctx_if_exists<EnergyState>(reg);
         erase_ctx_if_exists<SongResults>(reg);
         erase_ctx_if_exists<EnergyDepletedDeath>(reg);
@@ -204,6 +205,10 @@ void setup_play_session(entt::registry& reg) {
 
     // Init song state
     auto& song = assign_or_emplace_ctx(reg, SongState{});
+    // Reset the BeatCursor row table (Fabian Principle 3 / issue #1545):
+    // membership IS "at least one beat has been crossed", so erase any
+    // carry-over from a prior session before the new session begins.
+    erase_ctx_if_exists<BeatCursor>(reg);
     if (!beat_map_empty(beatmap)) {
         init_song_state(song, beatmap);
     } else {

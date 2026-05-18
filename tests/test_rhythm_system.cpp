@@ -224,7 +224,7 @@ TEST_CASE("song_playback: increments current_beat", "[rhythm][playback]") {
     auto& song = reg.ctx().get<SongState>();
     song.playing = true; song.offset = 0.0f; song.song_time = 0.0f;
     song_playback_system(reg, 0.5f);
-    CHECK(song.current_beat >= 1);
+    CHECK(beat_cursor_value(reg) >= 1);
 }
 
 TEST_CASE("song_playback: detects song end", "[rhythm][playback]") {

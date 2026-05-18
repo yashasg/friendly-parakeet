@@ -84,7 +84,7 @@ TEST_CASE("song_playback: current_beat updates correctly", "[song_playback]") {
     // Advance to 0.6s — should be beat 1 (0.6 / 0.5 = 1.2 → beat 1)
     song_playback_system(reg, 0.6f);
 
-    CHECK(song.current_beat == 1);
+    CHECK(beat_cursor_value(reg) == 1);
 }
 
 TEST_CASE("song_playback: current_beat starts at -1 before offset", "[song_playback]") {
@@ -95,7 +95,7 @@ TEST_CASE("song_playback: current_beat starts at -1 before offset", "[song_playb
 
     song_playback_system(reg, 0.1f);  // song_time = -0.9, still before offset
 
-    CHECK(song.current_beat == -1);
+    CHECK(beat_cursor_value(reg) == -1);
 }
 
 TEST_CASE("song_playback: current_beat advances with offset", "[song_playback]") {
@@ -108,7 +108,7 @@ TEST_CASE("song_playback: current_beat advances with offset", "[song_playback]")
 
     song_playback_system(reg, 1.6f);
 
-    CHECK(song.current_beat == 1);
+    CHECK(beat_cursor_value(reg) == 1);
 }
 
 TEST_CASE("song_playback: current_beat follows beat_times array when present", "[song_playback]") {
@@ -116,14 +116,14 @@ TEST_CASE("song_playback: current_beat follows beat_times array when present", "
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
     song.song_time = 0.0f;
-    song.current_beat = -1;
+    set_beat_cursor(reg, -1);
     map.beat_times = {0.4f, 0.9f, 1.6f};
 
     song_playback_system(reg, 1.0f);
-    CHECK(song.current_beat == 1);
+    CHECK(beat_cursor_value(reg) == 1);
 
     song_playback_system(reg, 0.7f);
-    CHECK(song.current_beat == 2);
+    CHECK(beat_cursor_value(reg) == 2);
 }
 
 // ── song_playback_system: song end ───────────────────────────
@@ -175,14 +175,14 @@ TEST_CASE("song_playback: finished song stays latched and does not restart on la
     REQUIRE(song.finished);
     REQUIRE_FALSE(song.playing);
     const float finished_time = song.song_time;
-    const int finished_beat = song.current_beat;
+    const int finished_beat = beat_cursor_value(reg);
 
     song_playback_system(reg, 1.5f);
 
     CHECK(song.finished);
     CHECK_FALSE(song.playing);
     CHECK(song.song_time > finished_time);
-    CHECK(song.current_beat == finished_beat);
+    CHECK(beat_cursor_value(reg) == finished_beat);
     CHECK_FALSE(song.restart_music);
 }
 
@@ -253,24 +253,24 @@ TEST_CASE("song_playback: beat does not go backwards", "[song_playback]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 2.0f;
-    song.current_beat = 3;
+    set_beat_cursor(reg, 3);
 
     // Small advancement that doesn't cross a new beat
     song_playback_system(reg, 0.01f);
 
-    CHECK(song.current_beat >= 3);
+    CHECK(beat_cursor_value(reg) >= 3);
 }
 
 TEST_CASE("song_playback: multiple beats can be crossed in one frame", "[song_playback]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 0.0f;
-    song.current_beat = -1;
+    set_beat_cursor(reg, -1);
 
     // Advance 3 seconds at 120 BPM (beat_period=0.5) = 6 beats
     song_playback_system(reg, 3.0f);
 
-    CHECK(song.current_beat == 6);
+    CHECK(beat_cursor_value(reg) == 6);
 }
 
 TEST_CASE("song_playback: zero beat_period handled safely", "[song_playback]") {

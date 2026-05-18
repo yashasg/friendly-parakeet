@@ -1099,7 +1099,10 @@ void init_song_state(SongState& state, const BeatMap& map) {
     state.lead_beats   = map.lead_beats;
     state.duration_sec = map.duration;
     state.song_time    = 0.0f;
-    state.current_beat = -1;
+    // Beat cursor lives in `reg.ctx()` as a `BeatCursor` row table whose
+    // membership IS "at least one beat has been crossed" (issue #1545 /
+    // Fabian Principle 3). `setup_play_session` erases any prior row at
+    // session init, so this function intentionally does not touch it.
     state.playing      = false;
     state.finished     = false;
     state.next_shape_gate_circle_idx         = 0;
