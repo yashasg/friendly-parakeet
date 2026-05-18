@@ -97,27 +97,6 @@ void schedule_bin(ScheduleContext& ctx,
     }
 }
 
-// Indexed bins resolve `beat_time` from `beat_times[beat_index]` when the
-// onset table is loaded; otherwise they fall back to the BPM-derived grid
-// time. Timed bins resolve `beat_time` directly from the authored
-// `BeatEntryTimed::time_sec` column — membership in a `*_beats_timed`
-// vector IS the precondition that an authored timestamp exists.
-auto make_indexed_time_fn(const ScheduleContext& ctx) {
-    return [&ctx](const BeatEntry& entry) {
-        float beat_time = ctx.song.offset + entry.beat_index * ctx.song.beat_period;
-        if (!ctx.map.beat_times.empty() &&
-            entry.beat_index >= 0 &&
-            static_cast<size_t>(entry.beat_index) < ctx.map.beat_times.size()) {
-            beat_time = ctx.map.beat_times[static_cast<size_t>(entry.beat_index)];
-        }
-        return beat_time;
-    };
-}
-
-auto make_timed_time_fn() {
-    return [](const BeatEntryTimed& entry) { return entry.time_sec; };
-}
-
 template <typename Row, typename TimeFn>
 void schedule_shape_gate_bin(ScheduleContext& ctx,
                              const std::vector<Row>& bin,
@@ -178,8 +157,21 @@ void beat_scheduler_system(entt::registry& reg, [[maybe_unused]] float dt) {
     const float audio_offset_sec = settings ? settings::audio_offset_seconds(*settings) : 0.0f;
 
     ScheduleContext ctx{reg, *song, *map, audio_offset_sec};
-    const auto indexed_time = make_indexed_time_fn(ctx);
-    const auto timed_time   = make_timed_time_fn();
+    // Indexed bins resolve `beat_time` from `beat_times[beat_index]` when the
+    // onset table is loaded; otherwise they fall back to the BPM-derived grid
+    // time. Timed bins resolve `beat_time` directly from the authored
+    // `BeatEntryTimed::time_sec` column — membership in a `*_beats_timed`
+    // vector IS the precondition that an authored timestamp exists.
+    const auto indexed_time = [&ctx](const BeatEntry& entry) {
+        float beat_time = ctx.song.offset + entry.beat_index * ctx.song.beat_period;
+        if (!ctx.map.beat_times.empty() &&
+            entry.beat_index >= 0 &&
+            static_cast<size_t>(entry.beat_index) < ctx.map.beat_times.size()) {
+            beat_time = ctx.map.beat_times[static_cast<size_t>(entry.beat_index)];
+        }
+        return beat_time;
+    };
+    const auto timed_time = [](const BeatEntryTimed& entry) { return entry.time_sec; };
 
     schedule_shape_gate_bin(ctx, ctx.map.shape_gate_circle_beats,
                             ctx.song.next_shape_gate_circle_idx, indexed_time, Shape::Circle);
