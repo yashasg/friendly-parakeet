@@ -15,14 +15,6 @@ uint8_t checked_shape_mesh_index(Shape shape) {
     return static_cast<uint8_t>(index);
 }
 
-int checked_lane_index(int8_t lane) {
-    const int lane_index = static_cast<int>(lane);
-    if (lane_index < 0 || lane_index >= constants::LANE_COUNT) {
-        throw std::logic_error("Invalid required lane index");
-    }
-    return lane_index;
-}
-
 struct PendingEntity {
     entt::registry& reg;
     entt::entity entity;
@@ -117,7 +109,11 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
         auto* rlane = reg.try_get<int8_t>(logical);
         int lane_index = 0;
         if (rlane) {
-            lane_index = checked_lane_index(*rlane);
+            const int candidate = static_cast<int>(*rlane);
+            if (candidate < 0 || candidate >= constants::LANE_COUNT) {
+                throw std::logic_error("Invalid required lane index");
+            }
+            lane_index = candidate;
         }
         const bool has_req = has_required_shape_tag(reg, logical);
         uint8_t mesh_index = 0;
