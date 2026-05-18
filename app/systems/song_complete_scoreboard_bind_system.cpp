@@ -13,11 +13,11 @@
 namespace {
 
 // Bind context — owns the per-frame singleton reads so the per-slot
-// `bind_*` functions are pure transforms over their slot's `UiLabel`. The
-// optional pointers mirror the legacy controller's `ctx().find<...>()`
-// semantics: a SongResults / EnergyState / TerminalResultState may be
+// `bind_*` functions are pure transforms over their slot's `UiLabel`.
+// `SongResults`, `EnergyState`, and `TerminalResultState` may each be
 // absent during the Song Complete debounce window before
-// `game_state_enter_terminal_phase_song_complete` populates them.
+// `game_state_enter_terminal_phase_song_complete` populates them, so
+// they are carried as nullable pointers.
 //
 // Per-binder prefix (`SongComplete*`) avoids an anonymous-namespace ODR
 // collision with the sibling `*_bind_system.cpp` files when CMake Unity
