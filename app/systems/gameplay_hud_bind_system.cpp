@@ -33,11 +33,11 @@ constexpr float kChainAlphaRegular       = 0.7f;
 constexpr float kChainAlphaMeaningful    = 0.95f;
 constexpr float kEnergyLabelAlpha        = 0.8f;
 
-// Chain threshold: a "meaningful" chain is the explicit `>= 5` branch in
-// the legacy controller (drives the "!" suffix, the larger font, and the
-// background pulse halo).
+// "Meaningful" chain threshold: `chain >= 5` switches `bind_chain` to the
+// higher-tier font + alpha and adds the `ChainBgPulseTag` halo + "!" suffix.
 constexpr int kChainMeaningfulThreshold = 5;
-// Chain visibility threshold (legacy `score->chain_count >= 2`).
+// Chain visibility threshold: below `chain >= 2`, `bind_chain` clears the
+// label and drops the background-pulse tag.
 constexpr int kChainVisibleThreshold = 2;
 
 // Per-binder prefix (`GameplayHud*`) avoids an anonymous-namespace ODR
