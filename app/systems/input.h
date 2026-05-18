@@ -18,8 +18,9 @@
 //   • presence of `InputSourceMouse` ctx table  ⇔ Mouse owns the gesture
 //   • presence of `InputSourceTouch` ctx table  ⇔ Touch owns the gesture
 //   • absence of both                            ⇔ None
-// The mutex (at most one tag present) is enforced by the input_system
-// helpers `set_input_source_mouse / _touch` and `clear_input_source`.
+// The mutex (at most one tag present) is enforced inline at the two set
+// sites in input_system (insert one tag + erase the sibling) and via the
+// shared `clear_input_source` helper which drops both tags.
 struct InputSourceMouse {};
 struct InputSourceTouch {};
 
