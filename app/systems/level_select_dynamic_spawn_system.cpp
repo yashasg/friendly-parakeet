@@ -25,26 +25,15 @@ constexpr float kDiffBtnGap   = 30.0f;
 constexpr float kDiffStartX   = kCardX + 50.0f;
 constexpr float kDiffYOffset  = 120.0f;
 
+// Per Fabian Principle 1: indexed table, no switch on the discriminator.
+constexpr ActionId kDifficultyAction[content_config::DIFFICULTY_COUNT] = {
+    ActionId::DifficultyEasy,
+    ActionId::DifficultyMedium,
+    ActionId::DifficultyHard,
+};
+
 float card_y_for(int level_index) {
     return kCardStartY + static_cast<float>(level_index) * (kCardH + kCardGap);
-}
-
-float diff_x_for(int diff_index) {
-    return kDiffStartX +
-           static_cast<float>(diff_index) * (kDiffBtnW + kDiffBtnGap);
-}
-
-ActionId action_for_difficulty(int diff_index) {
-    // Per Fabian Principle 1: indexed table, no switch on the discriminator.
-    constexpr ActionId kRow[content_config::DIFFICULTY_COUNT] = {
-        ActionId::DifficultyEasy,
-        ActionId::DifficultyMedium,
-        ActionId::DifficultyHard,
-    };
-    if (diff_index < 0 || diff_index >= content_config::DIFFICULTY_COUNT) {
-        return ActionId::None;
-    }
-    return kRow[diff_index];
 }
 
 }  // namespace
@@ -84,11 +73,13 @@ void level_select_dynamic_spawn(entt::registry& reg) {
             reg.emplace<UiButtonTag>(e);
             reg.emplace<LevelIndex>(e, li);
             reg.emplace<DifficultyIndex>(e, di);
-            reg.emplace<UiPosition>(e, diff_x_for(di), diff_y);
+            reg.emplace<UiPosition>(e,
+                kDiffStartX + static_cast<float>(di) * (kDiffBtnW + kDiffBtnGap),
+                diff_y);
             reg.emplace<UiBounds>(e, kDiffBtnW, kDiffBtnH);
             auto& label = reg.emplace<UiLabel>(e);
             ui_label_set(label, content_config::DIFFICULTY_NAMES[di]);
-            reg.emplace<OnPress>(e, action_for_difficulty(di));
+            reg.emplace<OnPress>(e, kDifficultyAction[di]);
         }
     }
 }
