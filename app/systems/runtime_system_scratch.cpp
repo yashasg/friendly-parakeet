@@ -15,10 +15,6 @@ namespace {
 
 constexpr std::size_t kMinimumGameplayScratchCapacity = 8;
 
-std::size_t gameplay_capacity(std::size_t beat_capacity) {
-    return std::max(kMinimumGameplayScratchCapacity, beat_capacity);
-}
-
 }  // namespace
 
 void runtime_system_scratch_init(entt::registry& reg) {
@@ -35,7 +31,7 @@ void runtime_system_scratch_init(entt::registry& reg) {
 }
 
 void runtime_system_scratch_reserve(entt::registry& reg, std::size_t beat_capacity) {
-    const std::size_t capacity = gameplay_capacity(beat_capacity);
+    const std::size_t capacity = std::max(kMinimumGameplayScratchCapacity, beat_capacity);
     auto& scoring = reg.ctx().get<ScoringSystemScratch>();
     scoring.miss_buf.reserve(capacity);
     scoring.hit_buf.reserve(capacity);
