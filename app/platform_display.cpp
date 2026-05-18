@@ -46,22 +46,16 @@ struct WasmLoopState {
     bool visibilitychange_armed = false;
 };
 
-static void wasm_unset_beforeunload(WasmLoopState& state) {
-    if (!state.beforeunload_armed) return;
-    emscripten_set_beforeunload_callback(nullptr, nullptr);
-    state.beforeunload_armed = false;
-}
-
-static void wasm_unset_visibilitychange(WasmLoopState& state) {
-    if (!state.visibilitychange_armed) return;
-    emscripten_set_visibilitychange_callback(nullptr, false, nullptr);
-    state.visibilitychange_armed = false;
-}
-
 void platform_disarm_wasm_beforeunload(entt::registry& reg) {
     if (auto* state = reg.ctx().find<WasmLoopState>()) {
-        wasm_unset_beforeunload(*state);
-        wasm_unset_visibilitychange(*state);
+        if (state->beforeunload_armed) {
+            emscripten_set_beforeunload_callback(nullptr, nullptr);
+            state->beforeunload_armed = false;
+        }
+        if (state->visibilitychange_armed) {
+            emscripten_set_visibilitychange_callback(nullptr, false, nullptr);
+            state->visibilitychange_armed = false;
+        }
         state->reg = nullptr;
         state->accumulator = 0.0f;
     } else {
