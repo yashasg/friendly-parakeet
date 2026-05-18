@@ -3,8 +3,7 @@
 #include <entt/entt.hpp>
 
 // Keeps per-screen UI entity sets in sync with the active `GamePhase*Tag`
-// ctx mirror (issue #1287, refs #1193 OoS-A; legacy controllers deleted
-// in #1308).
+// ctx mirror (issue #1287, refs #1193 OoS-A).
 //
 // Per Fabian's existential processing, the membership "which entities
 // belong to which screen" lives in tag presence — not in an enum field,
