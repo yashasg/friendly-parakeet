@@ -85,25 +85,6 @@ bool load_text_fonts(TextContext& ctx, const char* font_path) {
     return true;
 }
 
-bool load_default_text_fonts(TextContext& ctx) {
-    std::string exe_font = util::join_app_dir(
-        GetApplicationDirectory(), "content/fonts/LiberationMono-Regular.ttf");
-    const char* font_paths[] = {
-        exe_font.c_str(),
-        "content/fonts/LiberationMono-Regular.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
-    };
-    for (const char* path : font_paths) {
-        if (load_text_fonts(ctx, path)) {
-            TraceLog(LOG_INFO, "Loaded font: %s", path);
-            return true;
-        }
-    }
-    TraceLog(LOG_ERROR, "Could not load any TTF font");
-    return false;
-}
-
 // Status → (log_level, message_template) lookup table. Per Fabian's
 // existential processing (issue #1277), behavior dispatch on the `Status`
 // discriminator is replaced with a value→data lookup — same shape as the
@@ -182,10 +163,31 @@ bool game_loop_init(entt::registry& reg,
     sfx_bank_init(reg);
     TraceLog(LOG_INFO, "SHAPESHIFTER v%s", SHAPESHIFTER_VERSION);
 
-    // Text rendering
+    // Text rendering — fall back through bundled, repo-relative, and OS
+    // system font paths in order; the first one `load_text_fonts` accepts
+    // wins. `load_text_fonts` itself remains the anon-ns helper because
+    // its cleanup-on-partial-load logic warrants the abstraction.
     {
         auto& text_ctx = reset_ctx_singleton<TextContext>(reg);
-        load_default_text_fonts(text_ctx);
+        std::string exe_font = util::join_app_dir(
+            GetApplicationDirectory(), "content/fonts/LiberationMono-Regular.ttf");
+        const char* font_paths[] = {
+            exe_font.c_str(),
+            "content/fonts/LiberationMono-Regular.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        };
+        bool loaded = false;
+        for (const char* path : font_paths) {
+            if (load_text_fonts(text_ctx, path)) {
+                TraceLog(LOG_INFO, "Loaded font: %s", path);
+                loaded = true;
+                break;
+            }
+        }
+        if (!loaded) {
+            TraceLog(LOG_ERROR, "Could not load any TTF font");
+        }
     }
 
     // Core singletons
