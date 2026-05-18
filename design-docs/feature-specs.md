@@ -200,8 +200,7 @@ void wire_input_dispatcher(entt::registry& reg);
 // `ui_update_system` to hit-test `UiPosition`/`UiBounds`/`OnPress`
 // entities and dispatch the matching action. The screen-spawner
 // functions in `app/systems/generated/<screen>_screen.cpp` (codegen output)
-// emplace those entities at phase entry; the prior per-screen raygui
-// producer layer was deleted in #1308. Gameplay HUD lane buttons
+// emplace those entities at phase entry. Gameplay HUD lane buttons
 // (Circle / Square / Triangle) emit `ShapePress*Event`s through this
 // same system; the Pause button enqueues a `NextPhasePausedTag` phase
 // transition.
