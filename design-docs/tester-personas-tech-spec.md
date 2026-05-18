@@ -327,7 +327,8 @@ multiple events per frame; the constraint lives entirely inside test_player.
 test_player runs OUTSIDE the fixed timestep, so a single enqueue may flow
 through two fixed-step iterations within one render frame. Verified safe:
 each `ButtonPressEvent` fires once (the dispatcher drains its queue per
-pump), and `player_input_system` checks the current `ShapeWindow.phase`
+pump), and `player_input_system` checks for `ShapeWindowMorphInTag` /
+`ShapeWindowActiveTag` / `ShapeWindowMorphOutTag` presence (#1202/#1204)
 before mutating — re-entry on a window that is already MorphIn / Active is
 a no-op.
 
