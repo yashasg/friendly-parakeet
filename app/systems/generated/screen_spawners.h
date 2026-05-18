@@ -15,8 +15,7 @@
 //
 // Wired by `screen_lifecycle_system` (`app/systems/screen_lifecycle_system.h`),
 // which keeps the entity set in sync with the active `GamePhase*Tag` ctx
-// mirror seeded by `enter_phase<...>()`. Replaces the legacy
-// `app/ui/screen_controllers/*` controllers that #1308 deleted.
+// mirror seeded by `enter_phase<...>()`.
 
 void spawn_title_screen(entt::registry& reg);
 void despawn_title_screen(entt::registry& reg);
