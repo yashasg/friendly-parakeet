@@ -5,12 +5,6 @@
 
 namespace {
 
-void erase_end_choice_tags(entt::registry& reg) {
-    if (reg.ctx().find<EndChoiceRestart>())     reg.ctx().erase<EndChoiceRestart>();
-    if (reg.ctx().find<EndChoiceLevelSelect>()) reg.ctx().erase<EndChoiceLevelSelect>();
-    if (reg.ctx().find<EndChoiceMainMenu>())    reg.ctx().erase<EndChoiceMainMenu>();
-}
-
 // One transform per former enum value (Fabian's "transform per tag" mechanic,
 // issue #1202/#1204, PR G). The former `gs.phase == GamePhase::X` checks now
 // dispatch on per-phase tag presence in `reg.ctx()`; the former
@@ -23,7 +17,8 @@ void erase_end_choice_tags(entt::registry& reg) {
 // so a choice latched during the input-delay window persists until the delay
 // elapses — matching the pre-migration semantics. The handlers are mutually
 // exclusive in practice because input routing only ever emplaces one tag per
-// press; erase_end_choice_tags on consumption keeps that invariant explicit.
+// press; erasing all three choice tags on consumption keeps that invariant
+// explicit.
 template <typename ChoiceTag, typename NextPhaseTag>
 void apply_end_choice(entt::registry& reg) {
     if (!reg.ctx().find<ChoiceTag>()) return;
@@ -35,7 +30,9 @@ void apply_end_choice(entt::registry& reg) {
         ctx.contains<GamePhaseSongCompleteTag>() && gs.phase_timer > constants::SONG_COMPLETE_INPUT_DELAY;
     if (!(game_over_ready || song_complete_ready)) return;
     request_phase_transition<NextPhaseTag>(reg);
-    erase_end_choice_tags(reg);
+    if (reg.ctx().find<EndChoiceRestart>())     reg.ctx().erase<EndChoiceRestart>();
+    if (reg.ctx().find<EndChoiceLevelSelect>()) reg.ctx().erase<EndChoiceLevelSelect>();
+    if (reg.ctx().find<EndChoiceMainMenu>())    reg.ctx().erase<EndChoiceMainMenu>();
 }
 
 }  // namespace
