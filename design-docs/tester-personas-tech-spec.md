@@ -413,13 +413,14 @@ a no-op.
 ```
   Player at lane 0, needs lane 2:
 
-  Frame N:    key_d → lane.target = 1, lerp_t = 0
-  Frame N+5:  transition complete, lane.current = 1, lane.target = -1
-  Frame N+6:  key_d → lane.target = 2, lerp_t = 0
-  Frame N+11: transition complete, lane.current = 2
+  Frame N:    key_d → emplace LaneTransition{target=1, lerp_t=0}
+  Frame N+5:  transition complete, Lane.current = 1, LaneTransition removed
+  Frame N+6:  key_d → emplace LaneTransition{target=2, lerp_t=0}
+  Frame N+11: transition complete, Lane.current = 2
 
-  Guard: only inject key_a/d when lane.target == -1
-  (no transition in progress). Prevents restarting a mid-transition.
+  Guard: only inject key_a/d when no LaneTransition row is present on the
+  player entity (no transition in progress per #1533). Prevents restarting
+  a mid-transition.
 
   Total: ~0.17s (11 frames at 60fps)
 ```

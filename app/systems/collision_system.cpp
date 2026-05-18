@@ -76,7 +76,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     auto player_entity = *player_view.begin();
     auto [p_transform, p_shape, p_window, p_lane] =
         player_view.get<WorldPosition, PlayerShape, ShapeWindow, Lane>(player_entity);
-    lane_utils::normalize(p_lane, &p_transform);
+    lane_utils::normalize(reg, player_entity, p_lane, &p_transform);
     (void)p_shape;
 
     auto& song = reg.ctx().get<SongState>();

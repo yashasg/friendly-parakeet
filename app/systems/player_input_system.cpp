@@ -34,10 +34,13 @@ void try_lane_shift(entt::registry& reg, int8_t delta) {
     if (!gameplay_input_enabled(reg)) return;
     auto view = reg.view<PlayerTag, PlayerShape, ShapeWindow, Lane>();
     for (auto [entity, pshape, swindow, lane] : view.each()) {
-        lane_utils::normalize(lane);
-        const bool lane_switch_active =
-            lane_utils::is_valid(lane.target) && lane.target != lane.current;
-        if (lane_switch_active) {
+        lane_utils::normalize(reg, entity, lane);
+        // Presence of `LaneTransition` IS the "mid-transition" signal
+        // (Fabian Principle 3, issue #1533). Skip stale rows whose target
+        // already matches current (normalize won't strip those; they
+        // collapse on the next movement tick).
+        if (auto* transition = reg.try_get<LaneTransition>(entity);
+            transition && transition->target != lane.current) {
             (void)pshape;
             (void)swindow;
             continue;
@@ -48,8 +51,7 @@ void try_lane_shift(entt::registry& reg, int8_t delta) {
             (void)swindow;
             continue;
         }
-        lane.target = next;
-        lane.lerp_t = 0.0f;
+        reg.emplace_or_replace<LaneTransition>(entity, LaneTransition{next, 0.0f});
         push_haptic(reg, HapticEvent::LaneSwitch);
         (void)pshape;
         (void)swindow;
@@ -73,10 +75,9 @@ void try_vertical(entt::registry& reg, Op&& op) {
             (void)lane;
             continue;
         }
-        lane_utils::normalize(lane);
-        const bool lane_switch_active =
-            lane_utils::is_valid(lane.target) && lane.target != lane.current;
-        if (lane_switch_active) {
+        lane_utils::normalize(reg, entity, lane);
+        if (auto* transition = reg.try_get<LaneTransition>(entity);
+            transition && transition->target != lane.current) {
             (void)pshape;
             (void)swindow;
             continue;

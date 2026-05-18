@@ -6,20 +6,20 @@
 // menu events (#1277) — producers → game_state_system drain (authoritative)
 // → player_input listeners.
 //
-// All assertions are on player component state (Lane::target, ShapeWindow::phase,
-// PlayerShape::current) — never on raw event queues.
+// All assertions are on player component state (LaneTransition presence,
+// shape window phase tags, PlayerShape::current) — never on raw event queues.
 // This makes the tests implementation-agnostic: helpers enqueue semantic
 // events directly; game_state_system drains the queues and listeners mutate
 // player state in the same fixed tick. The observable outcomes are the
 // stable contract.
 //
 // Failure modes these tests guard against:
-//   - One-frame latency: swipe arrives but lane.target unchanged until next tick
+//   - One-frame latency: swipe arrives but no LaneTransition row until next tick
 //     (would occur if game_state_system's disp.update<GoEvent>() call were
 //     removed or moved after player_input_handle_go runs)
 //   - Dropped semantic shape press: ShapePress*Event arrives but sw.phase stays Idle
 //   - Wrong-phase activation: button presses fire in an inactive phase
-//   - Event replay: second pipeline tick resets lane.lerp_t (symptom: #213 bug)
+//   - Event replay: second pipeline tick resets LaneTransition.lerp_t (symptom: #213 bug)
 
 #include <catch2/catch_test_macros.hpp>
 #include "util/keyboard_shape_mapping.h"
@@ -107,7 +107,8 @@ TEST_CASE("pipeline: swipe right produces lane change in same pipeline call — 
     push_go_right(reg);
     run_pipeline(reg);
 
-    CHECK(lane.target == 2);
+    REQUIRE(reg.all_of<LaneTransition>(player));
+    CHECK(reg.get<LaneTransition>(player).target == 2);
 }
 
 TEST_CASE("pipeline: swipe left produces lane change in same pipeline call — no latency",
@@ -120,7 +121,8 @@ TEST_CASE("pipeline: swipe left produces lane change in same pipeline call — n
     push_go_left(reg);
     run_pipeline(reg);
 
-    CHECK(lane.target == 0);
+    REQUIRE(reg.all_of<LaneTransition>(player));
+    CHECK(reg.get<LaneTransition>(player).target == 0);
 }
 
 TEST_CASE("pipeline: swipe Up/Down has no lane effect",
@@ -129,14 +131,16 @@ TEST_CASE("pipeline: swipe Up/Down has no lane effect",
     auto player = make_rhythm_player(reg);
     auto& lane = reg.get<Lane>(player);
 
-    // Settle lane.target to current so we have a clear baseline.
-    lane.target = lane.current;   // both == 1
+    // Settle the player with no LaneTransition row → "no transition" baseline.
+    REQUIRE_FALSE(reg.all_of<LaneTransition>(player));
 
     push_go_up(reg);
     push_go_down(reg);
     run_pipeline(reg);
 
-    CHECK(lane.target == 1);   // unchanged: Up/Down produce no lane delta
+    // Up/Down produce no lane delta — no LaneTransition row should appear.
+    CHECK_FALSE(reg.all_of<LaneTransition>(player));
+    CHECK(lane.current == 1);
 }
 
 
@@ -174,13 +178,14 @@ TEST_CASE("pipeline: swipe right at right boundary does not wrap lane",
 
     // Settle player at rightmost lane.
     lane.current = static_cast<int8_t>(constants::LANE_COUNT - 1);
-    lane.target  = lane.current;
+    REQUIRE_FALSE(reg.all_of<LaneTransition>(player));
 
     push_go_right(reg);
     run_pipeline(reg);
 
-    // At boundary delta==0: the go-event handler skips the assignment block.
-    CHECK(lane.target == constants::LANE_COUNT - 1);
+    // At boundary delta==0: the go-event handler skips the emplace block.
+    CHECK_FALSE(reg.all_of<LaneTransition>(player));
+    CHECK(lane.current == constants::LANE_COUNT - 1);
 }
 
 // ── Semantic shape press → shape change ───────────────────────────────────
@@ -204,12 +209,12 @@ TEST_CASE("pipeline: semantic shape press does not change lane target",
     auto player = make_rhythm_player(reg);
     auto& lane = reg.get<Lane>(player);
     REQUIRE(lane.current == 1);
-    lane.target = lane.current;
+    REQUIRE_FALSE(reg.all_of<LaneTransition>(player));
 
     reg.ctx().get<entt::dispatcher>().enqueue<ShapePressCircleEvent>({});
     run_pipeline(reg);
 
-    CHECK(lane.target == 1);
+    CHECK_FALSE(reg.all_of<LaneTransition>(player));
 }
 
 TEST_CASE("pipeline: desktop keyboard slot mapping keeps Z/X/C shape order",
@@ -226,7 +231,7 @@ TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input
     auto& lane = reg.get<Lane>(player);
     REQUIRE(window_phase_is_idle(reg, player));
     REQUIRE(lane.current == 1);
-    lane.target = lane.current;
+    REQUIRE_FALSE(reg.all_of<LaneTransition>(player));
     apply_button_presses_for_test(reg,
                                   false,
                                   false,
@@ -236,7 +241,7 @@ TEST_CASE("pipeline: gameplay HUD raygui shape press triggers player shape input
 
     CHECK(window_phase_is_morph_in(reg, player));
     CHECK(current_target_shape(reg, player) == Shape::Square);
-    CHECK(lane.target == 1);
+    CHECK_FALSE(reg.all_of<LaneTransition>(player));
 }
 
 TEST_CASE("pipeline: gameplay HUD pointer release is collected before the fixed tick",
@@ -281,7 +286,8 @@ TEST_CASE("pipeline: mobile button-zone touch release is collected independently
 
     CHECK(window_phase_is_morph_in(reg, player));
     CHECK(current_target_shape(reg, player) == Shape::Square);
-    CHECK(lane.target == 2);
+    REQUIRE(reg.all_of<LaneTransition>(player));
+    CHECK(reg.get<LaneTransition>(player).target == 2);
 }
 
 TEST_CASE("pipeline: swipe-zone touch release over shape HUD does not press shape",
@@ -292,7 +298,7 @@ TEST_CASE("pipeline: swipe-zone touch release over shape HUD does not press shap
     auto& lane = reg.get<Lane>(player);
     REQUIRE(window_phase_is_idle(reg, player));
     REQUIRE(lane.current == 1);
-    lane.target = lane.current;
+    REQUIRE_FALSE(reg.all_of<LaneTransition>(player));
 
     const auto square_bounds = kHudSquareBoundsForTest;
     input.touch_up = true;
@@ -305,7 +311,8 @@ TEST_CASE("pipeline: swipe-zone touch release over shape HUD does not press shap
     run_pipeline(reg);
 
     CHECK(window_phase_is_idle(reg, player));
-    CHECK(lane.target == 2);
+    REQUIRE(reg.all_of<LaneTransition>(player));
+    CHECK(reg.get<LaneTransition>(player).target == 2);
 }
 
 TEST_CASE("pipeline: gameplay HUD pause release is collected before the fixed tick",
@@ -351,8 +358,7 @@ TEST_CASE("pipeline: pending phase transition blocks queued shape input",
     REQUIRE(reg.ctx().contains<GamePhasePlayingTag>());
     REQUIRE(window_phase_is_idle(reg, player));
     REQUIRE(lane.current == 1);
-    lane.target = lane.current;
-    REQUIRE(lane.target == 1);
+    REQUIRE_FALSE(reg.all_of<LaneTransition>(player));
 
     request_phase_transition<NextPhasePausedTag>(reg);
     reg.ctx().get<entt::dispatcher>().enqueue<ShapePressCircleEvent>({});
@@ -363,7 +369,7 @@ TEST_CASE("pipeline: pending phase transition blocks queued shape input",
     CHECK_FALSE(is_phase_transition_pending(reg));
     CHECK(window_phase_is_idle(reg, player));
     CHECK(current_target_shape(reg, player) == Shape::Hexagon);
-    CHECK(lane.target == 1);
+    CHECK_FALSE(reg.all_of<LaneTransition>(player));
 }
 
 TEST_CASE("pipeline: pending phase transition blocks queued go input",
@@ -374,8 +380,7 @@ TEST_CASE("pipeline: pending phase transition blocks queued go input",
 
     REQUIRE(reg.ctx().contains<GamePhasePlayingTag>());
     REQUIRE(lane.current == 1);
-    lane.target = lane.current;
-    REQUIRE(lane.target == 1);
+    REQUIRE_FALSE(reg.all_of<LaneTransition>(player));
     REQUIRE_FALSE(reg.any_of<Jumping, Sliding>(player));
 
     request_phase_transition<NextPhasePausedTag>(reg);
@@ -386,7 +391,7 @@ TEST_CASE("pipeline: pending phase transition blocks queued go input",
 
     CHECK(reg.ctx().contains<GamePhasePausedTag>());
     CHECK_FALSE(is_phase_transition_pending(reg));
-    CHECK(lane.target == 1);
+    CHECK_FALSE(reg.all_of<LaneTransition>(player));
     CHECK_FALSE(reg.any_of<Jumping, Sliding>(player));
 }
 
@@ -501,7 +506,8 @@ TEST_CASE("pipeline: mixed swipe and tap both take effect within a single pipeli
 
     run_pipeline(reg);
 
-    CHECK(lane.target     == 2);                  // explicit swipe moves lanes
+    REQUIRE(reg.all_of<LaneTransition>(player));
+    CHECK(reg.get<LaneTransition>(player).target == 2);    // explicit swipe moves lanes
     CHECK(window_phase_is_morph_in(reg, player)); // tap processed
     CHECK(current_target_shape(reg, player) == Shape::Triangle);
 }
@@ -528,11 +534,11 @@ TEST_CASE("pipeline: same-frame shape tap drains before movement",
 // ── No-latency regression ─────────────────────────────────────────────────
 //
 // If the refactor introduces a one-frame latency (e.g., GoEvent enqueued but
-// the authoritative game_state_system drain does not run), lane.target will still
-// equal lane.current after this call.  The check "lane.target != lane.current"
-// is the regression signal.
+// the authoritative game_state_system drain does not run), no LaneTransition
+// row will be present after this call.  The check "LaneTransition present
+// && target != current" is the regression signal.
 
-TEST_CASE("pipeline: swipe effect visible immediately — lane.target differs from lane.current after single pipeline call",
+TEST_CASE("pipeline: swipe effect visible immediately — LaneTransition target differs from lane.current after single pipeline call",
           "[input_pipeline]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
@@ -542,39 +548,41 @@ TEST_CASE("pipeline: swipe effect visible immediately — lane.target differs fr
     push_go_left(reg);
     run_pipeline(reg);
 
-    CHECK(lane.target != lane.current);  // must differ: effect is immediate, not deferred
-    CHECK(lane.target == 0);
+    REQUIRE(reg.all_of<LaneTransition>(player));
+    const auto& transition = reg.get<LaneTransition>(player);
+    CHECK(transition.target != lane.current);  // must differ: effect is immediate, not deferred
+    CHECK(transition.target == 0);
 }
 
 // ── Event consumption: no replay across sub-ticks (#213) ──────────────────
 //
 // The fixed-step accumulator may invoke pipeline systems more than once per
 // render frame.  After the first sub-tick consumes a swipe, subsequent
-// sub-ticks must NOT replay it and must not reset lane.lerp_t.
+// sub-ticks must NOT replay it and must not reset LaneTransition.lerp_t.
 //
 // After game_state_system drains semantic queues, a second sub-tick with no
 // new events is a no-op and must not replay.
 
-TEST_CASE("pipeline: swipe consumed after first sub-tick — second sub-tick does not reset lane.lerp_t (#213 behavior)",
+TEST_CASE("pipeline: swipe consumed after first sub-tick — second sub-tick does not reset LaneTransition.lerp_t (#213 behavior)",
           "[input_pipeline]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& lane = reg.get<Lane>(player);
 
     // Sub-tick 1: inject swipe and run pipeline.
     push_go_right(reg);
     run_pipeline(reg);
-    CHECK(lane.target  == 2);
-    CHECK(lane.lerp_t  == 0.0f);
+    REQUIRE(reg.all_of<LaneTransition>(player));
+    CHECK(reg.get<LaneTransition>(player).target == 2);
+    CHECK(reg.get<LaneTransition>(player).lerp_t == 0.0f);
 
     // Simulate partial lerp (as player_movement_system would produce).
-    lane.lerp_t = 0.4f;
+    reg.get<LaneTransition>(player).lerp_t = 0.4f;
 
     // Sub-tick 2: no new semantic inputs pushed — run_pipeline is a no-op.
     run_pipeline(reg);
 
-    CHECK(lane.lerp_t == 0.4f);  // not reset: swipe was consumed on sub-tick 1
-    CHECK(lane.target == 2);     // target unchanged
+    CHECK(reg.get<LaneTransition>(player).lerp_t == 0.4f);  // not reset: swipe was consumed on sub-tick 1
+    CHECK(reg.get<LaneTransition>(player).target == 2);     // target unchanged
 }
 
 TEST_CASE("pipeline: tap consumed after first sub-tick — second sub-tick does not re-open shape window (#213 behavior)",

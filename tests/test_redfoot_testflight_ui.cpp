@@ -96,8 +96,9 @@ void spawn_aligned_player(entt::registry& reg, float y) {
     ShapeWindow sw{};
     reg.emplace<ShapeWindow>(p, sw);
     // Idle phase = absence of all ShapeWindow*Tag (#1202/#1204).
-    Lane lane{}; lane.current = 1; lane.target = -1;
+    Lane lane{}; lane.current = 1;
     reg.emplace<Lane>(p, lane);
+    // No LaneTransition row → settled (per #1533).
     // Grounded = absence of Jumping/Sliding (#1202/#1204).
 }
 

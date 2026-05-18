@@ -157,9 +157,7 @@ TEST_CASE("collision: on-beat shape press requires player hitbox to reach target
     reg.get<int8_t>(obs) = int8_t{0};
     reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
 
-    auto& lane = reg.get<Lane>(player);
-    lane.target = 0;
-    lane.lerp_t = 0.0f;
+    reg.emplace<LaneTransition>(player, LaneTransition{0, 0.0f});
 
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
@@ -167,9 +165,11 @@ TEST_CASE("collision: on-beat shape press requires player hitbox to reach target
     song.song_time += song.morph_duration + 0.001f;
     shape_window_system(reg, song.morph_duration + 0.001f);
 
+    const auto& lane = reg.get<Lane>(player);
+    const auto& transition = reg.get<LaneTransition>(player);
     const auto& transform = reg.get<WorldPosition>(player);
     REQUIRE(lane.current == 1);
-    REQUIRE(lane.target == 0);
+    REQUIRE(transition.target == 0);
     REQUIRE(transform.position.x == constants::LANE_X[1]);
 
     collision_system(reg, 0.016f);

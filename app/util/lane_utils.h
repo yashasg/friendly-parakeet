@@ -4,12 +4,13 @@
 #include "../components/transform.h"
 #include "../constants.h"
 
+#include <entt/entt.hpp>
+
 #include <cmath>
 #include <cstdint>
 
 namespace lane_utils {
 
-inline constexpr int8_t kNoTargetLane = -1;
 inline constexpr int8_t kDefaultLane = static_cast<int8_t>(constants::DEFAULT_LANE);
 
 inline bool is_valid(int lane) {
@@ -39,27 +40,36 @@ inline int8_t nearest_lane_for_x(float x) {
     return nearest_lane;
 }
 
-inline bool normalize(Lane& lane, WorldPosition* transform = nullptr) {
+// Validates the player's lane row + any in-flight `LaneTransition` row
+// (issue #1533): an invalid `current` snaps back to the default lane and
+// cancels the transition; an invalid `LaneTransition::target` cancels the
+// transition. Returns true if anything was repaired.
+inline bool normalize(entt::registry& reg,
+                      entt::entity entity,
+                      Lane& lane,
+                      WorldPosition* transform = nullptr) {
+    bool repaired = false;
     if (!is_valid(lane.current)) {
         lane.current = kDefaultLane;
-        lane.target = kNoTargetLane;
-        lane.lerp_t = 1.0f;
+        if (reg.all_of<LaneTransition>(entity)) {
+            reg.remove<LaneTransition>(entity);
+        }
         if (transform) {
             snap_to_current_lane(lane, *transform);
         }
         return true;
     }
 
-    if (lane.target != kNoTargetLane && !is_valid(lane.target)) {
-        lane.target = kNoTargetLane;
-        lane.lerp_t = 1.0f;
+    if (auto* transition = reg.try_get<LaneTransition>(entity);
+        transition && !is_valid(transition->target)) {
+        reg.remove<LaneTransition>(entity);
         if (transform) {
             snap_to_current_lane(lane, *transform);
         }
-        return true;
+        repaired = true;
     }
 
-    return false;
+    return repaired;
 }
 
 }  // namespace lane_utils
