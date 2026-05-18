@@ -26,10 +26,6 @@ WasmSmokeLaneMarkerState& wasm_smoke_lane_marker_state(entt::registry& reg) {
     return reg.ctx().emplace<WasmSmokeLaneMarkerState>();
 }
 
-void reset_web_playing_lane_marker(entt::registry& reg) {
-    wasm_smoke_lane_marker_state(reg).last_lane = -1;
-}
-
 void update_web_playing_lane_marker(entt::registry& reg) {
     auto& marker = wasm_smoke_lane_marker_state(reg);
     if (!reg.ctx().contains<GamePhasePlayingTag>()) {
@@ -166,7 +162,7 @@ void game_state_system(entt::registry& reg, float dt) {
         clear_next_phase_tags(reg);
 #if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
         if (!reg.ctx().contains<GamePhasePlayingTag>()) {
-            reset_web_playing_lane_marker(reg);
+            wasm_smoke_lane_marker_state(reg).last_lane = -1;
         }
 #endif
         return;
