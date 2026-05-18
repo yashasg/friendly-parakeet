@@ -121,17 +121,12 @@ constexpr PersistenceLogRow kPersistenceLogTable[] = {
     {persistence::Status::CorruptData, LOG_WARNING, "%s: corrupt data (defaults in use)"},
 };
 
-const PersistenceLogRow* find_persistence_log_row(persistence::Status status) {
-    for (const auto& row : kPersistenceLogTable) {
-        if (row.status == status) return &row;
-    }
-    return nullptr;
-}
-
 void log_persistence_result(const char* operation, const persistence::Result& result) {
-    if (const auto* row = find_persistence_log_row(result.status)) {
-        TraceLog(row->log_level, row->message_fmt, operation);
-        return;
+    for (const auto& row : kPersistenceLogTable) {
+        if (row.status == result.status) {
+            TraceLog(row.log_level, row.message_fmt, operation);
+            return;
+        }
     }
     // Fallback for statuses not in the table (any failure status that isn't
     // CorruptData) — stringify via persistence::status_name and include the
