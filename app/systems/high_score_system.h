@@ -42,9 +42,6 @@ int32_t get_score_by_hash(const entt::registry& reg, entt::hashed_string::hash_t
 // Insert or update entry by string key. Returns false if the table is full.
 bool set_score(entt::registry& reg, const char* key, int32_t score);
 
-// Update an existing entry's score by hash. Returns false if hash is not found.
-bool set_score_by_hash(entt::registry& reg, entt::hashed_string::hash_type hash, int32_t score);
-
 // Ensure an entry exists for key with score 0 if not already present.
 // Returns false if the table is full.
 bool ensure_entry(entt::registry& reg, const char* key);

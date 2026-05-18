@@ -109,17 +109,6 @@ bool set_score(entt::registry& reg, const char* key, int32_t score) {
     return false;
 }
 
-bool set_score_by_hash(entt::registry& reg, entt::hashed_string::hash_type hash, int32_t score) {
-    const auto entity = find_entry_by_hash(reg, hash);
-    if (entity == entt::null) {
-        TraceLog(LOG_WARNING, "High score entry hash %u not found; score update skipped",
-                 static_cast<unsigned int>(hash));
-        return false;
-    }
-    reg.get<HighScoreEntry>(entity).score = score;
-    return true;
-}
-
 bool ensure_entry(entt::registry& reg, const char* key) {
     if (find_entry_by_key(reg, key) != entt::null) return true;
     if (entry_count(reg) < HighScoreState::MAX_ENTRIES) {
@@ -282,7 +271,13 @@ bool update_if_higher(entt::registry& reg, const HighScoreSession& session, int3
     if (new_score < 0) new_score = 0;
     int32_t stored = get_score_by_hash(reg, session.key_hash);
     if (new_score > stored) {
-        return set_score_by_hash(reg, session.key_hash, new_score);
+        const auto entity = find_entry_by_hash(reg, session.key_hash);
+        if (entity == entt::null) {
+            TraceLog(LOG_WARNING, "High score entry hash %u not found; score update skipped",
+                     static_cast<unsigned int>(session.key_hash));
+            return false;
+        }
+        reg.get<HighScoreEntry>(entity).score = new_score;
     }
     return true;
 }
