@@ -95,33 +95,6 @@ bool path_uses_web_persistence(const std::filesystem::path& path) {
 }
 #endif
 
-std::filesystem::path resolve_root_dir(const std::filesystem::path& root_override) {
-    if (!root_override.empty()) {
-        return root_override;
-    }
-
-#ifdef _WIN32
-    const char* appdata = std::getenv("APPDATA");
-    if (appdata) return std::filesystem::path(appdata) / "shapeshifter";
-    return {};
-#elif defined(__EMSCRIPTEN__)
-    return std::filesystem::path(kWebPersistenceRoot);
-#else
-    const char* home = std::getenv("HOME");
-    if (!home) {
-        const passwd* pw = getpwuid(getuid());
-        if (pw) home = pw->pw_dir;
-    }
-    if (!home) return {};
-
-#if defined(__APPLE__) && defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
-    return std::filesystem::path(home) / "Library" / "Application Support" / "shapeshifter";
-#else
-    return std::filesystem::path(home) / ".shapeshifter";
-#endif
-#endif
-}
-
 }  // namespace
 
 std::error_code ensure_directory_exists(const std::filesystem::path& dir) {
@@ -153,7 +126,32 @@ Result resolve_paths(Paths& out_paths, const std::filesystem::path& root_overrid
     }
 #endif
 
-    const auto root_dir = resolve_root_dir(root_override);
+    const auto root_dir = [&]() -> std::filesystem::path {
+        if (!root_override.empty()) {
+            return root_override;
+        }
+
+#ifdef _WIN32
+        const char* appdata = std::getenv("APPDATA");
+        if (appdata) return std::filesystem::path(appdata) / "shapeshifter";
+        return {};
+#elif defined(__EMSCRIPTEN__)
+        return std::filesystem::path(kWebPersistenceRoot);
+#else
+        const char* home = std::getenv("HOME");
+        if (!home) {
+            const passwd* pw = getpwuid(getuid());
+            if (pw) home = pw->pw_dir;
+        }
+        if (!home) return {};
+
+#if defined(__APPLE__) && defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
+        return std::filesystem::path(home) / "Library" / "Application Support" / "shapeshifter";
+#else
+        return std::filesystem::path(home) / ".shapeshifter";
+#endif
+#endif
+    }();
     if (root_dir.empty()) {
         return Result{Status::PathUnavailable, {}};
     }
