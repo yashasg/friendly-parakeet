@@ -246,14 +246,6 @@ ValidationConstants load_validation_constants(const std::string& app_dir) {
     return vc;
 }
 
-static std::optional<Shape> parse_shape(const std::string& s) {
-    if (s == "circle")   return Shape::Circle;
-    if (s == "square")   return Shape::Square;
-    if (s == "triangle") return Shape::Triangle;
-    if (s == "hexagon")  return Shape::Hexagon;
-    return std::nullopt;
-}
-
 // ── Per-(kind, shape, timing-source) beat-entry sinks (#1202/#1204/#1533) ──
 // The former `BeatEntry::shape` discriminator is encoded by which per-shape
 // vector receives the entry; the former `BeatEntry::has_time_sec` optionality
@@ -520,14 +512,18 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
                 parse_ok = false;
                 continue;
             }
-            auto shape_opt = parse_shape(shape_str);
-            if (!shape_opt) {
+            bool shape_recognised = true;
+            if      (shape_str == "circle")   parsed_shape = Shape::Circle;
+            else if (shape_str == "square")   parsed_shape = Shape::Square;
+            else if (shape_str == "triangle") parsed_shape = Shape::Triangle;
+            else if (shape_str == "hexagon")  parsed_shape = Shape::Hexagon;
+            else                              shape_recognised = false;
+            if (!shape_recognised) {
                 errors.push_back({entry.beat_index,
                     "Unknown shape '" + shape_str + "' at beat " + std::to_string(entry.beat_index)});
                 parse_ok = false;
                 continue;
             }
-            parsed_shape = *shape_opt;
             has_parsed_shape = true;
         } else if (kind_string_requires_payload(kind_str)) {
             errors.push_back({entry.beat_index,
