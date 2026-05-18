@@ -27,20 +27,8 @@
 
 namespace {
 
-// Session setup owns when a player is spawned; player_entity owns how.
-void spawn_session_player(entt::registry& reg) {
-    create_player_entity(reg);
-}
-
 bool is_runtime_allowed_validation_error(const BeatMapError& error) {
     return error.message == "Different-shape gates must be >= 3 beats apart";
-}
-
-int count_result_notes(const BeatMap& beatmap) {
-    // Per-(kind, shape) tables (#1202/#1204): result-counted notes are the
-    // scoring-eligible kinds — ShapeGate + SplitPath. OnsetMarker
-    // entries are non-scorable cues and don't contribute.
-    return static_cast<int>(beat_map_required_count(beatmap));
 }
 
 bool load_runtime_beat_map(const char* path,
@@ -254,7 +242,10 @@ void setup_play_session(entt::registry& reg) {
     assign_or_emplace_ctx(reg, EnergyState{});
     {
         SongResults results{};
-        results.total_notes = count_result_notes(beatmap);
+        // Per-(kind, shape) tables (#1202/#1204): result-counted notes are
+        // the scoring-eligible kinds — ShapeGate + SplitPath. OnsetMarker
+        // entries are non-scorable cues and don't contribute.
+        results.total_notes = static_cast<int>(beat_map_required_count(beatmap));
         assign_or_emplace_ctx(reg, results);
     }
     // Clear any death-cause and end-screen-choice tags carried over from a
@@ -272,7 +263,8 @@ void setup_play_session(entt::registry& reg) {
         current.value = session ? high_score::get_current_high_score(*hs, *session) : 0;
     }
 
-    spawn_session_player(reg);
+    // play_session owns when a player is spawned; player_entity owns how.
+    create_player_entity(reg);
     // Transition game state
     enter_phase<GamePhasePlayingTag>(reg);
 }
