@@ -57,12 +57,6 @@ bool resolve_spawn_timing(const ScheduleContext& ctx,
     return true;
 }
 
-void warn_invalid_lane_once(int lane) {
-    if (!lane_utils::is_valid(lane)) {
-        TraceLog(LOG_WARNING, "Invalid beatmap lane %d; defaulting to center lane", lane);
-    }
-}
-
 // Per-(kind, shape) transforms: one while-loop per cursor. Replaces the
 // former per-kind loops that switched on `entry.shape` to pick the spawn
 // target (issue #1202/#1204). The shape is now encoded by which vector
@@ -90,7 +84,10 @@ void schedule_bin(ScheduleContext& ctx,
 
         const int8_t spawn_lane = lane_utils::valid_or_default(entry.lane);
         const float x_pos = constants::LANE_X[static_cast<int>(spawn_lane)];
-        warn_invalid_lane_once(static_cast<int>(entry.lane));
+        if (!lane_utils::is_valid(static_cast<int>(entry.lane))) {
+            TraceLog(LOG_WARNING, "Invalid beatmap lane %d; defaulting to center lane",
+                     static_cast<int>(entry.lane));
+        }
 
         const BeatInfo bi{entry.beat_index, calibrated_arrival_time, effective_spawn_time};
         spawn_fn(ctx, spawn_lane, x_pos, start_y, bi);
