@@ -7,20 +7,6 @@
 
 namespace {
 
-int parse_level_arg(const char* value) {
-    if (value[0] >= '1' && value[0] < static_cast<char>('1' + content_config::LEVEL_COUNT)
-        && value[1] == '\0') {
-        return value[0] - '1';
-    }
-    for (int i = 0; i < content_config::LEVEL_COUNT; ++i) {
-        if (std::strcmp(value, content_config::LEVEL_KEYS[i]) == 0 ||
-            std::strcmp(value, content_config::LEVELS[i].title) == 0) {
-            return i;
-        }
-    }
-    return -1;
-}
-
 void print_level_help() {
     std::fprintf(stderr, "Known levels:");
     for (int i = 0; i < content_config::LEVEL_COUNT; ++i) {
@@ -80,7 +66,20 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
             ++i;
-            selected_level = parse_level_arg(argv[i]);
+            const char* value = argv[i];
+            selected_level = -1;
+            if (value[0] >= '1' && value[0] < static_cast<char>('1' + content_config::LEVEL_COUNT)
+                && value[1] == '\0') {
+                selected_level = value[0] - '1';
+            } else {
+                for (int j = 0; j < content_config::LEVEL_COUNT; ++j) {
+                    if (std::strcmp(value, content_config::LEVEL_KEYS[j]) == 0 ||
+                        std::strcmp(value, content_config::LEVELS[j].title) == 0) {
+                        selected_level = j;
+                        break;
+                    }
+                }
+            }
             if (selected_level < 0) {
                 std::fprintf(stderr, "Unknown level: %s\n", argv[i]);
                 print_level_help();
