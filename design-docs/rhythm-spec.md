@@ -171,7 +171,7 @@ constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20; // caps at 2.0x from chain 21
   ┌──────────────────────────────────────────────────────────────┐
   │  PER-ENTITY COMPONENTS                                       │
   ├──────────────────────────────────────────────────────────────┤
-  │  PlayerShape       8B  ← current shape + morph progress     │
+  │  PlayerShape       4B  ← morph animation progress           │
   │  ShapeWindow      24B  ← rhythm window timing state         │
   │  WorldPosition     8B ← world position (single Vector2)     │
   │  MotionVelocity     8B ← dx, dy                             │
