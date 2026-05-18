@@ -289,9 +289,6 @@ TEST_CASE("init_popup_display_perfect: formats PERFECT text + Medium font (#251)
     CHECK(pd.g == 20);
     CHECK(pd.b == 30);
     CHECK(pd.a == 200);
-    CHECK(pd.text_half_width == 0.0f);
-    CHECK(pd.measured_font_base_size == -1);
-    CHECK(pd.measured_font_texture_id == 0u);
 }
 
 TEST_CASE("init_popup_display_untimed: formats numeric value (#251)",
@@ -304,9 +301,6 @@ TEST_CASE("init_popup_display_untimed: formats numeric value (#251)",
 
     CHECK(std::strcmp(pd.text, "4242") == 0);
     CHECK(pd.font_size == FontSize::Small);
-    CHECK(pd.text_half_width == 0.0f);
-    CHECK(pd.measured_font_base_size == -1);
-    CHECK(pd.measured_font_texture_id == 0u);
 }
 
 // ── per-tier spawn_score_popup_*: entity factory contract (#349, #1202) ──────

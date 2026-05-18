@@ -16,12 +16,27 @@ struct ScorePopup {
 };
 
 // Pre-computed popup display data. Static text/color are initialized at spawn;
-// ui_render_system lazily caches the text width once the active font is known.
+// the per-entity text-width cache lives in a sibling `PopupTextMeasured` row
+// table whose presence + key-match expresses cache validity (issue #1549,
+// Fabian Principle 3 — `.squad/decisions.md` § 9).
 struct PopupDisplay {
     char     text[16] = {};
     FontSize font_size = FontSize::Small;
     uint8_t  r = 255, g = 255, b = 255, a = 255;
-    float    text_half_width = 0.0f;
-    int      measured_font_base_size = -1;
-    unsigned int measured_font_texture_id = 0;
+};
+
+// Per-popup-entity text-measurement cache (row table). Emplaced/refreshed by
+// `ui_render_system` on the first frame the entity is rendered (and again
+// whenever the active font's identity changes, e.g. atlas reload). Membership
+// + key-match IS the precondition "`half_width` is valid for `(font_base_size,
+// font_texture_id)`"; absence forces a re-measurement.
+//
+// Replaces the prior `PopupDisplay { … float text_half_width; int
+// measured_font_base_size = -1; unsigned int measured_font_texture_id = 0; }`
+// shape (issue #1549) — the `-1` / `0` sentinels were NULL columns in disguise
+// per Fabian Principle 3.
+struct PopupTextMeasured {
+    int          font_base_size;
+    unsigned int font_texture_id;
+    float        half_width;
 };

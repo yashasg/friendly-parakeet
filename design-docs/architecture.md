@@ -691,7 +691,8 @@ NonScorableTag       0     WARM       miss_detection/scoring exclusions, visual-
 OnsetMarkerTag       0     WARM       obstacle_render_entity, session_logger
 Color                4     COLD       render
 DrawSize             8     COLD       render
-PopupDisplay        36     COLD       popup_display (fade), ui_render
+PopupDisplay        24     COLD       popup_display (fade), ui_render
+PopupTextMeasured   12     COLD       ui_render (per-entity text-width cache; presence + key-match IS valid)
 ParticleTag          0     COLD       render (filter)
 EnergyBarTag         0     COLD       energy_bar_system (filter), gameplay_hud (filter)
 EnergyBarLayout     24     COLD       energy_bar_system (read), gameplay_hud (read)
