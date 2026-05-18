@@ -15,8 +15,7 @@
 //
 // Each slot also writes `UiLabelFontSize` + `UiLabelAlpha` so the
 // generic label render pass picks the per-slot typography (the .rgl has
-// no per-slot font-size field; these are screen-specific styling that
-// the legacy controller hard-coded). Matches the position-keyed pattern
-// established by `settings_screen_bind_system` and
-// `game_over_scoreboard_bind_system`.
+// no per-slot font-size field; these are screen-specific styling owned
+// by the binder). Matches the position-keyed pattern established by
+// `settings_screen_bind_system` and `game_over_scoreboard_bind_system`.
 void gameplay_hud_bind_system(entt::registry& reg);

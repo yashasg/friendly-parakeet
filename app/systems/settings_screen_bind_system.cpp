@@ -35,7 +35,7 @@ struct SettingsBindContext {
     int16_t audio_offset_ms;
     bool    haptics_on;
     // Display-side inversion: the visible toggle reads "MOTION: ON" when
-    // motion is NOT reduced. Matches the legacy controller (#1295 spec).
+    // motion is NOT reduced (#1295 spec).
     bool    motion_on;
 };
 
