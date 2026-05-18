@@ -89,13 +89,11 @@ end-to-end by ECS:
   against the pointer-release event and dispatches `OnPress::action` through
   the per-`ActionId` function-pointer table (`kActionHandlers`).
 
-The legacy `app/ui/screen_controllers/*` OOP bridge and the matching
-`app/ui/generated/*_layout.h` god-struct headers were deleted in #1308 (refs
-#1287 OoS-B / #1193). The single `RAYGUI_IMPLEMENTATION` translation unit
-now lives at `app/util/raygui_impl.cpp` (moved from `app/ui/` in #1317
-sub-PR 1). Issue #1325 sub-PR 3 then relocated the codegen output from
-`app/ui/generated/` to `app/systems/generated/`, completing the Section-7
-folder-allowlist sweep (`app/ui/` no longer exists).
+The single `RAYGUI_IMPLEMENTATION` translation unit lives at
+`app/util/raygui_impl.cpp`; the codegen output lives under
+`app/systems/generated/`. There is no `app/ui/` folder, no per-screen
+OOP controller bridge, and no `*_layout.h` god-struct header — every
+control is one entity carrying atomic components.
 
 ## Doctrine
 

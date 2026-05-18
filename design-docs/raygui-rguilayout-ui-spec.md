@@ -4,7 +4,7 @@
 
 Implemented. All migration phases described below have shipped; this spec now documents the as-built rguilayout / raygui entity-spawner UI architecture.
 
-This spec replaced the legacy JSON-driven UI layout path with raygui controls and rguilayout-authored/generated layout files. The current implementation lives under `app/systems/generated/<screen>_screen.cpp` (per-screen spawner functions emitted by `tools/rguilayout/` codegen), `app/systems/screen_lifecycle_system.{h,cpp}` (per-tag spawn/despawn dispatch), `app/systems/ui_render_system.cpp` (single render pass over `UiLabelTag` / `UiButtonTag` / `UiDummyRecTag` entities), and `app/systems/ui_update_system.cpp` (button-action dispatch). An intermediate per-screen render-callback folder used during migration was deleted in #1308 once #1287 (entity-driven UI) completed.
+This spec replaced the legacy JSON-driven UI layout path with raygui controls and rguilayout-authored/generated layout files. The current implementation lives under `app/systems/generated/<screen>_screen.cpp` (per-screen spawner functions emitted by `tools/rguilayout/` codegen), `app/systems/screen_lifecycle_system.{h,cpp}` (per-tag spawn/despawn dispatch), `app/systems/ui_render_system.cpp` (single render pass over `UiLabelTag` / `UiButtonTag` / `UiDummyRecTag` entities), and `app/systems/ui_update_system.cpp` (button-action dispatch).
 
 Current runtime note: proximity rings are active HUD timing feedback driven by `app/systems/approach_ring_envelope_system.cpp` (which writes per-button `ApproachRing` components consumed by `app/systems/ui_render_system.cpp`) and are specified by
 `design-docs/rhythm-spec.md`. The migration preserved this behavior; the
@@ -158,7 +158,7 @@ app/systems/ui_update_system.cpp                           (Input dispatch)
    - reads OnPress and invokes the bound action function
 ```
 
-The single producer is the codegen output under `app/systems/generated/`. Hand-written code never creates UI entities outside this contract; bind systems (`gameplay_hud_bind_system`, `game_over_scoreboard_bind_system`, etc.) only **mutate** atomic component data on spawner-emitted entities. An intermediate per-screen render-callback folder was the staging shape during migration and was deleted in #1308 once #1287 (entity-driven UI) shipped.
+The single producer is the codegen output under `app/systems/generated/`. Hand-written code never creates UI entities outside this contract; bind systems (`gameplay_hud_bind_system`, `game_over_scoreboard_bind_system`, etc.) only **mutate** atomic component data on spawner-emitted entities.
 
 Spawner sources may contain:
 

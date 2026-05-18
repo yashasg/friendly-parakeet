@@ -36,17 +36,13 @@ static void run_pipeline(entt::registry& reg, float dt = 0.016f) {
 
 namespace {
 
-// ── Gameplay HUD test fixtures (issue #1297 migration) ──────────────
+// ── Gameplay HUD test fixtures (issue #1297) ────────────────────────
 //
-// The legacy `gameplay_hud_screen_controller.*` exposed direct helpers
-// (`gameplay_hud_apply_button_presses`, `gameplay_hud_*_input_bounds`)
-// for tests; after the entity-driven migration those symbols are gone.
-// These small local fixtures replace them: the bounds match the
-// `.rgl`-baked positions (validated by a dedicated geometry test
-// below), and `apply_button_presses_for_test` reproduces the legacy
-// enqueue / phase-transition behaviour without going through the
-// hit-test pipeline. Tests that exercise the hit-test pipeline
-// explicitly call `spawn_gameplay_screen` + `ui_update_system`.
+// The bounds match the `.rgl`-baked positions (validated by a dedicated
+// geometry test below), and `apply_button_presses_for_test` reproduces
+// the per-tick enqueue / phase-transition behaviour without going
+// through the hit-test pipeline. Tests that exercise the hit-test
+// pipeline explicitly call `spawn_gameplay_screen` + `ui_update_system`.
 constexpr Rectangle kHudCircleBoundsForTest   {130.0f, 1140.0f, 140.0f, 100.0f};
 constexpr Rectangle kHudSquareBoundsForTest   {290.0f, 1140.0f, 140.0f, 100.0f};
 constexpr Rectangle kHudTriangleBoundsForTest {450.0f, 1140.0f, 140.0f, 100.0f};
@@ -65,10 +61,9 @@ void apply_button_presses_for_test(entt::registry& reg,
 }
 
 // Runs the entity-driven hit-test dispatch (`ui_update_system`) against
-// a freshly spawned gameplay HUD entity set. Tests that previously
-// called `gameplay_hud_process_button_input(reg)` now route through
-// this helper so they cover the new code path including the lane
-// button hit-test geometry and the Pause action handler.
+// a freshly spawned gameplay HUD entity set. Tests covering the lane
+// button hit-test geometry and the Pause action handler route through
+// this helper so they exercise the live code path.
 void run_gameplay_hud_input_dispatch(entt::registry& reg) {
     spawn_gameplay_screen(reg);
     auto& gs = reg.ctx().get<GameState>();
