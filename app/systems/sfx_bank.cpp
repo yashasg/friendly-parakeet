@@ -28,12 +28,6 @@ constexpr float kPi = 3.14159265358979323846f;
 constexpr int SAMPLE_RATE = 44100;
 constexpr int SFX_COUNT = static_cast<int>(SFX::Count);
 
-float next_noise(std::uint32_t& state) {
-    state = state * 1664525u + 1013904223u;
-    const auto sample = static_cast<int>((state >> 16u) & 0xffffu) - 32768;
-    return static_cast<float>(sample) / 32768.0f;
-}
-
 float sample_sine(const SfxSpec& spec, int frame, std::uint32_t& /*noise_state*/) {
     const float t = static_cast<float>(frame) / static_cast<float>(SAMPLE_RATE);
     const float phase = 2.0f * kPi * spec.frequency * t;
@@ -41,7 +35,9 @@ float sample_sine(const SfxSpec& spec, int frame, std::uint32_t& /*noise_state*/
 }
 
 float sample_noise(const SfxSpec& /*spec*/, int /*frame*/, std::uint32_t& noise_state) {
-    return next_noise(noise_state);
+    noise_state = noise_state * 1664525u + 1013904223u;
+    const auto sample = static_cast<int>((noise_state >> 16u) & 0xffffu) - 32768;
+    return static_cast<float>(sample) / 32768.0f;
 }
 
 constexpr std::array<SfxSpec, SFX_COUNT> SFX_SPECS{{
