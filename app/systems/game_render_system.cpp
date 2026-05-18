@@ -35,14 +35,6 @@ static void draw_pass(const entt::registry& reg, const camera::ShapeMeshes& sm) 
     }
 }
 
-static void draw_meshes(const entt::registry& reg) {
-    const auto* sm = reg.ctx().find<camera::ShapeMeshes>();
-    if (!sm) return;
-    draw_pass<TagWorldPass>(reg, *sm);
-    draw_pass<TagEffectsPass>(reg, *sm);
-}
-
-
 void game_render_system(const entt::registry& reg, float /*alpha*/) {
     auto& camera = game_camera(reg).cam;
 
@@ -55,11 +47,14 @@ void game_render_system(const entt::registry& reg, float /*alpha*/) {
     floor_render_system(reg);
 
     if (game_render_should_draw_world_meshes(reg)) {
-        rlDrawRenderBatchActive();
-        rlDisableDepthTest();
-        draw_meshes(reg);
-        rlDrawRenderBatchActive();
-        rlEnableDepthTest();
+        if (const auto* sm = reg.ctx().find<camera::ShapeMeshes>()) {
+            rlDrawRenderBatchActive();
+            rlDisableDepthTest();
+            draw_pass<TagWorldPass>(reg, *sm);
+            draw_pass<TagEffectsPass>(reg, *sm);
+            rlDrawRenderBatchActive();
+            rlEnableDepthTest();
+        }
     }
 
     EndMode3D();
