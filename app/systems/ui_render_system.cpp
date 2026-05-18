@@ -615,7 +615,6 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
     {
         auto view = reg.view<PopupDisplay, ScreenPosition, TagHUDPass>();
         for (auto [entity, pd, sp] : view.each()) {
-            (void)entity;
             if (!text_ctx.loaded || pd.text[0] == '\0') {
                 continue;
             }
@@ -623,14 +622,27 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
             const Font& font = popup_font_for_size(text_ctx, pd.font_size);
             const float font_size = static_cast<float>(font.baseSize);
             const float spacing = 1.0f;
-            if (pd.measured_font_base_size != font.baseSize ||
-                pd.measured_font_texture_id != font.texture.id) {
+
+            // PopupTextMeasured presence + key-match IS the cache-valid
+            // predicate (issue #1549, Fabian Principle 3). Absence or
+            // key-mismatch triggers a re-measurement that emplaces / replaces
+            // the row with the freshly observed `(font_base_size,
+            // font_texture_id, half_width)` tuple.
+            const auto* measured = reg.try_get<PopupTextMeasured>(entity);
+            float half_width;
+            if (measured != nullptr &&
+                measured->font_base_size == font.baseSize &&
+                measured->font_texture_id == font.texture.id) {
+                half_width = measured->half_width;
+            } else {
                 const Vector2 size = MeasureTextEx(font, pd.text, font_size, spacing);
-                pd.text_half_width = size.x / 2.0f;
-                pd.measured_font_base_size = font.baseSize;
-                pd.measured_font_texture_id = font.texture.id;
+                half_width = size.x / 2.0f;
+                reg.emplace_or_replace<PopupTextMeasured>(
+                    entity,
+                    PopupTextMeasured{font.baseSize, font.texture.id, half_width});
             }
-            DrawTextEx(font, pd.text, {sp.x - pd.text_half_width, sp.y},
+
+            DrawTextEx(font, pd.text, {sp.x - half_width, sp.y},
                        font_size, spacing, {pd.r, pd.g, pd.b, pd.a});
         }
     }
