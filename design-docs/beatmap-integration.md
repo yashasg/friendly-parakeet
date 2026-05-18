@@ -256,40 +256,35 @@ creates the standard runtime obstacle archetypes via the kind-specific
 ## 3.3 song_playback_system — ✅ IMPLEMENTED
 
 ```
-  Uses GetMusicTimePlayed(music) as the authoritative clock when music is
-  loaded and started. Falls back to song_time += dt for silent/test mode.
-```
+  app/systems/song_playback_system.cpp — on main branch.
+  Authoritative clock: GetMusicTimePlayed(music) when the song is
+  loaded and started; falls back to song_time += dt for silent/test mode.
+  UpdateMusicStream(music) is pumped every frame (even while paused) to
+  prevent stream-buffer underruns.
 
-```cpp
-void song_playback_system(entt::registry& reg, float dt) {
-    if (!reg.ctx().contains<GamePhasePlayingTag>()) return;
+  Music lifecycle is driven by GamePhase*Tag presence on reg.ctx():
+    GamePhasePlayingTag       → PlayMusicStream / ResumeMusicStream
+    GamePhasePausedTag        → PauseMusicStream
+    GamePhaseGameOverTag    \
+    GamePhaseSongCompleteTag /→ StopMusicStream + clear started/paused
+  A restart_music handshake from setup_play_session is consumed on the
+  next tick: it stops + replays the stream so each new session starts
+  from t = 0 with a clean buffer.
 
-    auto* song  = reg.ctx().find<SongState>();
-    auto* music = reg.ctx().find<MusicContext>();
-    if (!song || !song->playing || song->finished) return;
+  Beat advancement (Playing phase only). The former `int current_beat = -1`
+  sentinel on SongState was migrated to the BeatCursor ctx-singleton row
+  table (Fabian Principle 3 / issue #1545) — the row is absent until the
+  first beat is crossed; while it exists, `last_crossed` is the highest
+  beat index that has been crossed and is always meaningful.
 
-    // Use audio position as authoritative clock when available
-    if (music && music->loaded && music->started) {
-        UpdateMusicStream(music->stream);
-        song->song_time = GetMusicTimePlayed(music->stream);
-    } else {
-        song->song_time += dt;  // fallback: silent mode
-    }
+  When a BeatMap is loaded, beat crossings advance through
+  `map->beat_times[]` (authored). Otherwise the BPM-derived fallback
+  is used (song_time − offset) / beat_period. Both paths apply the
+  user audio offset from `settings::audio_offset_seconds(*settings)` so
+  the crossing time matches the apparent audio position.
 
-    // Update current beat
-    if (song->beat_period > 0.0f) {
-        int beat = static_cast<int>((song->song_time - song->offset) / song->beat_period);
-        if (beat > song->current_beat && song->song_time >= song->offset) {
-            song->current_beat = beat;
-        }
-    }
-
-    // Detect song end
-    if (song->song_time >= song->duration_sec) {
-        song->finished = true;
-        song->playing  = false;
-    }
-}
+  Song end: when song_time ≥ duration_sec, sets finished + clears playing
+  and stops the music stream so the next session starts cleanly.
 ```
 
 ## 3.4 beat_scheduler_system — ✅ ALREADY IMPLEMENTED
