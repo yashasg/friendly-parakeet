@@ -45,10 +45,10 @@ bool update_and_persist_high_score(entt::registry& reg) {
         current.value = score.score;
     }
 
-    if (auto* result = reg.ctx().find<TerminalResultState>()) {
-        *result = TerminalResultState{recorded_new_high_score, previous_high_score};
-    } else {
-        reg.ctx().emplace<TerminalResultState>(TerminalResultState{recorded_new_high_score, previous_high_score});
+    if (recorded_new_high_score) {
+        reg.ctx().insert_or_assign(NewBestRecord{previous_high_score});
+    } else if (reg.ctx().contains<NewBestRecord>()) {
+        reg.ctx().erase<NewBestRecord>();
     }
 
     return recorded_new_high_score;

@@ -2,12 +2,13 @@
 
 #include <cstdint>
 
-// TerminalResultState relocated to game_state.h (it pairs with the
-// EnergyDepletedDeath ctx tag and the rest of the terminal-phase singletons).
-// ScorePopup / PopupDisplay relocated to popup.h (popup-entity data, distinct
-// from score-state singletons). Re-included here for source back-compat with
-// consumers that previously got them via scoring.h; new code should include
-// the canonical headers directly.
+// NewBestRecord (formerly TerminalResultState) relocated to game_state.h
+// (it pairs with the EnergyDepletedDeath ctx tag and the rest of the
+// terminal-phase singletons). ScorePopup / PopupDisplay relocated to
+// popup.h (popup-entity data, distinct from score-state singletons).
+// Re-included here for source back-compat with consumers that previously
+// got them via scoring.h; new code should include the canonical headers
+// directly.
 #include "game_state.h"
 #include "popup.h"
 

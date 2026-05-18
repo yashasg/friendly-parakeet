@@ -103,9 +103,8 @@ TEST_CASE("game_state: enter_song_complete updates high score", "[gamestate]") {
 
     CHECK(current.value == 8000);
     CHECK(reg.ctx().contains<GamePhaseSongCompleteTag>());
-    const auto& terminal = reg.ctx().get<TerminalResultState>();
-    CHECK(terminal.new_best);
-    CHECK(terminal.previous_best == 5000);
+    REQUIRE(reg.ctx().contains<NewBestRecord>());
+    CHECK(reg.ctx().get<NewBestRecord>().previous_best == 5000);
 }
 
 TEST_CASE("game_state: enter_song_complete preserves higher high_score", "[gamestate]") {
