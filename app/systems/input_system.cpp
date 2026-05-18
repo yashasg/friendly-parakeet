@@ -97,15 +97,6 @@ int find_touch_slot(InputState& input, int touch_id) {
     return -1;
 }
 
-int find_free_touch_slot(InputState& input) {
-    for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
-        if (!input.touch_slots[i].active) {
-            return i;
-        }
-    }
-    return -1;
-}
-
 bool touch_id_is_current(int touch_id, int touch_point_count) {
     for (int touch_index = 0; touch_index < touch_point_count; ++touch_index) {
         if (GetTouchPointId(touch_index) == touch_id) {
@@ -147,28 +138,16 @@ void release_touch_slot(TouchSlot& slot,
     slot = TouchSlot{};
 }
 
-// ── Input-source ctx-tag mutex helpers (issues #1202 / #1204) ──────────────
+// ── Input-source ctx-tag mutex helper (issues #1202 / #1204) ──────────────
 // The former InputSource enum tracked which input device "owns" the
 // current gesture as a 3-state mutex on InputState. Per Fabian's
 // existential-processing canon, each former value is now its own ctx
 // table (InputSourceMouse / InputSourceTouch); absence of both = the
-// former `None`. These helpers maintain the mutex invariant so callers
-// don't have to duplicate the erase-the-other pattern.
-
-void set_input_source_mouse(entt::registry& reg) {
-    reg.ctx().insert_or_assign(InputSourceMouse{});
-    if (reg.ctx().find<InputSourceTouch>()) {
-        reg.ctx().erase<InputSourceTouch>();
-    }
-}
-
-void set_input_source_touch(entt::registry& reg) {
-    reg.ctx().insert_or_assign(InputSourceTouch{});
-    if (reg.ctx().find<InputSourceMouse>()) {
-        reg.ctx().erase<InputSourceMouse>();
-    }
-}
-
+// former `None`. The mutex invariant (at most one tag present) is
+// maintained inline at the two set sites in input_system below, which
+// insert one tag and erase the sibling. `clear_input_source` drops both
+// tags back to the former `None` state and has multiple callers, so it
+// stays as a helper.
 void clear_input_source(entt::registry& reg) {
     if (reg.ctx().find<InputSourceMouse>()) {
         reg.ctx().erase<InputSourceMouse>();
@@ -254,8 +233,9 @@ void input_system(entt::registry& reg, float raw_dt) {
     }
 
     // Read live each call — the mouse and touch blocks below mutate the
-    // mutex (set_input_source_mouse / _touch / clear_input_source) so a
-    // cached snapshot would race against the very same frame's writes.
+    // InputSourceMouse / InputSourceTouch ctx-tag mutex (inline sets +
+    // clear_input_source) so a cached snapshot would race against the
+    // very same frame's writes.
     const auto touch_owns_gesture = [&]() {
         return reg.ctx().find<InputSourceTouch>() != nullptr;
     };
@@ -269,7 +249,10 @@ void input_system(entt::registry& reg, float raw_dt) {
         !priv.suppress_mouse_release &&
         touch_point_count == 0 &&
         IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        set_input_source_mouse(reg);
+        reg.ctx().insert_or_assign(InputSourceMouse{});
+        if (reg.ctx().find<InputSourceTouch>()) {
+            reg.ctx().erase<InputSourceTouch>();
+        }
         priv.suppress_mouse_release = false;
     }
     if (allow_mouse_input &&
@@ -316,7 +299,12 @@ void input_system(entt::registry& reg, float raw_dt) {
                 if (has_active_touch_in_zone(input, button_zone)) {
                     continue;
                 }
-                slot_index = find_free_touch_slot(input);
+                for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
+                    if (!input.touch_slots[i].active) {
+                        slot_index = i;
+                        break;
+                    }
+                }
             }
             if (slot_index < 0) {
                 continue;
@@ -358,7 +346,10 @@ void input_system(entt::registry& reg, float raw_dt) {
             }
         }
         if (input.touching) {
-            set_input_source_touch(reg);
+            reg.ctx().insert_or_assign(InputSourceTouch{});
+            if (reg.ctx().find<InputSourceMouse>()) {
+                reg.ctx().erase<InputSourceMouse>();
+            }
         }
         input.duration = 0.0f;
         for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
