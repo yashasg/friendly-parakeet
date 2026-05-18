@@ -59,19 +59,13 @@ inline constexpr ShapePressSpec kShapePressTriangle{&enqueue_press_triangle, "ke
 // Index-aligned with `shape_index(Shape)`. Hexagon's slot is `nullptr`
 // because Hexagon is never a required-shape value — `current_required_shape`
 // only returns Hexagon as the no-tag sentinel, which `determine_action`
-// gates out via `has_required_shape_tag` before calling `shape_press_for`.
+// gates out via `has_required_shape_tag` before indexing this table.
 inline constexpr std::array<const ShapePressSpec*, kShapeCount> kShapePressByIndex{
     &kShapePressCircle,
     &kShapePressSquare,
     &kShapePressTriangle,
     nullptr,
 };
-
-inline const ShapePressSpec* shape_press_for(Shape s) noexcept {
-    const int idx = shape_index(s);
-    if (idx < 0 || idx >= kShapeCount) return nullptr;
-    return kShapePressByIndex[static_cast<size_t>(idx)];
-}
 }  // namespace
 
 static bool test_player_shape_done(const TestPlayerAction& action) {
@@ -114,7 +108,10 @@ static TestPlayerAction determine_action(
 
     // Shape requirement
     if (has_required_shape_tag(reg, entity)) {
-        action.shape_press = shape_press_for(current_required_shape(reg, entity));
+        const int shape_idx = shape_index(current_required_shape(reg, entity));
+        action.shape_press = (shape_idx >= 0 && shape_idx < kShapeCount)
+            ? kShapePressByIndex[static_cast<size_t>(shape_idx)]
+            : nullptr;
 
         // ShapeGate: player must also be in the lane where the shape hole is.
         // The hole is at obs_pos.x — find which lane that corresponds to.
