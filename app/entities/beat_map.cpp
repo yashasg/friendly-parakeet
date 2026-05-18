@@ -310,12 +310,6 @@ bool kind_string_requires_payload(std::string_view kind_str) {
     return kind_str == "shape_gate" || kind_str == "split_path";
 }
 
-bool kind_string_is_supported(std::string_view kind_str) {
-    return kind_str == "shape_gate" ||
-           kind_str == "split_path" ||
-           kind_str == "onset_marker";
-}
-
 bool parse_beat_map(const std::string& json_str, BeatMap& out,
                     std::vector<BeatMapError>& errors,
                     const std::string& difficulty) {
@@ -499,7 +493,9 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             parse_ok = false;
             continue;
         }
-        if (!kind_string_is_supported(kind_str)) {
+        if (kind_str != "shape_gate" &&
+            kind_str != "split_path" &&
+            kind_str != "onset_marker") {
             errors.push_back({entry.beat_index,
                 "Unknown obstacle kind '" + kind_str + "' at beat " + std::to_string(entry.beat_index)});
             parse_ok = false;
