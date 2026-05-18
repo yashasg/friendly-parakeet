@@ -11,12 +11,11 @@
 namespace {
 
 // Bind context — owns the per-frame singleton reads so the per-slot
-// `bind_*` functions are pure transforms over their slot's `UiLabel`. The
-// optional pointer mirrors the legacy controller's `ctx().find<...>()`
-// semantics: a `TerminalResultState` may be absent during the Game Over
-// debounce window before `game_state_enter_terminal_phase_game_over`
-// populates it. `EnergyDepletedDeath` is a presence-only ctx tag (no
-// payload) so we carry a bool for it.
+// `bind_*` functions are pure transforms over their slot's `UiLabel`.
+// `TerminalResultState` may be absent during the Game Over debounce
+// window before `game_state_enter_terminal_phase_game_over` populates
+// it, so it is carried as a nullable pointer. `EnergyDepletedDeath`
+// is a presence-only ctx tag (no payload) so we carry a bool for it.
 //
 // Per-binder prefix (`GameOver*`) avoids an anonymous-namespace ODR
 // collision with the sibling `*_bind_system.cpp` files when CMake Unity
