@@ -17,32 +17,28 @@ bool update_and_persist_high_score(entt::registry& reg) {
     const bool score_exceeds_high_score = (score.score > current.value);
     bool recorded_new_high_score = score_exceeds_high_score;
 
-    if (auto* hs = reg.ctx().find<HighScoreState>()) {
-        const auto* session = reg.ctx().find<HighScoreSession>();
-        const bool has_active_high_score_key = session && (session->key_hash != 0);
-        if (score_exceeds_high_score && has_active_high_score_key) {
-            recorded_new_high_score = high_score::update_if_higher(*hs, *session, score.score);
+    const auto* session = reg.ctx().find<HighScoreSession>();
+    const bool has_active_high_score_key = session && (session->key_hash != 0);
+    if (score_exceeds_high_score && has_active_high_score_key) {
+        recorded_new_high_score = high_score::update_if_higher(reg, *session, score.score);
+    }
+    if (score_exceeds_high_score && recorded_new_high_score) {
+        current.value = score.score;
+    }
+    if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
+        if (score_exceeds_high_score && recorded_new_high_score && has_active_high_score_key) {
+            reg.ctx().emplace<HighScoreDirtyTag>();
         }
-        if (score_exceeds_high_score && recorded_new_high_score) {
-            current.value = score.score;
-        }
-        if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
-            if (score_exceeds_high_score && recorded_new_high_score && has_active_high_score_key) {
-                reg.ctx().emplace<HighScoreDirtyTag>();
-            }
-            if (reg.ctx().contains<HighScoreDirtyTag>()) {
-                if (hp->path.empty()) {
-                    hp->last_save = persistence::Result{persistence::Status::PathUnavailable, {}};
-                } else {
-                    hp->last_save = high_score::save_high_scores(*hs, hp->path);
-                    if (hp->last_save.ok()) {
-                        reg.ctx().erase<HighScoreDirtyTag>();
-                    }
+        if (reg.ctx().contains<HighScoreDirtyTag>()) {
+            if (hp->path.empty()) {
+                hp->last_save = persistence::Result{persistence::Status::PathUnavailable, {}};
+            } else {
+                hp->last_save = high_score::save_high_scores(reg, hp->path);
+                if (hp->last_save.ok()) {
+                    reg.ctx().erase<HighScoreDirtyTag>();
                 }
             }
         }
-    } else if (score_exceeds_high_score) {
-        current.value = score.score;
     }
 
     if (recorded_new_high_score) {

@@ -5,13 +5,14 @@
 
 namespace high_score {
 
-// Load high scores from JSON file.
+// Load high scores from JSON file into reg's HighScoreEntry table (atomic:
+// on parse failure existing rows are preserved).
 // Distinguishes missing/corrupt/path errors via structured status.
-persistence::Result load_high_scores(HighScoreState& state, const std::filesystem::path& path);
+persistence::Result load_high_scores(entt::registry& reg, const std::filesystem::path& path);
 
-// Save high scores to JSON file.
+// Save the current HighScoreEntry rows to JSON file.
 // Distinguishes path/open/write failures via structured status.
-persistence::Result save_high_scores(const HighScoreState& state, const std::filesystem::path& path);
+persistence::Result save_high_scores(const entt::registry& reg, const std::filesystem::path& path);
 
 // Resolve full high scores file path.
 // Returns structured failure and clears out_path when resolution fails.
@@ -21,8 +22,8 @@ persistence::Result get_high_scores_file_path(
 
 // Update the stored score for session.key_hash if new_score is strictly higher.
 // Negative new_score is clamped to 0. Returns false when no active key exists
-// or the active key is missing from the fixed entry table.
-bool update_if_higher(HighScoreState& state, const HighScoreSession& session, int32_t new_score);
+// or the active key is missing from the entry table.
+bool update_if_higher(entt::registry& reg, const HighScoreSession& session, int32_t new_score);
 
 // Build "song_id|difficulty" into caller-supplied buf (no heap allocation).
 // Returns snprintf-style char count (excluding NUL), or -1 if cap is invalid.
@@ -33,22 +34,25 @@ int32_t make_key_str(char* buf, int32_t cap, const char* song_id, const char* di
 entt::hashed_string::hash_type make_key_hash(const char* song_id, const char* difficulty);
 
 // Returns the stored score for key, or 0 if not found.
-int32_t get_score(const HighScoreState& state, const char* key);
+int32_t get_score(const entt::registry& reg, const char* key);
 
 // Returns the stored score for a hash -- used on the session current-key path.
-int32_t get_score_by_hash(const HighScoreState& state, entt::hashed_string::hash_type hash);
+int32_t get_score_by_hash(const entt::registry& reg, entt::hashed_string::hash_type hash);
 
 // Insert or update entry by string key. Returns false if the table is full.
-bool set_score(HighScoreState& state, const char* key, int32_t score);
+bool set_score(entt::registry& reg, const char* key, int32_t score);
 
 // Update an existing entry's score by hash. Returns false if hash is not found.
-bool set_score_by_hash(HighScoreState& state, entt::hashed_string::hash_type hash, int32_t score);
+bool set_score_by_hash(entt::registry& reg, entt::hashed_string::hash_type hash, int32_t score);
 
 // Ensure an entry exists for key with score 0 if not already present.
 // Returns false if the table is full.
-bool ensure_entry(HighScoreState& state, const char* key);
+bool ensure_entry(entt::registry& reg, const char* key);
 
 // Returns the stored score for the current session key, or 0 if no session active.
-int32_t get_current_high_score(const HighScoreState& state, const HighScoreSession& session);
+int32_t get_current_high_score(const entt::registry& reg, const HighScoreSession& session);
+
+// Count of stored entries (rows in the HighScoreEntry table).
+int32_t entry_count(const entt::registry& reg);
 
 } // namespace high_score

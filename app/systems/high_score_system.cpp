@@ -8,6 +8,7 @@
 #include <cstring>
 #include <limits>
 #include <system_error>
+#include <vector>
 
 #include <raylib.h>
 
@@ -42,94 +43,126 @@ entt::hashed_string::hash_type make_key_hash(const char* song_id, const char* di
     return entt::hashed_string::value(static_cast<const char*>(buf));
 }
 
-int32_t get_score(const HighScoreState& state, const char* key) {
-    for (int32_t i = 0; i < state.entry_count; ++i) {
-        if (std::strncmp(state.entries[i].key, key, HighScoreState::KEY_CAP) == 0) {
-            return state.entries[i].score;
+namespace {
+
+// Linear scan over the HighScoreEntry row table; returns entt::null if no
+// matching row. The table caps at MAX_ENTRIES (9), so O(N) per lookup is
+// the dense-flat-array equivalent of the prior inline `std::array` scan.
+entt::entity find_entry_by_key(const entt::registry& reg, const char* key) {
+    auto view = reg.view<HighScoreEntry>();
+    for (auto entity : view) {
+        const auto& entry = view.get<HighScoreEntry>(entity);
+        if (std::strncmp(entry.key, key, HighScoreState::KEY_CAP) == 0) {
+            return entity;
         }
     }
-    return 0;
+    return entt::null;
 }
 
-int32_t get_score_by_hash(const HighScoreState& state, entt::hashed_string::hash_type hash) {
-    for (int32_t i = 0; i < state.entry_count; ++i) {
-        if (entt::hashed_string::value(static_cast<const char*>(state.entries[i].key)) == hash) {
-            return state.entries[i].score;
+entt::entity find_entry_by_hash(const entt::registry& reg, entt::hashed_string::hash_type hash) {
+    auto view = reg.view<HighScoreEntry>();
+    for (auto entity : view) {
+        if (view.get<HighScoreEntry>(entity).key_hash == hash) {
+            return entity;
         }
     }
-    return 0;
+    return entt::null;
 }
 
-bool set_score(HighScoreState& state, const char* key, int32_t score) {
-    for (int32_t i = 0; i < state.entry_count; ++i) {
-        if (std::strncmp(state.entries[i].key, key, HighScoreState::KEY_CAP) == 0) {
-            state.entries[i].score = score;
-            return true;
-        }
+void write_key(HighScoreEntry& entry, const char* key) {
+    std::strncpy(entry.key, key, HighScoreState::KEY_CAP - 1);
+    entry.key[HighScoreState::KEY_CAP - 1] = '\0';
+    entry.key_hash = entt::hashed_string::value(static_cast<const char*>(entry.key));
+}
+
+}  // namespace
+
+int32_t entry_count(const entt::registry& reg) {
+    return static_cast<int32_t>(reg.view<HighScoreEntry>().size());
+}
+
+int32_t get_score(const entt::registry& reg, const char* key) {
+    const auto entity = find_entry_by_key(reg, key);
+    if (entity == entt::null) return 0;
+    return reg.get<HighScoreEntry>(entity).score;
+}
+
+int32_t get_score_by_hash(const entt::registry& reg, entt::hashed_string::hash_type hash) {
+    const auto entity = find_entry_by_hash(reg, hash);
+    if (entity == entt::null) return 0;
+    return reg.get<HighScoreEntry>(entity).score;
+}
+
+bool set_score(entt::registry& reg, const char* key, int32_t score) {
+    if (const auto existing = find_entry_by_key(reg, key); existing != entt::null) {
+        reg.get<HighScoreEntry>(existing).score = score;
+        return true;
     }
-    if (state.entry_count < HighScoreState::MAX_ENTRIES) {
-        std::strncpy(state.entries[state.entry_count].key, key, HighScoreState::KEY_CAP - 1);
-        state.entries[state.entry_count].key[HighScoreState::KEY_CAP - 1] = '\0';
-        state.entries[state.entry_count].score = score;
-        ++state.entry_count;
+    if (entry_count(reg) < HighScoreState::MAX_ENTRIES) {
+        const auto entity = reg.create();
+        auto& entry = reg.emplace<HighScoreEntry>(entity);
+        write_key(entry, key);
+        entry.score = score;
         return true;
     }
     TraceLog(LOG_WARNING, "High score table full; dropping score for key '%s'", key);
     return false;
 }
 
-bool set_score_by_hash(HighScoreState& state, entt::hashed_string::hash_type hash, int32_t score) {
-    for (int32_t i = 0; i < state.entry_count; ++i) {
-        if (entt::hashed_string::value(static_cast<const char*>(state.entries[i].key)) == hash) {
-            state.entries[i].score = score;
-            return true;
-        }
+bool set_score_by_hash(entt::registry& reg, entt::hashed_string::hash_type hash, int32_t score) {
+    const auto entity = find_entry_by_hash(reg, hash);
+    if (entity == entt::null) {
+        TraceLog(LOG_WARNING, "High score entry hash %u not found; score update skipped",
+                 static_cast<unsigned int>(hash));
+        return false;
     }
-    TraceLog(LOG_WARNING, "High score entry hash %u not found; score update skipped",
-             static_cast<unsigned int>(hash));
-    return false;
+    reg.get<HighScoreEntry>(entity).score = score;
+    return true;
 }
 
-bool ensure_entry(HighScoreState& state, const char* key) {
-    for (int32_t i = 0; i < state.entry_count; ++i) {
-        if (std::strncmp(state.entries[i].key, key, HighScoreState::KEY_CAP) == 0) return true;
-    }
-    if (state.entry_count < HighScoreState::MAX_ENTRIES) {
-        std::strncpy(state.entries[state.entry_count].key, key, HighScoreState::KEY_CAP - 1);
-        state.entries[state.entry_count].key[HighScoreState::KEY_CAP - 1] = '\0';
-        state.entries[state.entry_count].score = 0;
-        ++state.entry_count;
+bool ensure_entry(entt::registry& reg, const char* key) {
+    if (find_entry_by_key(reg, key) != entt::null) return true;
+    if (entry_count(reg) < HighScoreState::MAX_ENTRIES) {
+        const auto entity = reg.create();
+        auto& entry = reg.emplace<HighScoreEntry>(entity);
+        write_key(entry, key);
+        entry.score = 0;
         return true;
     }
     TraceLog(LOG_WARNING, "High score table full; cannot create entry for key '%s'", key);
     return false;
 }
 
-int32_t get_current_high_score(const HighScoreState& state, const HighScoreSession& session) {
+int32_t get_current_high_score(const entt::registry& reg, const HighScoreSession& session) {
     if (session.key_hash == 0) return 0;
-    return get_score_by_hash(state, session.key_hash);
+    return get_score_by_hash(reg, session.key_hash);
 }
 
 namespace {
 
-nlohmann::json high_score_state_to_json(const HighScoreState& state) {
+nlohmann::json high_score_state_to_json(const entt::registry& reg) {
     nlohmann::json result;
     nlohmann::json scores_obj;
 
-    for (int32_t i = 0; i < state.entry_count; ++i) {
-        scores_obj[state.entries[i].key] = state.entries[i].score;
+    auto view = reg.view<HighScoreEntry>();
+    for (auto entity : view) {
+        const auto& entry = view.get<HighScoreEntry>(entity);
+        scores_obj[entry.key] = entry.score;
     }
 
     result["scores"] = scores_obj;
     return result;
 }
 
-bool high_score_state_from_json(const nlohmann::json& obj, HighScoreState& state) {
+bool high_score_state_from_json(const nlohmann::json& obj, entt::registry& reg) {
     if (!obj.is_object()) {
         return false;
     }
 
-    HighScoreState next;
+    // Stage into a local buffer first so a parse failure or overflow leaves
+    // the registry's existing rows untouched (atomic-on-success).
+    std::vector<HighScoreEntry> staged;
+    staged.reserve(HighScoreState::MAX_ENTRIES);
 
     if (obj.contains("scores")) {
         const auto& scores_obj = obj["scores"];
@@ -162,19 +195,30 @@ bool high_score_state_from_json(const nlohmann::json& obj, HighScoreState& state
                 raw = std::numeric_limits<std::int32_t>::max();
             }
 
-            if (!set_score(next, key.c_str(), static_cast<std::int32_t>(raw))) {
+            if (static_cast<int32_t>(staged.size()) >= HighScoreState::MAX_ENTRIES) {
                 return false;
             }
+
+            HighScoreEntry entry{};
+            write_key(entry, key.c_str());
+            entry.score = static_cast<std::int32_t>(raw);
+            staged.push_back(entry);
         }
     }
 
-    state = next;
+    // Commit: drop existing rows then emplace the staged set.
+    auto existing = reg.view<HighScoreEntry>();
+    reg.destroy(existing.begin(), existing.end());
+    for (const auto& entry : staged) {
+        const auto ent = reg.create();
+        reg.emplace<HighScoreEntry>(ent, entry);
+    }
     return true;
 }
 
 }  // namespace
 
-persistence::Result load_high_scores(HighScoreState& state, const std::filesystem::path& path) {
+persistence::Result load_high_scores(entt::registry& reg, const std::filesystem::path& path) {
     const auto prepare_result = persistence::prepare_for_persistence_read(path);
     if (!prepare_result.ok()) {
         return prepare_result;
@@ -200,7 +244,7 @@ persistence::Result load_high_scores(HighScoreState& state, const std::filesyste
         if (file.bad()) {
             return persistence::Result{persistence::Status::FileReadFailed, {}};
         }
-        if (!high_score_state_from_json(obj, state)) {
+        if (!high_score_state_from_json(obj, reg)) {
             return persistence::Result{persistence::Status::CorruptData, {}};
         }
         return persistence::Result{};
@@ -209,7 +253,7 @@ persistence::Result load_high_scores(HighScoreState& state, const std::filesyste
     }
 }
 
-persistence::Result save_high_scores(const HighScoreState& state, const std::filesystem::path& path) {
+persistence::Result save_high_scores(const entt::registry& reg, const std::filesystem::path& path) {
     const auto ensure_error = persistence::ensure_directory_exists(path.parent_path());
     if (ensure_error) {
         return persistence::Result{persistence::Status::DirectoryCreateFailed, ensure_error};
@@ -220,7 +264,7 @@ persistence::Result save_high_scores(const HighScoreState& state, const std::fil
         return persistence::Result{persistence::Status::FileOpenFailed, {}};
     }
 
-    nlohmann::json obj = high_score_state_to_json(state);
+    nlohmann::json obj = high_score_state_to_json(reg);
     file << obj.dump(2);
     file.flush();
     if (!file.good()) {
@@ -233,12 +277,12 @@ persistence::Result save_high_scores(const HighScoreState& state, const std::fil
     return persistence::flush_persistence_writes(path);
 }
 
-bool update_if_higher(HighScoreState& state, const HighScoreSession& session, int32_t new_score) {
+bool update_if_higher(entt::registry& reg, const HighScoreSession& session, int32_t new_score) {
     if (session.key_hash == 0) return false;
     if (new_score < 0) new_score = 0;
-    int32_t stored = get_score_by_hash(state, session.key_hash);
+    int32_t stored = get_score_by_hash(reg, session.key_hash);
     if (new_score > stored) {
-        return set_score_by_hash(state, session.key_hash, new_score);
+        return set_score_by_hash(reg, session.key_hash, new_score);
     }
     return true;
 }

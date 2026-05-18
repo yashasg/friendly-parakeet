@@ -31,10 +31,11 @@ struct ScoreDisplay {
 };
 
 // Best score for the currently loaded song+difficulty. Snapshotted from the
-// durable HighScoreState table at session load (in play_session) and bumped
-// at terminal phase if the current run exceeded it. Distinct from
-// HighScoreState (which spans every song+difficulty combo and persists to
-// disk) — this singleton is the single per-run best the HUD/end-screens read.
+// durable HighScoreEntry row table at session load (in play_session) and
+// bumped at terminal phase if the current run exceeded it. Distinct from
+// the HighScoreEntry table (which spans every song+difficulty combo and
+// persists to disk) — this singleton is the single per-run best the
+// HUD/end-screens read.
 struct CurrentSongHighScore {
     int32_t value = 0;
 };

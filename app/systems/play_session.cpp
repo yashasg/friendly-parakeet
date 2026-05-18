@@ -24,6 +24,7 @@
 #include <filesystem>
 #include <raylib.h>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -96,7 +97,25 @@ void setup_play_session(entt::registry& reg) {
         settings_was_dirty = dirty_view.begin() != dirty_view.end();
     }
 
+    // Snapshot the HighScoreEntry row table across the upcoming `reg.clear()`
+    // so durable scores survive the per-session entity wipe (Fabian Principle 3 /
+    // issue #1560: the row table replaces the prior ctx-singleton array column,
+    // and `reg.clear()` wipes entities but leaves ctx untouched).
+    std::vector<HighScoreEntry> saved_high_score_entries;
+    {
+        auto entry_view = reg.view<HighScoreEntry>();
+        saved_high_score_entries.reserve(entry_view.size());
+        for (auto entity : entry_view) {
+            saved_high_score_entries.push_back(entry_view.get<HighScoreEntry>(entity));
+        }
+    }
+
     reg.clear();
+
+    for (const auto& entry : saved_high_score_entries) {
+        const auto entity = reg.create();
+        reg.emplace<HighScoreEntry>(entity, entry);
+    }
 
     spawn_game_camera(reg);
     spawn_ui_camera(reg);
@@ -187,7 +206,9 @@ void setup_play_session(entt::registry& reg) {
     // Wire high score: derive song_id from beatmap filename and set HighScoreSession::key_hash.
     // The key string is built once in a stack buffer (no heap); ensure_entry pre-registers
     // the entry so update_if_higher can later update by hash without the key string.
-    if (auto* hs = reg.ctx().find<HighScoreState>()) {
+    // HighScoreEntry rows live in the registry (issue #1560), so the operations don't
+    // need a HighScoreState ctx-singleton gate any more.
+    {
         std::string stem = std::filesystem::path(beatmap_path).stem().string();
         static const std::string BEATMAP_SUFFIX = "_beatmap";
         if (stem.size() > BEATMAP_SUFFIX.size() &&
@@ -200,7 +221,7 @@ void setup_play_session(entt::registry& reg) {
         if (auto* session = reg.ctx().find<HighScoreSession>()) {
             session->key_hash = entt::hashed_string::value(static_cast<const char*>(key_buf));
         }
-        high_score::ensure_entry(*hs, key_buf);
+        high_score::ensure_entry(reg, key_buf);
     }
 
     // Init song state
@@ -261,10 +282,10 @@ void setup_play_session(entt::registry& reg) {
     erase_ctx_if_exists<EndChoiceMainMenu>(reg);
 
     // Load stored high score for this song+difficulty into CurrentSongHighScore
-    if (auto* hs = reg.ctx().find<HighScoreState>()) {
+    {
         auto& current = reg.ctx().get<CurrentSongHighScore>();
         const auto* session = reg.ctx().find<HighScoreSession>();
-        current.value = session ? high_score::get_current_high_score(*hs, *session) : 0;
+        current.value = session ? high_score::get_current_high_score(reg, *session) : 0;
     }
 
     // play_session owns when a player is spawned; player_entity owns how.
