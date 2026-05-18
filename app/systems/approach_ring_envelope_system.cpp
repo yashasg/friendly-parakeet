@@ -18,9 +18,9 @@ namespace {
 
 constexpr float kApproachRingMaxRadiusScale = 2.0f;
 
-// Lane button is sized 140×100 in `content/ui/screens/gameplay.rgl`; the
-// legacy controller computed `btn_radius = circle_bounds.width / 2.8f`,
-// which preserves the visual size after migration.
+// Lane button is sized 140×100 in `content/ui/screens/gameplay.rgl`;
+// dividing the width by 2.8 sizes the approach-ring radius to the
+// visual scale the gameplay HUD is designed around.
 constexpr float kLaneButtonRadiusDivisor = 2.8f;
 
 template <typename ShapeTag>

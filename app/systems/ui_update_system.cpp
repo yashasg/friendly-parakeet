@@ -132,8 +132,8 @@ void settings_button_action(entt::registry& reg, entt::entity /*entity*/) {
 // back to Title (no other screen currently emits ActionId::CloseButton).
 // HapticsToggle / ReduceMotionToggle flip their respective bool and
 // persist via `settings::mark_dirty_and_save`. Enabling haptics also
-// warms up the platform backend (latency-sensitive first vibration,
-// matches legacy controller).
+// warms up the platform backend so the first vibration after enable is
+// not latency-bound.
 
 void audio_offset_step_action(entt::registry& reg, int delta) {
     auto* st = find_settings_state(reg);
