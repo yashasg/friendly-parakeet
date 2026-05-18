@@ -38,20 +38,16 @@ struct PendingEntity {
 };
 }
 
-static int count_mesh_children_of(entt::registry& reg, entt::entity parent) {
+// ObstacleChildren::MAX is the hard cap for mesh children owned by one
+// logical obstacle. Factory helpers reserve a slot before reg.create() so an
+// overflow cannot leave an unregistered MeshChild entity behind.
+static void require_child_capacity(entt::registry& reg, entt::entity parent) {
     int count = 0;
     for (auto [child, mc] : reg.view<MeshChild>().each()) {
         (void)child;
         if (mc.parent == parent) ++count;
     }
-    return count;
-}
-
-// ObstacleChildren::MAX is the hard cap for mesh children owned by one
-// logical obstacle. Factory helpers reserve a slot before reg.create() so an
-// overflow cannot leave an unregistered MeshChild entity behind.
-static void require_child_capacity(entt::registry& reg, entt::entity parent) {
-    if (count_mesh_children_of(reg, parent) >= ObstacleChildren::MAX) {
+    if (count >= ObstacleChildren::MAX) {
         throw std::logic_error("ObstacleChildren capacity exceeded");
     }
 }
