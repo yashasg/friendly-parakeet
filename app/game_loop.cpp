@@ -104,10 +104,6 @@ bool load_default_text_fonts(TextContext& ctx) {
     return false;
 }
 
-void unload_text_fonts(TextContext& ctx) {
-    ctx.release();
-}
-
 // Status → (log_level, message_template) lookup table. Per Fabian's
 // existential processing (issue #1277), behavior dispatch on the `Status`
 // discriminator is replaced with a value→data lookup — same shape as the
@@ -398,7 +394,7 @@ void game_loop_shutdown(entt::registry& reg) {
     }
     camera::shutdown(reg);
     if (auto* text_ctx = reg.ctx().find<TextContext>()) {
-        unload_text_fonts(*text_ctx);
+        text_ctx->release();
     }
     sfx_bank_unload(reg);
     platform::haptics::shutdown(reg);
