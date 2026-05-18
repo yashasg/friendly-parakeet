@@ -260,9 +260,8 @@ TEST_CASE("phase_transition: enforcement catches non-UI/non-input direct callers
 
 TEST_CASE("phase_transition: entity-driven UI dispatch guards entry input",
           "[phase_transition][ui]") {
-    // Legacy `app/ui/screen_controllers/*` controllers (deleted in #1308)
-    // gated their button reads on `gs.phase_timer > constants::UI_ENTRY_DEBOUNCE`.
-    // The same guard now lives in `ui_update_system.cpp`'s
+    // The entry-input debounce guard (`gs.phase_timer >
+    // constants::UI_ENTRY_DEBOUNCE`) lives in `ui_update_system.cpp`'s
     // `effective_debounce` table, with end-screen overrides for Game Over
     // and Song Complete.
     const fs::path root = find_repo_root();
