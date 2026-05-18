@@ -164,8 +164,8 @@ constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20; // caps at 2.0x from chain 21
   │  SINGLETON CONTEXTS (reg.ctx())                              │
   ├──────────────────────────────────────────────────────────────┤
   │  BeatMap         varies ← authored level data               │
-  │  SongState         48B ← runtime playback position          │
-  │  SongResults       32B ← accumulated score / grade          │
+  │  SongState        160B ← runtime playback position          │
+  │  SongResults       28B ← accumulated score / grade          │
   └──────────────────────────────────────────────────────────────┘
 
   ┌──────────────────────────────────────────────────────────────┐
@@ -180,7 +180,7 @@ constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20; // caps at 2.0x from chain 21
   │  RequiredShape*Tag  0B ← one of 4 per-shape tags            │
   │  int8_t lane        1B ← raw lane index (issue #1198)       │
   │  BeatInfo          12B ← beat_index, arrival_time, spawn    │
-  │  TimingGrade        5B ← scoring (existential)              │
+  │  TimingGrade        4B ← scoring (existential)              │
   │  ScoredTag          0B ← scored marker (prevents re-fire)   │
   └──────────────────────────────────────────────────────────────┘
 ```

@@ -612,8 +612,8 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
   │  Data                      │ Per-elem │ Max count │ Total bytes  │
   ├────────────────────────────┼──────────┼───────────┼──────────────┤
   │  BeatMap.beats vector      │    8B    │   256     │    2,048     │
-  │  SongState singleton       │   64B    │     1     │       64     │
-  │  SongResults singleton     │   32B    │     1     │       32     │
+  │  SongState singleton       │  160B    │     1     │      160     │
+  │  SongResults singleton     │   28B    │     1     │       28     │
   │  MusicContext singleton    │   ~40B   │     1     │       40     │
   │  BeatMap strings + fields  │  ~128B   │     1     │      128     │
   │  Live obstacles (entities) │  ~80B    │    ~10    │      800     │
