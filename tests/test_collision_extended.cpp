@@ -19,14 +19,13 @@ struct ScoredTimingResult {
 ScoredTimingResult score_rhythm_shape_hit_at_offset(float arrival_offset_seconds) {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
 
     song.song_time = 5.0f;
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    sw.graded = false;
-    sw.press_time = song.song_time;
+    reg.remove<WindowGraded>(player);
+    reg.emplace_or_replace<Pressed>(player, Pressed{song.song_time});
 
     const float arrival_time = song.song_time + arrival_offset_seconds;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
@@ -106,11 +105,11 @@ TEST_CASE("collision: rhythm mode assigns Perfect for on-time hit", "[collision]
 
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    sw.graded = false;
+    reg.remove<WindowGraded>(player);
     sw.window_start = song.song_time;
-    sw.press_time = song.song_time;
+    reg.emplace_or_replace<Pressed>(player, Pressed{song.song_time});
 
-    // obstacle arrives right at press_time (perfect)
+    // obstacle arrives right at press time (perfect)
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
 
@@ -188,11 +187,11 @@ TEST_CASE("collision: rhythm mode assigns Bad for far-off hit", "[collision][rhy
 
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    sw.graded = false;
+    reg.remove<WindowGraded>(player);
     sw.window_start = song.song_time;
-    sw.press_time = song.song_time;
+    reg.emplace_or_replace<Pressed>(player, Pressed{song.song_time});
 
-    // obstacle arrival time far from press_time -> Bad
+    // obstacle arrival time far from press time -> Bad
     float bad_arrival = song.song_time + song.half_window * 1.2f;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, bad_arrival, bad_arrival - song.lead_time);
@@ -207,14 +206,13 @@ TEST_CASE("collision: rhythm shape gate only matches during Active window",
           "[collision][rhythm][issue765]") {
     auto active_reg = make_rhythm_registry();
     auto active_player = make_rhythm_player(active_reg);
-    auto& active_window = active_reg.get<ShapeWindow>(active_player);
     auto& active_song = active_reg.ctx().get<SongState>();
 
     active_song.song_time = 5.0f;
     set_player_shape_tag(active_reg, active_player, Shape::Circle);
     set_target_shape_tag(active_reg, active_player, Shape::Circle);
     set_window_phase_active(active_reg, active_player);
-    active_window.press_time = active_song.song_time;
+    active_reg.emplace_or_replace<Pressed>(active_player, Pressed{active_song.song_time});
 
     auto active_obs = make_shape_gate(active_reg, Shape::Circle, constants::PLAYER_Y);
     active_reg.emplace<BeatInfo>(active_obs, 0, active_song.song_time,
@@ -228,14 +226,15 @@ TEST_CASE("collision: rhythm shape gate only matches during Active window",
 
     auto morphout_reg = make_rhythm_registry();
     auto morphout_player = make_rhythm_player(morphout_reg);
-    auto& morphout_window = morphout_reg.get<ShapeWindow>(morphout_player);
     auto& morphout_song = morphout_reg.ctx().get<SongState>();
 
     morphout_song.song_time = 5.0f;
     set_player_shape_tag(morphout_reg, morphout_player, Shape::Circle);
     set_target_shape_tag(morphout_reg, morphout_player, Shape::Circle);
     set_window_phase_morph_out(morphout_reg, morphout_player);
-    morphout_window.press_time = morphout_song.song_time - morphout_song.window_duration;
+    morphout_reg.emplace_or_replace<Pressed>(
+        morphout_player,
+        Pressed{morphout_song.song_time - morphout_song.window_duration});
 
     auto morphout_obs = make_shape_gate(morphout_reg, Shape::Circle, constants::PLAYER_Y);
     morphout_reg.emplace<BeatInfo>(morphout_obs, 0, morphout_song.song_time,
@@ -270,7 +269,6 @@ TEST_CASE("collision: finished song still requires active shape window",
 
     auto active_reg = make_rhythm_registry();
     auto active_player = make_rhythm_player(active_reg);
-    auto& active_window = active_reg.get<ShapeWindow>(active_player);
     auto& active_song = active_reg.ctx().get<SongState>();
 
     active_song.playing = false;
@@ -279,7 +277,7 @@ TEST_CASE("collision: finished song still requires active shape window",
     set_player_shape_tag(active_reg, active_player, Shape::Circle);
     set_target_shape_tag(active_reg, active_player, Shape::Circle);
     set_window_phase_active(active_reg, active_player);
-    active_window.press_time = active_song.song_time;
+    active_reg.emplace_or_replace<Pressed>(active_player, Pressed{active_song.song_time});
 
     auto active_obs = make_shape_gate(active_reg, Shape::Circle, constants::PLAYER_Y);
     active_reg.emplace<BeatInfo>(active_obs, 0, active_song.song_time,
@@ -309,13 +307,12 @@ TEST_CASE("collision: rhythm miss increments miss_count in SongResults", "[colli
 TEST_CASE("collision: rhythm perfect increments perfect_count in SongResults", "[collision][rhythm]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
 
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    sw.graded = false;
-    sw.press_time = song.song_time;
+    reg.remove<WindowGraded>(player);
+    reg.emplace_or_replace<Pressed>(player, Pressed{song.song_time});
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
@@ -445,13 +442,12 @@ TEST_CASE("collision: Hexagon fails split path even when shape and lane match", 
 TEST_CASE("scoring: collision_system alone does not mutate SongResults counts", "[scoring][collision]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
 
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    sw.graded = false;
-    sw.press_time = song.song_time;
+    reg.remove<WindowGraded>(player);
+    reg.emplace_or_replace<Pressed>(player, Pressed{song.song_time});
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);

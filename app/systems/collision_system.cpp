@@ -23,8 +23,11 @@ bool shape_row_match(entt::registry& reg,
     if (!reg.all_of<RequiredTag>(obstacle_entity)) return false;
     if (rhythm_mode) {
         if (reg.all_of<ShapeWindowMorphInTag>(player_entity)) {
-            auto& sw = reg.get<ShapeWindow>(player_entity);
-            return sw.press_time >= 0.0f && reg.all_of<TargetTag>(player_entity);
+            // Pressed presence == "the window has a press" (Fabian Principle 3,
+            // issue #1533) — replaces the former `sw.press_time >= 0.0f`
+            // sentinel comparison.
+            return reg.all_of<Pressed>(player_entity)
+                && reg.all_of<TargetTag>(player_entity);
         }
         if (reg.all_of<ShapeWindowActiveTag>(player_entity)) {
             return reg.any_of<ShapeTag, TargetTag>(player_entity);
@@ -104,17 +107,22 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
         reg.get_or_emplace<ScoredTag>(entity);
     };
 
+    const auto* pressed = reg.try_get<Pressed>(player_entity);
     const bool can_grade_shape =
-        song.half_window > 0.0f && p_window.press_time >= 0.0f;
+        song.half_window > 0.0f && pressed != nullptr;
     auto grade_shape_timing = [&](entt::entity entity, float arrival_time) {
-        float delta_seconds = std::abs(p_window.press_time - arrival_time);
+        // can_grade_shape gates entry, so `pressed` is non-null here.
+        float delta_seconds = std::abs(pressed->press_time - arrival_time);
         float precision = 1.0f - (delta_seconds / kTimingOkSeconds);
         if (precision < 0.0f) precision = 0.0f;
         if (precision > 1.0f) precision = 1.0f;
         reg.emplace_or_replace<TimingGrade>(entity, TimingGrade{precision});
         emplace_timing_tier_tag_for_delta_abs(reg, entity, delta_seconds);
 
-        if (!p_window.graded) {
+        // WindowGraded presence == "this press has been graded" (Fabian
+        // Principle 3, issue #1533) — replaces the former `p_window.graded`
+        // bool.
+        if (!reg.all_of<WindowGraded>(player_entity)) {
             float scale = window_scale_from_delta_abs(delta_seconds);
             const float active_elapsed = song.song_time - p_window.window_start;
             float remaining = song.window_duration - active_elapsed;
@@ -126,7 +134,7 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
                 // shape_window_system on the next frame.
                 p_window.window_start -= remaining * (1.0f - scale);
             }
-            p_window.graded = true;
+            reg.emplace_or_replace<WindowGraded>(player_entity);
         }
     };
 

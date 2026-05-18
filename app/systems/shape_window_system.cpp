@@ -110,8 +110,8 @@ void advance_morph_out(entt::registry& reg,
         set_player_shape_tag(reg, entity, Shape::Hexagon);
         set_target_shape_tag(reg, entity, Shape::Hexagon);
         swindow.window_timer = 0.0f;
-        swindow.press_time = -1.0f;
-        swindow.graded = false;
+        reg.remove<Pressed>(entity);
+        reg.remove<WindowGraded>(entity);
         apply_shape_color(reg, entity, Shape::Hexagon);
         transition_to_idle<ShapeWindowMorphOutTag>(reg, entity);
         return;
@@ -122,8 +122,8 @@ void advance_morph_out(entt::registry& reg,
         set_player_shape_tag(reg, entity, Shape::Hexagon);
         set_target_shape_tag(reg, entity, Shape::Hexagon);
         swindow.window_timer = 0.0f;
-        swindow.press_time = -1.0f;
-        swindow.graded = false;
+        reg.remove<Pressed>(entity);
+        reg.remove<WindowGraded>(entity);
         apply_shape_color(reg, entity, Shape::Hexagon);
         transition_to_idle<ShapeWindowMorphOutTag>(reg, entity);
     }

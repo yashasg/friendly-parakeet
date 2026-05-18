@@ -123,9 +123,11 @@ void player_input_handle_shape_press_impl(entt::registry& reg, Shape pressed_sha
         set_target_shape_tag(reg, entity, pressed_shape);
         sw.window_timer = 0.0f;
         sw.window_start = song->song_time;
-        sw.press_time = song->song_time;
+        // Pressed row table presence == "this window has a press"; new press
+        // also clears any prior grading flag (Fabian Principle 3, issue #1533).
+        reg.emplace_or_replace<Pressed>(entity, Pressed{song->song_time});
         ps.morph_t = 0.0f;
-        sw.graded = false;
+        reg.remove<WindowGraded>(entity);
         // Phase transition: any previous phase → MorphIn (#1202/#1204).
         reg.remove<ShapeWindowActiveTag>(entity);
         reg.remove<ShapeWindowMorphOutTag>(entity);

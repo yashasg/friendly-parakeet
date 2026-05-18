@@ -52,11 +52,25 @@ struct PlayerShape {
 // The target shape the press is morphing toward lives as one of
 // `TargetShapeCircleTag` / `TargetShapeSquareTag` / `TargetShapeTriangleTag` /
 // `TargetShapeHexagonTag` on the same entity (issue #1202/#1204).
+//
+// Fabian Principle 3 (issue #1533): every column is always meaningful while
+// `ShapeWindow` exists. The former `press_time = -1.0f` sentinel migrated to
+// the `Pressed` row table (presence == "the window has a recorded press");
+// the former `bool graded` migrated to the `WindowGraded` zero-column tag
+// in `app/tags/tags.h` (presence == "this press has been graded").
 struct ShapeWindow {
-    bool        graded        = false;
     float       window_timer  = 0.0f;
     float       window_start  = 0.0f;
-    float       press_time    = -1.0f;
+};
+
+// Recorded press for the current shape window. Presence on the player entity
+// IS "the window has a press"; the `press_time` column is always meaningful
+// while the row exists (Fabian Principle 3 / issue #1533). Writers:
+// `player_input_system` emplaces on every shape press;
+// `shape_window_system` removes on MorphOut → Idle. Readers: `collision_system`
+// joins on `Pressed` to gate shape-timing grading and read the press time.
+struct Pressed {
+    float press_time = 0.0f;
 };
 
 struct Lane {

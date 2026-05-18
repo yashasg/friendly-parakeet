@@ -70,8 +70,8 @@ TEST_CASE("tick_playing_systems: collision resolves before active window expiry"
     set_window_phase_active(reg, player);
     sw.window_start = 10.0f;
     sw.window_timer = 0.0f;
-    sw.press_time = song.song_time;
-    sw.graded = false;
+    reg.emplace_or_replace<Pressed>(player, Pressed{song.song_time});
+    reg.remove<WindowGraded>(player);
 
     auto obstacle = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obstacle, 0, song.song_time, song.song_time - song.lead_time);
@@ -95,8 +95,8 @@ TEST_CASE("tick_playing_systems: shape window activates before collision", "[pha
     set_window_phase_morph_in(reg, player);
     sw.window_start = song.song_time - song.morph_duration - 0.01f;
     sw.window_timer = 0.0f;
-    sw.press_time = song.song_time;
-    sw.graded = false;
+    reg.emplace_or_replace<Pressed>(player, Pressed{song.song_time});
+    reg.remove<WindowGraded>(player);
 
     auto obstacle = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obstacle, 0, song.song_time, song.song_time - song.lead_time);

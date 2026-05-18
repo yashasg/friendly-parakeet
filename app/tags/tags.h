@@ -13,6 +13,13 @@
 // ── Player ───────────────────────────────────────────────────
 struct PlayerTag {};
 
+// Presence on the player entity IS "the current shape-window press has been
+// graded by collision_system" — replaces the former `ShapeWindow::graded`
+// bool (Fabian Principle 3 / issue #1533). collision_system emplaces on
+// first grading per window; shape_window_system removes on MorphOut → Idle;
+// player_input_system removes whenever a new press opens a window.
+struct WindowGraded {};
+
 // ── Player current shape (per-tag table; exactly one per player entity) ──
 // Replaces the former `PlayerShape::current` Shape-typed field (issue
 // #1202/#1204). Per Fabian's existential processing, each former enum value

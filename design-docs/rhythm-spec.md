@@ -278,11 +278,14 @@ struct PlayerShape {
 };
 
 struct ShapeWindow {
-    bool  graded       = false;   // window already graded this cycle
     float window_timer = 0.0f;    // seconds in current phase/window
     float window_start = 0.0f;    // absolute song_time of window start
-    float press_time   = -1.0f;   // absolute song_time of input
 };
+// `Pressed { float press_time; }` lives in `app/components/player.h`.
+// `WindowGraded` lives in `app/tags/tags.h`. Presence of each row IS the
+// data (Fabian Principle 3 / issue #1533) — the former
+// `ShapeWindow::press_time = -1.0f` sentinel and `bool graded` flag are
+// eradicated.
 ```
 
 ## BeatInfo (per obstacle entity)
@@ -364,8 +367,10 @@ struct SongResults {
   │ collision_system                               [MOD]       │
   │   → checks shape match at obstacle arrival                 │
   │   → computes TimingGrade from BeatInfo.arrival_time        │
-  │     against ShapeWindow.press_time                         │
-  │   → on HIT: applies window_scale shortening if !graded     │
+  │     against Pressed.press_time (Fabian #1533: presence     │
+  │     of the Pressed row on the player IS "has a press")     │
+  │   → on HIT: applies window_scale shortening unless the     │
+  │     player already carries the WindowGraded tag            │
   │   → on MISS: drain EnergyState; GameOver only at energy=0  │
   │   → emplaces ScoredTag on both HIT and MISS paths          │
   │                                                            │
@@ -757,8 +762,10 @@ if (!song) return;  // no rhythm context — skip
 ## Phase 3 — Shape window (DONE)
 ```
   • shape_window_system: Idle→MorphIn→Active→MorphOut→Idle
-  • player_input_system handlers: trigger window, reset graded
-  • ShapeWindow: owns graded field; collision_system applies window_scale_for_tier on hit
+  • player_input_system handlers: trigger window, clear WindowGraded tag
+  • Pressed + WindowGraded tag (Fabian #1533): presence on the player
+    drives "has a press" / "press is graded"; collision_system applies
+    window_scale_for_tier on hit
   • collision_system: window scaling on GOOD/PERFECT
 ```
 

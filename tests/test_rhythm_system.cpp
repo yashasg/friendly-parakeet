@@ -404,8 +404,8 @@ TEST_CASE("player_action: press_time recorded correctly", "[rhythm][action]") {
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
     run_semantic_input_tick(reg, 0.016f);
-    auto& sw = reg.get<ShapeWindow>(player);
-    CHECK_THAT(sw.press_time, WithinAbs(5.0f, 0.001f));
+    REQUIRE(reg.all_of<Pressed>(player));
+    CHECK_THAT(reg.get<Pressed>(player).press_time, WithinAbs(5.0f, 0.001f));
 }
 
 TEST_CASE("player_action: same shape during active is ignored", "[rhythm][action]") {
@@ -481,13 +481,13 @@ TEST_CASE("collision: MISS drains energy", "[rhythm][collision]") {
 TEST_CASE("collision: timing grade PERFECT on press-at-arrival", "[rhythm][collision]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    song.song_time = 5.0f; sw.press_time = 5.0f;
+    song.song_time = 5.0f;
+    reg.emplace_or_replace<Pressed>(player, Pressed{5.0f});
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
-    // arrival_time == press_time -> Perfect
+    // arrival_time == press time -> Perfect
     reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
     REQUIRE(reg.all_of<ScoredTag>(obs));
@@ -498,7 +498,6 @@ TEST_CASE("collision: timing grade PERFECT on press-at-arrival", "[rhythm][colli
 TEST_CASE("collision: HUD perfect cue distance maps to PERFECT timing", "[rhythm][collision][hud]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
 
     const float cue_dist = gameplay_hud_perfect_distance(&song);
@@ -511,8 +510,8 @@ TEST_CASE("collision: HUD perfect cue distance maps to PERFECT timing", "[rhythm
 
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    sw.press_time = 5.0f;
-    song.song_time = sw.press_time + cue_lead_seconds;
+    reg.emplace_or_replace<Pressed>(player, Pressed{5.0f});
+    song.song_time = reg.get<Pressed>(player).press_time + cue_lead_seconds;
 
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, song.song_time, song.song_time - song.lead_time);
@@ -527,11 +526,11 @@ TEST_CASE("collision: HUD perfect cue distance maps to PERFECT timing", "[rhythm
 TEST_CASE("collision: timing grade GOOD at 50pct", "[rhythm][collision]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    song.song_time = 5.0f; sw.press_time = 5.0f;
+    song.song_time = 5.0f;
+    reg.emplace_or_replace<Pressed>(player, Pressed{5.0f});
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     // arrival_time offset by 50% of half_window (~75ms) -> Good
     reg.emplace<BeatInfo>(obs, 0, 5.0f + song.half_window * 0.5f, 0.0f);
@@ -543,11 +542,11 @@ TEST_CASE("collision: timing grade GOOD at 50pct", "[rhythm][collision]") {
 TEST_CASE("collision: timing grade OK at 80pct", "[rhythm][collision]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    song.song_time = 5.0f; sw.press_time = 5.0f;
+    song.song_time = 5.0f;
+    reg.emplace_or_replace<Pressed>(player, Pressed{5.0f});
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     // arrival_time offset by 80% of half_window (~120ms) -> Ok
     reg.emplace<BeatInfo>(obs, 0, 5.0f + song.half_window * 0.8f, 0.0f);
@@ -559,11 +558,11 @@ TEST_CASE("collision: timing grade OK at 80pct", "[rhythm][collision]") {
 TEST_CASE("collision: timing grade BAD beyond window", "[rhythm][collision]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    song.song_time = 5.0f; sw.press_time = 5.0f;
+    song.song_time = 5.0f;
+    reg.emplace_or_replace<Pressed>(player, Pressed{5.0f});
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     // arrival_time offset by 120% of half_window (>150ms) -> Bad
     reg.emplace<BeatInfo>(obs, 0, 5.0f + song.half_window * 1.2f, 0.0f);
@@ -583,9 +582,9 @@ TEST_CASE("collision: stale press from previous beat does not get Perfect", "[rh
     // Player pressed Circle at song_time 2.0.
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    sw.press_time = 2.0f;
+    reg.emplace_or_replace<Pressed>(player, Pressed{2.0f});
     sw.window_start = 2.0f;
-    sw.graded = false;
+    reg.remove<WindowGraded>(player);
 
     // Now it's beat N+2 (time 3.5 at 120 BPM = 0.5s per beat)
     song.song_time = 3.5f;
@@ -597,18 +596,18 @@ TEST_CASE("collision: stale press from previous beat does not get Perfect", "[rh
     collision_system(reg, 0.016f);
 
     REQUIRE(has_any_timing_tier_tag(reg, obs));
-    // press_time (2.0) is far from arrival (3.5) -> not Perfect
+    // press time (2.0) is far from arrival (3.5) -> not Perfect
     CHECK_FALSE(reg.all_of<TimingPerfectTag>(obs));
 }
 
 TEST_CASE("collision: PERFECT clears obstacle without game over", "[rhythm][collision]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    song.song_time = 5.0f; sw.press_time = 5.0f;
+    song.song_time = 5.0f;
+    reg.emplace_or_replace<Pressed>(player, Pressed{5.0f});
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
@@ -619,11 +618,11 @@ TEST_CASE("collision: PERFECT clears obstacle without game over", "[rhythm][coll
 TEST_CASE("collision: SongResults updated", "[rhythm][collision]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     set_player_shape_tag(reg, player, Shape::Circle);
     set_window_phase_active(reg, player);
-    song.song_time = 5.0f; sw.press_time = 5.0f;
+    song.song_time = 5.0f;
+    reg.emplace_or_replace<Pressed>(player, Pressed{5.0f});
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
@@ -712,7 +711,7 @@ TEST_CASE("window_scaling: PERFECT grade shortens remaining window", "[rhythm][w
     set_window_phase_active(reg, player);
     sw.window_timer = song.window_duration * 0.5f; // halfway through
     song.song_time = 5.0f;
-    sw.press_time = 5.0f; // PERFECT timing
+    reg.emplace_or_replace<Pressed>(player, Pressed{5.0f}); // PERFECT timing
     sw.window_start = song.song_time - sw.window_timer;
 
     float start_before = sw.window_start;
@@ -721,7 +720,7 @@ TEST_CASE("window_scaling: PERFECT grade shortens remaining window", "[rhythm][w
     reg.emplace<BeatInfo>(obs, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
 
-    CHECK(sw.graded);
+    CHECK(reg.all_of<WindowGraded>(player));
     // Post-#223: Perfect scale = 0.50 (shrinks remaining window by 50%)
     // window_start moved backward so remaining Active window expires at 50%
     float remaining = song.window_duration - timer_before;
@@ -741,7 +740,7 @@ TEST_CASE("window_scaling: GOOD grade shortens window slightly", "[rhythm][windo
     set_window_phase_active(reg, player);
     sw.window_timer = song.window_duration * 0.4f;
     song.song_time = 5.0f;
-    sw.press_time = 5.0f;
+    reg.emplace_or_replace<Pressed>(player, Pressed{5.0f});
     sw.window_start = song.song_time - sw.window_timer;
 
     float start_before = sw.window_start;
@@ -751,7 +750,7 @@ TEST_CASE("window_scaling: GOOD grade shortens window slightly", "[rhythm][windo
     reg.emplace<BeatInfo>(obs, 0, 5.0f + song.half_window * 0.5f, 0.0f);
     collision_system(reg, 0.016f);
 
-    CHECK(sw.graded);
+    CHECK(reg.all_of<WindowGraded>(player));
     // Post-#223: Good scale = 0.75 (shrinks remaining window by 25%)
     float remaining = song.window_duration - timer_before;
     float expected_shift = remaining * 0.25f;
@@ -771,7 +770,7 @@ TEST_CASE("window_scaling: OK grade keeps window unchanged", "[rhythm][window_sc
     sw.window_timer = song.window_duration * 0.3f;
     // Keep window_start consistent with song_time and window_timer
     sw.window_start = song.song_time - sw.window_timer;
-    sw.press_time = 5.0f;
+    reg.emplace_or_replace<Pressed>(player, Pressed{5.0f});
 
     float start_before = sw.window_start;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
@@ -779,7 +778,7 @@ TEST_CASE("window_scaling: OK grade keeps window unchanged", "[rhythm][window_sc
     reg.emplace<BeatInfo>(obs, 0, 5.0f + song.half_window * 0.8f, 0.0f);
     collision_system(reg, 0.016f);
 
-    CHECK(sw.graded);
+    CHECK(reg.all_of<WindowGraded>(player));
     // Post-#223: Ok scale = 1.0 → no window adjustment
     CHECK_THAT(sw.window_start, WithinAbs(start_before, 0.001f));
     // window_timer must NOT be changed by collision_system
@@ -798,7 +797,7 @@ TEST_CASE("window_scaling: BAD grade keeps window unchanged", "[rhythm][window_s
     sw.window_timer = song.window_duration * 0.2f;
     // Keep window_start consistent with song_time and window_timer
     sw.window_start = song.song_time - sw.window_timer;
-    sw.press_time = 5.0f;
+    reg.emplace_or_replace<Pressed>(player, Pressed{5.0f});
 
     float start_before = sw.window_start;
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
@@ -806,7 +805,7 @@ TEST_CASE("window_scaling: BAD grade keeps window unchanged", "[rhythm][window_s
     reg.emplace<BeatInfo>(obs, 0, 5.0f + song.half_window * 1.2f, 0.0f);
     collision_system(reg, 0.016f);
 
-    CHECK(sw.graded);
+    CHECK(reg.all_of<WindowGraded>(player));
     // Post-#223: Bad scale = 1.0 → no window adjustment
     CHECK_THAT(sw.window_start, WithinAbs(start_before, 0.001f));
     // window_timer must NOT be changed by collision_system
@@ -823,14 +822,14 @@ TEST_CASE("window_scaling: second obstacle does not re-scale", "[rhythm][window_
     set_window_phase_active(reg, player);
     sw.window_timer = song.window_duration * 0.4f;
     song.song_time = 5.0f;
-    sw.press_time = 5.0f;
+    reg.emplace_or_replace<Pressed>(player, Pressed{5.0f});
 
     // First obstacle grades PERFECT, jumps timer
     auto obs1 = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
     reg.emplace<BeatInfo>(obs1, 0, 5.0f, 5.0f - song.lead_time);
     collision_system(reg, 0.016f);
     float timer_after_first = sw.window_timer;
-    CHECK(sw.graded);
+    CHECK(reg.all_of<WindowGraded>(player));
 
     // Second obstacle should NOT jump timer again
     auto obs2 = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
@@ -842,10 +841,9 @@ TEST_CASE("window_scaling: second obstacle does not re-scale", "[rhythm][window_
 TEST_CASE("window_scaling: graded resets on new window", "[rhythm][window_scaling]") {
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& sw = reg.get<ShapeWindow>(player);
 
     // Simulate a graded window
-    sw.graded = true;
+    reg.emplace_or_replace<WindowGraded>(player);
 
     // Start a new window via semantic input drain
     auto btn = make_shape_button(reg, Shape::Triangle);
@@ -853,7 +851,7 @@ TEST_CASE("window_scaling: graded resets on new window", "[rhythm][window_scalin
     set_window_phase_idle(reg, player);
     run_semantic_input_tick(reg, 0.016f);
 
-    CHECK_FALSE(sw.graded);
+    CHECK_FALSE(reg.all_of<WindowGraded>(player));
 }
 
 // Integration: obstacle arrives on-beat
