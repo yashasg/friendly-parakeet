@@ -70,35 +70,6 @@ struct InputDispatcherConnections {
     }
 };
 
-void warm_dispatcher_event_queues(entt::dispatcher& disp) {
-    // Move first vector allocation out of the first gameplay input frame.
-    disp.enqueue<GoUpEvent>(GoUpEvent{});
-    disp.enqueue<GoDownEvent>(GoDownEvent{});
-    disp.enqueue<GoLeftEvent>(GoLeftEvent{});
-    disp.enqueue<GoRightEvent>(GoRightEvent{});
-    disp.enqueue<ShapePressCircleEvent>(ShapePressCircleEvent{});
-    disp.enqueue<ShapePressSquareEvent>(ShapePressSquareEvent{});
-    disp.enqueue<ShapePressTriangleEvent>(ShapePressTriangleEvent{});
-    disp.enqueue<MenuConfirmEvent>(MenuConfirmEvent{});
-    disp.enqueue<MenuRestartEvent>(MenuRestartEvent{});
-    disp.enqueue<MenuGoLevelSelectEvent>(MenuGoLevelSelectEvent{});
-    disp.enqueue<MenuGoMainMenuEvent>(MenuGoMainMenuEvent{});
-    disp.enqueue<MenuSelectLevelEvent>(MenuSelectLevelEvent{});
-    disp.enqueue<MenuSelectDiffEvent>(MenuSelectDiffEvent{});
-    disp.clear<GoUpEvent>();
-    disp.clear<GoDownEvent>();
-    disp.clear<GoLeftEvent>();
-    disp.clear<GoRightEvent>();
-    disp.clear<ShapePressCircleEvent>();
-    disp.clear<ShapePressSquareEvent>();
-    disp.clear<ShapePressTriangleEvent>();
-    disp.clear<MenuConfirmEvent>();
-    disp.clear<MenuRestartEvent>();
-    disp.clear<MenuGoLevelSelectEvent>();
-    disp.clear<MenuGoMainMenuEvent>();
-    disp.clear<MenuSelectLevelEvent>();
-    disp.clear<MenuSelectDiffEvent>();
-}
 }
 
 // game_state_system owns the fixed-step drain of the per-direction Go*Event
@@ -177,7 +148,33 @@ void wire_input_dispatcher(entt::registry& reg) {
     state->menu_go_main_menu_game_state =
         disp->sink<MenuGoMainMenuEvent>().connect<&game_state_handle_go_main_menu>(reg);
 
-    warm_dispatcher_event_queues(*disp);
+    // Move first vector allocation out of the first gameplay input frame.
+    disp->enqueue<GoUpEvent>(GoUpEvent{});
+    disp->enqueue<GoDownEvent>(GoDownEvent{});
+    disp->enqueue<GoLeftEvent>(GoLeftEvent{});
+    disp->enqueue<GoRightEvent>(GoRightEvent{});
+    disp->enqueue<ShapePressCircleEvent>(ShapePressCircleEvent{});
+    disp->enqueue<ShapePressSquareEvent>(ShapePressSquareEvent{});
+    disp->enqueue<ShapePressTriangleEvent>(ShapePressTriangleEvent{});
+    disp->enqueue<MenuConfirmEvent>(MenuConfirmEvent{});
+    disp->enqueue<MenuRestartEvent>(MenuRestartEvent{});
+    disp->enqueue<MenuGoLevelSelectEvent>(MenuGoLevelSelectEvent{});
+    disp->enqueue<MenuGoMainMenuEvent>(MenuGoMainMenuEvent{});
+    disp->enqueue<MenuSelectLevelEvent>(MenuSelectLevelEvent{});
+    disp->enqueue<MenuSelectDiffEvent>(MenuSelectDiffEvent{});
+    disp->clear<GoUpEvent>();
+    disp->clear<GoDownEvent>();
+    disp->clear<GoLeftEvent>();
+    disp->clear<GoRightEvent>();
+    disp->clear<ShapePressCircleEvent>();
+    disp->clear<ShapePressSquareEvent>();
+    disp->clear<ShapePressTriangleEvent>();
+    disp->clear<MenuConfirmEvent>();
+    disp->clear<MenuRestartEvent>();
+    disp->clear<MenuGoLevelSelectEvent>();
+    disp->clear<MenuGoMainMenuEvent>();
+    disp->clear<MenuSelectLevelEvent>();
+    disp->clear<MenuSelectDiffEvent>();
 }
 
 void unwire_input_dispatcher(entt::registry& reg) {
