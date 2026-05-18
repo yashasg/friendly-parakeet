@@ -39,21 +39,32 @@ struct SongState {
     bool   restart_music = false;  // set true by setup_play_session; consumed/cleared
                                    //   on the next tick by song_playback_system
 
-    // ── Beat-schedule cursors (per-(kind, shape), reset at session init) ────
+    // ── Beat-schedule cursors (per-(kind, shape, timing-source), reset at session init) ──
     // Replaces the former `next_spawn_idx` single cursor (issue #1202/#1204).
     // Each former enum value (`ObstacleKind`, `Shape`) was a hidden lookup
     // table; per Fabian's relational-database mechanic, each value gets its
-    // own row in BeatMap and its own cursor here. beat_scheduler_system runs
-    // one per-cursor transform; each cursor advances independently over its
-    // own vector in BeatMap. Shape::Hexagon is not a valid required shape
-    // for shape_gate / split_path, so no `*_hexagon_idx` cursor exists.
-    size_t next_shape_gate_circle_idx    = 0;
-    size_t next_shape_gate_square_idx    = 0;
-    size_t next_shape_gate_triangle_idx  = 0;
-    size_t next_split_path_circle_idx    = 0;
-    size_t next_split_path_square_idx    = 0;
-    size_t next_split_path_triangle_idx  = 0;
-    size_t next_onset_marker_idx         = 0;
+    // own row in BeatMap and its own cursor here. The further `_timed_idx`
+    // split (#1533) tracks the per-bin authored-onset siblings introduced
+    // when `BeatEntry::has_time_sec` was eradicated: indexed entries live in
+    // `*_beats` and timed entries live in `*_beats_timed`, each with an
+    // independent cursor. beat_scheduler_system runs one per-cursor transform;
+    // each cursor advances independently over its own vector in BeatMap.
+    // Shape::Hexagon is not a valid required shape for shape_gate / split_path,
+    // so no `*_hexagon_idx` cursor exists.
+    size_t next_shape_gate_circle_idx          = 0;
+    size_t next_shape_gate_square_idx          = 0;
+    size_t next_shape_gate_triangle_idx        = 0;
+    size_t next_split_path_circle_idx          = 0;
+    size_t next_split_path_square_idx          = 0;
+    size_t next_split_path_triangle_idx        = 0;
+    size_t next_onset_marker_idx               = 0;
+    size_t next_shape_gate_circle_timed_idx    = 0;
+    size_t next_shape_gate_square_timed_idx    = 0;
+    size_t next_shape_gate_triangle_timed_idx  = 0;
+    size_t next_split_path_circle_timed_idx    = 0;
+    size_t next_split_path_square_timed_idx    = 0;
+    size_t next_split_path_triangle_timed_idx  = 0;
+    size_t next_onset_marker_timed_idx         = 0;
 };
 
 // ── Song Results (singleton, accumulates during play) ─

@@ -69,23 +69,52 @@ TEST_CASE("shipped beatmaps: authored beats are strictly increasing",
             // beat index.
             //
             // Per #1202/#1204 the chart is normalized: each former
-            // `ObstacleKind` lives in its own vector. To check the cross-kind
-            // ordering invariant we merge the three vectors into one flat
-            // sorted view (by beat_index, then time_sec).
-            std::vector<BeatEntry> merged;
-            merged.reserve(beat_map_total_count(map));
-            auto append = [&](const std::vector<BeatEntry>& v) {
-                merged.insert(merged.end(), v.begin(), v.end());
+            // `ObstacleKind` lives in its own vector. Per #1533 each per-kind
+            // vector is further split into an indexed (`*_beats`) sibling
+            // (timing comes from `beat_times[beat_index]`) and an authored
+            // (`*_beats_timed`) sibling (timing comes from the row's
+            // `time_sec`). To check the cross-kind ordering invariant we
+            // merge all fourteen vectors into one flat view, projecting each
+            // row to a resolved time before sorting by (beat_index, resolved
+            // time).
+            struct MergedBeat {
+                int   beat_index;
+                float time_sec;
             };
-            append(map.shape_gate_circle_beats);
-            append(map.shape_gate_square_beats);
-            append(map.shape_gate_triangle_beats);
-            append(map.split_path_circle_beats);
-            append(map.split_path_square_beats);
-            append(map.split_path_triangle_beats);
-            append(map.onset_marker_beats);
+            std::vector<MergedBeat> merged;
+            merged.reserve(beat_map_total_count(map));
+            auto append_indexed = [&](const std::vector<BeatEntry>& v) {
+                for (const auto& e : v) {
+                    float t = e.beat_index * (60.0f / map.bpm) + map.offset;
+                    if (!map.beat_times.empty() &&
+                        e.beat_index >= 0 &&
+                        static_cast<size_t>(e.beat_index) < map.beat_times.size()) {
+                        t = map.beat_times[static_cast<size_t>(e.beat_index)];
+                    }
+                    merged.push_back({e.beat_index, t});
+                }
+            };
+            auto append_timed = [&](const std::vector<BeatEntryTimed>& v) {
+                for (const auto& e : v) {
+                    merged.push_back({e.beat_index, e.time_sec});
+                }
+            };
+            append_indexed(map.shape_gate_circle_beats);
+            append_indexed(map.shape_gate_square_beats);
+            append_indexed(map.shape_gate_triangle_beats);
+            append_indexed(map.split_path_circle_beats);
+            append_indexed(map.split_path_square_beats);
+            append_indexed(map.split_path_triangle_beats);
+            append_indexed(map.onset_marker_beats);
+            append_timed(map.shape_gate_circle_beats_timed);
+            append_timed(map.shape_gate_square_beats_timed);
+            append_timed(map.shape_gate_triangle_beats_timed);
+            append_timed(map.split_path_circle_beats_timed);
+            append_timed(map.split_path_square_beats_timed);
+            append_timed(map.split_path_triangle_beats_timed);
+            append_timed(map.onset_marker_beats_timed);
             std::stable_sort(merged.begin(), merged.end(),
-                             [](const BeatEntry& a, const BeatEntry& b) {
+                             [](const MergedBeat& a, const MergedBeat& b) {
                                  if (a.beat_index != b.beat_index) return a.beat_index < b.beat_index;
                                  return a.time_sec < b.time_sec;
                              });

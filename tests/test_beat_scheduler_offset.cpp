@@ -61,7 +61,7 @@ TEST_CASE("offset_semantics: beat_index=0 arrives at exactly offset", "[beat_sch
     auto& map  = beat_map(reg);
 
     song.offset = 1.5f;
-    map.shape_gate_circle_beats.push_back({0, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({0, 1});
 
     advance_to_spawn_all(reg);
 
@@ -76,7 +76,7 @@ TEST_CASE("offset_semantics: beat_index=0 with zero offset arrives at t=0", "[be
     auto& map  = beat_map(reg);
 
     song.offset = 0.0f;
-    map.shape_gate_square_beats.push_back({0, 1, 0.0f, false});
+    map.shape_gate_square_beats.push_back({0, 1});
 
     advance_to_spawn_all(reg);
 
@@ -96,7 +96,7 @@ TEST_CASE("offset_semantics: beat_index=N arrives at offset + N*period", "[beat_
     song.bpm    = 120.0f;
     song.offset = 0.35f;
     song_state_compute_derived(song);
-    map.shape_gate_triangle_beats.push_back({8, 1, 0.0f, false});
+    map.shape_gate_triangle_beats.push_back({8, 1});
 
     advance_to_spawn_all(reg);
 
@@ -115,8 +115,8 @@ TEST_CASE("offset_semantics: two beat_indices are exactly period apart", "[beat_
     song.bpm    = 160.0f;
     song.offset = 2.27f;
     song_state_compute_derived(song);
-    map.shape_gate_circle_beats.push_back({10, 1, 0.0f, false});
-    map.shape_gate_circle_beats.push_back({11, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({10, 1});
+    map.shape_gate_circle_beats.push_back({11, 1});
 
     advance_to_spawn_all(reg);
 
@@ -142,7 +142,7 @@ TEST_CASE("offset_semantics: doubling offset shifts arrival by same delta", "[be
         song.bpm    = 120.0f;
         song.offset = offset_val;
         song_state_compute_derived(song);
-        map.shape_gate_circle_beats.push_back({beat_idx, 1, 0.0f, false});
+        map.shape_gate_circle_beats.push_back({beat_idx, 1});
         advance_to_spawn_all(reg);
         return single_arrival_time(reg);
     };
@@ -173,7 +173,7 @@ TEST_CASE("offset_semantics: first authored beat_index=N>0 arrives after offset"
 
     // Simulate a typical shipped-beatmap first obstacle (beat_index >= 2)
     const int first_idx = 4;
-    map.shape_gate_circle_beats.push_back({first_idx, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({first_idx, 1});
 
     advance_to_spawn_all(reg);
 
@@ -203,7 +203,7 @@ TEST_CASE("offset_semantics: offset must not be zero when pipeline sets it from 
     song_state_compute_derived(song);
 
     // First authored obstacle on hard: beat_index = 2
-    map.shape_gate_circle_beats.push_back({2, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({2, 1});
 
     advance_to_spawn_all(reg);
 
@@ -258,7 +258,7 @@ TEST_CASE("offset_semantics: uniform-beat assumption valid within per-beat toler
     song_state_compute_derived(song);
 
     for (int i = 0; i <= N; i += 10) {
-        map.shape_gate_circle_beats.push_back({i, 1, 0.0f, false});
+        map.shape_gate_circle_beats.push_back({i, 1});
     }
 
     advance_to_spawn_all(reg);
@@ -284,7 +284,7 @@ TEST_CASE("offset_semantics: halving BPM doubles all collision intervals", "[bea
         song.bpm    = bpm;
         song.offset = 0.0f;
         song_state_compute_derived(song);
-        map.shape_gate_circle_beats.push_back({beat_idx, 1, 0.0f, false});
+        map.shape_gate_circle_beats.push_back({beat_idx, 1});
         advance_to_spawn_all(reg);
         return single_arrival_time(reg);
     };

@@ -48,7 +48,7 @@ ScheduleResult schedule_one(int16_t audio_offset_ms,
     song.song_time = song_time_when_scheduling;
 
     auto& map = beat_map(reg);
-    map.shape_gate_circle_beats.push_back({beat_index, 1, 0, false});
+    map.shape_gate_circle_beats.push_back({beat_index, 1});
 
     beat_scheduler_system(reg, 0.016f);
 
@@ -165,7 +165,7 @@ TEST_CASE("beat_scheduler: audio_offset gates spawn before calibrated spawn time
     song.next_shape_gate_circle_idx = 0;
 
     auto& map = beat_map(reg);
-    map.shape_gate_circle_beats.push_back({0, 1, 0, false});
+    map.shape_gate_circle_beats.push_back({0, 1});
 
     beat_scheduler_system(reg, 0.016f);
     CHECK(count_obstacles(reg) == 0);
@@ -199,7 +199,7 @@ TEST_CASE("audio_offset: zero setting matches absent SettingsState",
     zero_schedule_song.song_time = 1.0f;
     zero_schedule_song.next_shape_gate_circle_idx = 0;
     beat_map(scheduler_with_zero).shape_gate_circle_beats.push_back(
-        {2, 1, 0, false});
+        {2, 1});
     beat_scheduler_system(scheduler_with_zero, 0.016f);
 
     auto scheduler_without_settings = make_rhythm_registry();
@@ -208,7 +208,7 @@ TEST_CASE("audio_offset: zero setting matches absent SettingsState",
     absent_schedule_song.song_time = 1.0f;
     absent_schedule_song.next_shape_gate_circle_idx = 0;
     beat_map(scheduler_without_settings).shape_gate_circle_beats.push_back(
-        {2, 1, 0, false});
+        {2, 1});
     beat_scheduler_system(scheduler_without_settings, 0.016f);
 
     CHECK(absent_schedule_song.next_shape_gate_circle_idx == zero_schedule_song.next_shape_gate_circle_idx);
@@ -249,7 +249,7 @@ OffsetGameplayResult run_calibrated_on_arrival_hit(int16_t audio_offset_ms) {
 
     constexpr int kBeatIndex = 4;
     auto& map = beat_map(reg);
-    map.shape_gate_circle_beats.push_back({kBeatIndex, 1, 0, false});
+    map.shape_gate_circle_beats.push_back({kBeatIndex, 1});
 
     const float beat_time = song.offset + static_cast<float>(kBeatIndex) * song.beat_period;
     const float spawn_time = beat_time - song.lead_time + settings::audio_offset_seconds(settings);

@@ -112,19 +112,23 @@ singletons (`SongState`, `EnergyState`, `SongResults`) live in registry context.
 All are cold data read a few times per frame, not iterated in bulk.
 
 ```cpp
-// Defined in beat_map.h and re-exported by rhythm.h. The authored kind is
-// carried as a per-archetype tag on the spawned obstacle entity (issue
-// #1202/#1204) — `ShapeGateTag` / `SplitPathTag` / `OnsetMarkerTag` from
-// `app/tags/tags.h`. BeatEntry retains the authored discriminator only as
-// a loader-side spawn hint; runtime systems never re-read it.
+// Defined in beat_map.h and re-exported by rhythm.h. The authored kind and
+// shape are carried as *table membership* in BeatMap's fourteen
+// per-(kind, shape, time-source) vectors (issues #1198 / #1202 / #1204 /
+// #1533) — see rhythm-spec.md for the canonical structure. Spawned obstacle
+// entities discover their archetype via `ShapeGateTag` / `SplitPathTag` /
+// `OnsetMarkerTag` from `app/tags/tags.h`.
 struct BeatEntry {
-    int          beat_index   = 0;       //  4B
-    Shape        shape        = Shape::Circle;  // 1B
-    int8_t       lane         = 1;       //  1B
-    float        time_sec     = 0.0f;    // optional authored timestamp
-    bool         has_time_sec = false;
-    // (authored archetype kind hint is internal to the loader; runtime
-    // entities discover archetype via their tag)
+    int    beat_index = 0;       //  4B  (indexed bins only — *_beats)
+    int8_t lane       = 1;       //  1B
+    // No `shape`, `time_sec`, or `has_time_sec` columns — discriminator
+    // is the vector identity.
+};
+
+struct BeatEntryTimed {
+    int    beat_index = 0;       //  4B  (authored-onset bins — *_beats_timed)
+    int8_t lane       = 1;       //  1B
+    float  time_sec   = 0.0f;    //  4B  always-meaningful authored timestamp
 };
 
 struct BeatMap {
@@ -137,45 +141,13 @@ struct BeatMap {
     float       duration   = 180.0f;
     std::string difficulty;
     std::vector<float> beat_times;
-    std::vector<BeatEntry> beats;
+    // 7 indexed + 7 timed vectors (see rhythm-spec.md / app/components/beat_map.h)
 };
 
 struct SongState {
-    // ── Session-init fields ──
-    float bpm             = 120.0f;
-    float offset          = 0.0f;
-    int   lead_beats      = 4;
-    float duration_sec    = 180.0f;
-
-    // ── Derived fields ──
-    float beat_period     = 0.5f;
-    float lead_time       = 2.0f;
-    float scroll_speed    = constants::APPROACH_DIST / lead_time;
-    float window_duration = 0.3f;
-    float half_window     = 0.15f;
-    float morph_duration  = 0.1f;
-
-    // ── Per-frame mutable fields ──
-    float  song_time     = 0.0f;
-    int    current_beat  = -1;
-    bool   playing       = false;
-    bool   finished      = false;
-    bool   restart_music = false;
-
-    // ── Beat-schedule cursor ──
-    size_t next_spawn_idx = 0;
+    // …session-init, derived, per-frame mutable fields…
+    // 7 indexed + 7 timed beat-schedule cursors (issue #1533).
 };
-
-struct SongResults {
-    int perfect_count, good_count, ok_count, bad_count, miss_count;
-    int max_chain;
-    int total_notes;
-};
-```
-
-```
-  Memory: BeatEntry is compact and stored contiguously in BeatMap.beats.
-  SongState and SongResults are small ctx singletons.
 ```
 
 ### 2.1.1 MusicContext (singleton for audio state) — ✅ IMPLEMENTED

@@ -189,17 +189,20 @@ constexpr int32_t CHAIN_MULT_BONUS_STEPS_CAP = 20; // caps at 2.0x from chain 21
 
 ```cpp
 struct BeatEntry {
-    int    beat_index   = 0;           // beat index (not seconds)
-    int8_t lane         = 1;
-    float  time_sec     = 0.0f;        // optional authored timestamp
-    bool   has_time_sec = false;       // true → time_sec wins over beat_index
-    // Archetype kind is identified by *which per-kind vector in BeatMap*
-    // the row lives in (shape_gate_* / split_path_* / onset_marker_beats).
-    // Required shape (for shape_gate / split_path) is identified by
-    // *which per-shape sub-vector* the row lives in. The former
-    // `Shape shape` and `uint8_t blocked_mask` fields were eradicated
-    // per issues #1198 / #1202 / #1204 — the columns collapsed into
-    // table membership.
+    int    beat_index = 0;             // beat index (used to look up beat_times[…])
+    int8_t lane       = 1;
+    // No `time_sec` / `has_time_sec` columns — table membership IS the
+    // discriminator. Authored-onset rows live in the matching `*_beats_timed`
+    // sibling (see BeatEntryTimed below). The former `Shape shape`,
+    // `uint8_t blocked_mask`, and `bool has_time_sec` fields were eradicated
+    // per issues #1198 / #1202 / #1204 / #1533 — the columns collapsed
+    // into table membership.
+};
+
+struct BeatEntryTimed {
+    int    beat_index = 0;             // beat index (still used for ordering)
+    int8_t lane       = 1;
+    float  time_sec   = 0.0f;          // always-meaningful authored timestamp
 };
 
 struct BeatMap {
@@ -213,16 +216,28 @@ struct BeatMap {
     std::string              difficulty;
     std::vector<float>       beat_times;     // optional analysed onset table
 
-    // Seven per-(kind, shape) vectors replace the former single `beats`
-    // vector — see `app/components/beat_map.h`. Hexagon is not a valid
-    // required shape, so no `*_hexagon_beats` vector exists.
-    std::vector<BeatEntry>   shape_gate_circle_beats;
-    std::vector<BeatEntry>   shape_gate_square_beats;
-    std::vector<BeatEntry>   shape_gate_triangle_beats;
-    std::vector<BeatEntry>   split_path_circle_beats;
-    std::vector<BeatEntry>   split_path_square_beats;
-    std::vector<BeatEntry>   split_path_triangle_beats;
-    std::vector<BeatEntry>   onset_marker_beats;
+    // Fourteen per-(kind, shape, time-source) vectors replace the former
+    // single `beats` vector — see `app/components/beat_map.h`. Hexagon is
+    // not a valid required shape, so no `*_hexagon_beats` vectors exist.
+    // Indexed bins resolve their spawn time from `beat_times[beat_index]`
+    // (or BPM grid if `beat_times` is empty); `_timed` siblings carry
+    // their own always-meaningful `time_sec`. Membership in a `_timed`
+    // vector IS the precondition that the entry has an authored onset
+    // — Fabian Principle 3, issue #1533.
+    std::vector<BeatEntry>        shape_gate_circle_beats;
+    std::vector<BeatEntry>        shape_gate_square_beats;
+    std::vector<BeatEntry>        shape_gate_triangle_beats;
+    std::vector<BeatEntry>        split_path_circle_beats;
+    std::vector<BeatEntry>        split_path_square_beats;
+    std::vector<BeatEntry>        split_path_triangle_beats;
+    std::vector<BeatEntry>        onset_marker_beats;
+    std::vector<BeatEntryTimed>   shape_gate_circle_beats_timed;
+    std::vector<BeatEntryTimed>   shape_gate_square_beats_timed;
+    std::vector<BeatEntryTimed>   shape_gate_triangle_beats_timed;
+    std::vector<BeatEntryTimed>   split_path_circle_beats_timed;
+    std::vector<BeatEntryTimed>   split_path_square_beats_timed;
+    std::vector<BeatEntryTimed>   split_path_triangle_beats_timed;
+    std::vector<BeatEntryTimed>   onset_marker_beats_timed;
 };
 ```
 
@@ -255,8 +270,25 @@ struct SongState {
     bool   restart_music = false;  // set true by setup_play_session; consumed/cleared
                                    //   on the next tick by song_playback_system
 
-    // ── Beat-schedule cursor (per-frame, reset at session init) ─────────────
-    size_t next_spawn_idx = 0;     // advanced each frame by beat_scheduler_system
+    // ── Beat-schedule cursors (per-frame, reset at session init) ────────────
+    // Fourteen cursors — one per persistent table in BeatMap (Fabian
+    // Principle 3 / issue #1533). The `_timed_idx` siblings track
+    // independent progress through the authored-onset `_beats_timed`
+    // vectors; indexed cursors track the BPM/beat_times-driven bins.
+    size_t next_shape_gate_circle_idx         = 0;
+    size_t next_shape_gate_square_idx         = 0;
+    size_t next_shape_gate_triangle_idx       = 0;
+    size_t next_split_path_circle_idx         = 0;
+    size_t next_split_path_square_idx         = 0;
+    size_t next_split_path_triangle_idx       = 0;
+    size_t next_onset_marker_idx              = 0;
+    size_t next_shape_gate_circle_timed_idx   = 0;
+    size_t next_shape_gate_square_timed_idx   = 0;
+    size_t next_shape_gate_triangle_timed_idx = 0;
+    size_t next_split_path_circle_timed_idx   = 0;
+    size_t next_split_path_square_timed_idx   = 0;
+    size_t next_split_path_triangle_timed_idx = 0;
+    size_t next_onset_marker_timed_idx        = 0;
 };
 ```
 
