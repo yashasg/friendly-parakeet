@@ -39,16 +39,6 @@ struct SettingsBindContext {
     bool    motion_on;
 };
 
-void format_toggle(UiLabel& label, const char* name, bool on) {
-    // Two-cue ON/OFF (issue #390): icon-prefix `[X]` vs `[ ]` plus the
-    // explicit ON/OFF suffix. The colour cue lives in `ui_render_system`
-    // (`UiToggleTag` view selects the green/grey row).
-    char buf[32];
-    std::snprintf(buf, sizeof(buf), "[%s] %s: %s",
-                  on ? "X" : " ", name, on ? "ON" : "OFF");
-    ui_label_set(label, buf);
-}
-
 void bind_audio_offset(const SettingsBindContext& ctx, entt::registry& /*reg*/,
                        entt::entity /*e*/, UiLabel& label) {
     char buf[16];
@@ -64,7 +54,13 @@ void bind_audio_offset(const SettingsBindContext& ctx, entt::registry& /*reg*/,
 // without two byte-identical bodies.
 void bind_toggle_impl(entt::registry& reg, entt::entity e, UiLabel& label,
                       const char* name, bool on) {
-    format_toggle(label, name, on);
+    // Two-cue ON/OFF (issue #390): icon-prefix `[X]` vs `[ ]` plus the
+    // explicit ON/OFF suffix. The colour cue lives in `ui_render_system`
+    // (`UiToggleTag` view selects the green/grey row).
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "[%s] %s: %s",
+                  on ? "X" : " ", name, on ? "ON" : "OFF");
+    ui_label_set(label, buf);
     reg.emplace_or_replace<UiToggleState>(e, UiToggleState{on});
 }
 
