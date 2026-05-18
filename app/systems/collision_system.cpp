@@ -42,27 +42,6 @@ bool shape_row_match(entt::registry& reg,
     return window_open && reg.all_of<TargetTag>(player_entity);
 }
 
-bool player_matches_required_shape(entt::registry& reg,
-                                    entt::entity player_entity,
-                                    entt::entity obstacle_entity,
-                                    bool rhythm_mode) {
-    if (reg.all_of<RequiredShapeHexagonTag>(obstacle_entity)) {
-        // No Hexagon-required obstacles are spawned in production; preserve
-        // the legacy "Hexagon-required → unclearable" contract by short-
-        // circuiting here regardless of player state.
-        return false;
-    }
-
-    // Per-shape match check: each row of the shape table is its own
-    // per-shape table-join (issue #1202/#1204), so we probe the three
-    // playable rows by tag-presence. No `switch`, no `if (x == Shape::Bar)`
-    // — each `shape_row_match` instantiation IS the per-row transform.
-    if (shape_row_match<RequiredShapeCircleTag,   ShapeCircleTag,   TargetShapeCircleTag>  (reg, player_entity, obstacle_entity, rhythm_mode)) return true;
-    if (shape_row_match<RequiredShapeSquareTag,   ShapeSquareTag,   TargetShapeSquareTag>  (reg, player_entity, obstacle_entity, rhythm_mode)) return true;
-    if (shape_row_match<RequiredShapeTriangleTag, ShapeTriangleTag, TargetShapeTriangleTag>(reg, player_entity, obstacle_entity, rhythm_mode)) return true;
-    return false;
-}
-
 bool shape_gate_lane_match(int8_t obstacle_lane, int player_lane) {
     return static_cast<int>(obstacle_lane) == player_lane;
 }
@@ -147,8 +126,17 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
             return;
         }
 
+        // Per-shape match: each row of the shape table is its own per-shape
+        // table-join (issue #1202/#1204). The Hexagon row is required but
+        // never spawned in production — preserved as an "unclearable" short-
+        // circuit. The other three rows are probed by tag-presence; no
+        // `switch`, no `if (x == Shape::Bar)` — each `shape_row_match`
+        // instantiation IS the per-row transform.
         const bool shape_ok =
-            player_matches_required_shape(reg, player_entity, entity, rhythm_mode);
+            !reg.all_of<RequiredShapeHexagonTag>(entity)
+            && (shape_row_match<RequiredShapeCircleTag,   ShapeCircleTag,   TargetShapeCircleTag>  (reg, player_entity, entity, rhythm_mode)
+             || shape_row_match<RequiredShapeSquareTag,   ShapeSquareTag,   TargetShapeSquareTag>  (reg, player_entity, entity, rhythm_mode)
+             || shape_row_match<RequiredShapeTriangleTag, ShapeTriangleTag, TargetShapeTriangleTag>(reg, player_entity, entity, rhythm_mode));
         if (shape_ok && timing_info && can_grade_shape) {
             grade_shape_timing(entity, timing_info->arrival_time);
         }
@@ -158,8 +146,9 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     // Per-kind structural views — each loop touches only entities that actually
     // carry the required components, eliminating per-entity try_get branches.
     // The required-shape data lives as a per-shape tag (issue #1202/#1204),
-    // so the views below filter on `ShapeGateTag` / `SplitPathTag` and the
-    // resolver dispatches per-shape via `player_matches_required_shape`.
+    // so the views below filter on `ShapeGateTag` / `SplitPathTag` and
+    // `resolve_shape_obstacle` dispatches per-shape inline via the three
+    // `shape_row_match` template instantiations.
 
     // ShapeGate: ShapeGateTag (carries RequiredShape*Tag + raw int8_t lane).
     // The raw int8_t component is the ShapeGate positional lane per the slot
