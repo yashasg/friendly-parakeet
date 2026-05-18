@@ -32,34 +32,19 @@ void erase_end_choice_tags(entt::registry& reg) {
 // elapses — matching the pre-migration semantics. The handlers are mutually
 // exclusive in practice because input routing only ever emplaces one tag per
 // press; erase_end_choice_tags on consumption keeps that invariant explicit.
-void apply_end_choice_restart(entt::registry& reg) {
-    if (!reg.ctx().find<EndChoiceRestart>()) return;
+template <typename ChoiceTag, typename NextPhaseTag>
+void apply_end_choice(entt::registry& reg) {
+    if (!reg.ctx().find<ChoiceTag>()) return;
     auto& gs = reg.ctx().get<GameState>();
     if (!end_screen_input_ready(reg, gs)) return;
-    request_phase_transition<NextPhasePlayingTag>(reg);
-    erase_end_choice_tags(reg);
-}
-
-void apply_end_choice_level_select(entt::registry& reg) {
-    if (!reg.ctx().find<EndChoiceLevelSelect>()) return;
-    auto& gs = reg.ctx().get<GameState>();
-    if (!end_screen_input_ready(reg, gs)) return;
-    request_phase_transition<NextPhaseLevelSelectTag>(reg);
-    erase_end_choice_tags(reg);
-}
-
-void apply_end_choice_main_menu(entt::registry& reg) {
-    if (!reg.ctx().find<EndChoiceMainMenu>()) return;
-    auto& gs = reg.ctx().get<GameState>();
-    if (!end_screen_input_ready(reg, gs)) return;
-    request_phase_transition<NextPhaseTitleTag>(reg);
+    request_phase_transition<NextPhaseTag>(reg);
     erase_end_choice_tags(reg);
 }
 
 }  // namespace
 
 void game_state_end_screen_system(entt::registry& reg, [[maybe_unused]] float dt) {
-    apply_end_choice_restart(reg);
-    apply_end_choice_level_select(reg);
-    apply_end_choice_main_menu(reg);
+    apply_end_choice<EndChoiceRestart,     NextPhasePlayingTag>(reg);
+    apply_end_choice<EndChoiceLevelSelect, NextPhaseLevelSelectTag>(reg);
+    apply_end_choice<EndChoiceMainMenu,    NextPhaseTitleTag>(reg);
 }
