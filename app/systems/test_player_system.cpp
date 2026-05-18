@@ -86,59 +86,8 @@ static bool test_player_vertical_done(const TestPlayerAction& action) {
     return action.vertical_done;
 }
 
-static void test_player_mark_shape_done(TestPlayerAction& action) {
-    action.shape_done = true;
-}
-
-static void test_player_mark_lane_done(TestPlayerAction& action) {
-    action.lane_done = true;
-}
-
-static void test_player_mark_vertical_done(TestPlayerAction& action) {
-    action.vertical_done = true;
-}
-
-static bool test_player_needs_shape(const TestPlayerAction& action) {
-    return action.shape_press != nullptr && !test_player_shape_done(action);
-}
-
 static bool test_player_needs_lane(const TestPlayerAction& action) {
     return lane_utils::is_valid(action.target_lane) && !test_player_lane_done(action);
-}
-
-static bool valid_scroll_speed(float scroll_speed) {
-    return std::isfinite(scroll_speed) && scroll_speed > 0.0f;
-}
-
-static bool test_player_needs_vertical(const TestPlayerAction& action) {
-    return (action.wants_jump || action.wants_slide) && !test_player_vertical_done(action);
-}
-
-static bool test_player_action_done(const TestPlayerAction& action) {
-    const bool shape_done = (action.shape_press == nullptr) ||
-                            test_player_shape_done(action);
-    const bool lane_done = !lane_utils::is_valid(action.target_lane) ||
-                           test_player_lane_done(action);
-    const bool vertical_done = !(action.wants_jump || action.wants_slide) ||
-                               test_player_vertical_done(action);
-    return shape_done && lane_done && vertical_done;
-}
-
-static const SkillConfig& test_player_config(const TestPlayerState& state) {
-    return state.skill;
-}
-
-static void test_player_push_action(TestPlayerState& state, const TestPlayerAction& action) {
-    if (state.action_count < TestPlayerState::MAX_ACTIONS) {
-        state.actions[state.action_count++] = action;
-    }
-}
-
-static void test_player_remove_action(TestPlayerState& state, int idx) {
-    if (idx >= 0 && idx < state.action_count) {
-        state.actions[idx] = state.actions[state.action_count - 1];
-        --state.action_count;
-    }
 }
 
 // Determine the required action for an obstacle.
@@ -273,7 +222,7 @@ void test_player_system(entt::registry& reg, float dt) {
         state->action_count = 0;
     }
 
-    const auto& cfg = test_player_config(*state);
+    const auto& cfg = state->skill;
 
     // ── Find player ──────────────────────────────────────────
     auto player_view = reg.view<PlayerTag, WorldPosition, PlayerShape, ShapeWindow, Lane>();
@@ -337,7 +286,9 @@ void test_player_system(entt::registry& reg, float dt) {
             action.timer = reaction;
         }
 
-        test_player_push_action(*state, action);
+        if (state->action_count < TestPlayerState::MAX_ACTIONS) {
+            state->actions[state->action_count++] = action;
+        }
         reg.get_or_emplace<TestPlayerPlannedTag>(entity);
 
         if (log) {
@@ -434,9 +385,9 @@ void test_player_system(entt::registry& reg, float dt) {
                                     action.shape_not_before_time > 0.0f &&
                                     song->song_time < action.shape_not_before_time);
         bool waiting_on_lane = test_player_needs_lane(action);
-        if (test_player_needs_shape(action) && !waiting_on_lane && !too_early_for_shape) {
+        if (action.shape_press != nullptr && !test_player_shape_done(action) && !waiting_on_lane && !too_early_for_shape) {
             action.shape_press->enqueue(disp);
-            test_player_mark_shape_done(action);
+            action.shape_done = true;
             key_injected = true;
 
             if (log) {
@@ -491,7 +442,7 @@ void test_player_system(entt::registry& reg, float dt) {
                 auto* obeat = reg.try_get<BeatInfo>(oe);
                 if (obeat) {
                     if (obeat->arrival_time >= action.arrival_time) continue; // farther, don't care
-                } else if (valid_scroll_speed(song->scroll_speed)) {
+                } else if (std::isfinite(song->scroll_speed) && song->scroll_speed > 0.0f) {
                     const float o_arrival = song_time + odist / song->scroll_speed;
                     if (o_arrival >= action.arrival_time) continue; // farther, don't care
                 }
@@ -534,7 +485,7 @@ void test_player_system(entt::registry& reg, float dt) {
             state->swipe_cooldown_timer = TestPlayerState::SWIPE_COOLDOWN;
             // Check if we've reached the target
             if (p_lane.current == action.target_lane) {
-                test_player_mark_lane_done(action);
+                action.lane_done = true;
             }
             key_injected = true;
             continue;
@@ -557,7 +508,7 @@ void test_player_system(entt::registry& reg, float dt) {
                 }
             }
         }
-        if (test_player_needs_vertical(action) && !reg.any_of<Jumping, Sliding>(player_entity)
+        if ((action.wants_jump || action.wants_slide) && !test_player_vertical_done(action) && !reg.any_of<Jumping, Sliding>(player_entity)
             && !vert_zone_blocked && !vert_blocked_by_shape) {
             if (action.wants_jump) {
                 disp.enqueue<GoUpEvent>({});
@@ -574,7 +525,7 @@ void test_player_system(entt::registry& reg, float dt) {
                         static_cast<unsigned>(entt::to_integral(action.obstacle)), act_beat);
                 }
             }
-            test_player_mark_vertical_done(action);
+            action.vertical_done = true;
             key_injected = true;
             continue;
         }
@@ -583,13 +534,20 @@ void test_player_system(entt::registry& reg, float dt) {
     // ── CLEANUP completed actions ────────────────────────────
     for (int i = state->action_count - 1; i >= 0; --i) {
         auto& action = state->actions[i];
-        bool done = test_player_action_done(action);
+        const bool shape_done = (action.shape_press == nullptr) ||
+                                test_player_shape_done(action);
+        const bool lane_done = !lane_utils::is_valid(action.target_lane) ||
+                               test_player_lane_done(action);
+        const bool vertical_done = !(action.wants_jump || action.wants_slide) ||
+                                   test_player_vertical_done(action);
+        const bool done = shape_done && lane_done && vertical_done;
         // Entity no longer an active obstacle (scored + processed by scoring_system,
         // or destroyed by obstacle_despawn_system)
         bool expired = !reg.valid(action.obstacle) ||
                        !reg.all_of<Obstacle>(action.obstacle);
         if (done || expired) {
-            test_player_remove_action(*state, i);
+            state->actions[i] = state->actions[state->action_count - 1];
+            --state->action_count;
         }
     }
 }
