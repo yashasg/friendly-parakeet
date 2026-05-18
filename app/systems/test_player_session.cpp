@@ -17,27 +17,22 @@ namespace {
 struct TestPlayerSessionSignals {
     bool wired = false;
 };
-
-int valid_level_or_default(int selected_level) noexcept {
-    return content_config::level_index_or_default(selected_level);
-}
-
-int difficulty_index_or_default(const char* difficulty) {
-    for (int d = 0; d < content_config::DIFFICULTY_COUNT; ++d) {
-        if (std::strcmp(content_config::DIFFICULTY_KEYS[d], difficulty) == 0) {
-            return d;
-        }
-    }
-    return content_config::DEFAULT_DIFFICULTY_INDEX;
-}
 }
 
 void test_player_init(entt::registry& reg, SkillConfig skill,
                       const char* difficulty,
                       int selected_level) {
     auto& lss = reg.ctx().get<LevelSelectState>();
-    lss.selected_level = valid_level_or_default(selected_level);
-    lss.selected_difficulty = difficulty_index_or_default(difficulty);
+    lss.selected_level = content_config::level_index_or_default(selected_level);
+
+    int sel_diff = content_config::DEFAULT_DIFFICULTY_INDEX;
+    for (int d = 0; d < content_config::DIFFICULTY_COUNT; ++d) {
+        if (std::strcmp(content_config::DIFFICULTY_KEYS[d], difficulty) == 0) {
+            sel_diff = d;
+            break;
+        }
+    }
+    lss.selected_difficulty = sel_diff;
 
     auto* session_state = reg.ctx().find<TestPlayerSessionState>();
     if (!session_state) {
