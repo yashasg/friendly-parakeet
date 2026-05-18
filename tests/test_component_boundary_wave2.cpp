@@ -16,13 +16,13 @@
 #include <type_traits>
 
 #include "test_helpers.h"        // HighScoreState (via high_score_system.h)
+#include "systems/high_score_system.h"
 
 // ── HighScoreState table constants ───────────────────────────────────────────
 //
 // MAX_ENTRIES == LEVEL_COUNT(3) × DIFFICULTY_COUNT(3) == 9.
-// Persistence serialises and deserialises up to this many entries by index; if
-// it changes without resizing the array the table silently drops or corrupts
-// entries.
+// `set_score` / `ensure_entry` / `load_high_scores` reject inserts past this
+// cap, so any change here must be paired with a persistence-format review.
 
 static_assert(HighScoreState::MAX_ENTRIES == 9,
     "HighScoreState::MAX_ENTRIES must equal LEVEL_COUNT(3) x DIFFICULTY_COUNT(3)=9; "
@@ -35,15 +35,22 @@ static_assert(HighScoreState::KEY_CAP == 32,
     "KEY_CAP must be >= 32 to fit all shipped 'song_id|difficulty' keys; "
     "longest is '3_mental_corruption|hard\\0' (26 chars)");
 
-// ── Runtime: HighScoreState default state ────────────────────────────────────
+// HighScoreState is now constants-only (Fabian Principle 3 / issue #1560):
+// the prior `std::array<Entry, MAX_ENTRIES> entries + int32_t entry_count`
+// was a god-class array column and has been normalized into a
+// `HighScoreEntry` row table walked via `view<HighScoreEntry>()`.
 
-TEST_CASE("HighScoreState: default-constructed is empty", "[boundary_wave2][high_score]") {
-    HighScoreState hs{};
-    CHECK(hs.entry_count == 0);
-    // All entry scores must be zero (no stale data)
-    for (int i = 0; i < HighScoreState::MAX_ENTRIES; ++i) {
-        CHECK(hs.entries[i].score == 0);
-    }
+static_assert(std::is_empty_v<HighScoreState>,
+    "HighScoreState must hold no instance state — entries live as HighScoreEntry rows "
+    "in the registry (issue #1560 / Fabian Principle 3)");
+
+// ── Runtime: HighScoreEntry row table ────────────────────────────────────────
+
+TEST_CASE("HighScoreEntry: default-constructed row is empty", "[boundary_wave2][high_score]") {
+    HighScoreEntry e{};
+    CHECK(e.key[0] == '\0');
+    CHECK(e.key_hash == 0u);
+    CHECK(e.score == 0);
 }
 
 TEST_CASE("HighScoreSession: default-constructed has zero key hash", "[boundary_wave2][high_score]") {
@@ -51,11 +58,11 @@ TEST_CASE("HighScoreSession: default-constructed has zero key hash", "[boundary_
     CHECK(session.key_hash == 0u);
 }
 
-TEST_CASE("HighScoreState: lives in ctx, not attached to entities", "[boundary_wave2][high_score]") {
+TEST_CASE("HighScoreEntry: rows live as registry entities, not in ctx", "[boundary_wave2][high_score]") {
     auto reg = make_registry();
-    // ctx singleton must be present and accessible
-    auto& hs = reg.ctx().get<HighScoreState>();
-    CHECK(hs.entry_count == 0);
-    // The type must never appear as an entity component — view must be empty
-    CHECK(reg.view<HighScoreState>().empty());
+    // Fresh registry starts with zero entry rows.
+    CHECK(high_score::entry_count(reg) == 0);
+    CHECK(reg.view<HighScoreEntry>().empty());
+    // HighScoreState is no longer a ctx singleton (constants-only struct).
+    CHECK_FALSE(reg.ctx().contains<HighScoreState>());
 }

@@ -57,7 +57,6 @@ inline entt::registry make_registry() {
     reg.ctx().emplace<SongState>();
     reg.ctx().emplace<EnergyState>();
     reg.ctx().emplace<SongResults>();
-    reg.ctx().emplace<HighScoreState>();
     reg.ctx().emplace<HighScorePersistence>();
     reg.ctx().emplace<HighScoreSession>();
     runtime_system_scratch_init(reg);

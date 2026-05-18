@@ -1,27 +1,33 @@
 #pragma once
 
-#include <array>
 #include <cstdint>
 #include <string>
 #include <entt/entt.hpp>
 
 #include "../systems/persistence_policy_system.h"
 
-// Compact fixed-size high-score table (durable, persisted to disk).
-// Max entries: LEVEL_COUNT x DIFFICULTY_COUNT = 9.
-// Flat array storage -- no heap nodes, O(N) linear scan (faster than
-// std::map for N <= 9 due to cache locality).
+// Constants for the durable high-score table. The struct itself carries no
+// instance state — entries live as `HighScoreEntry` rows in the registry,
+// one entity per stored score (Fabian Principle 3 / issue #1560 — the prior
+// `std::array<Entry, MAX_ENTRIES> entries + int32_t entry_count` shape was
+// a 1NF array column on a god-class component, structurally identical to
+// the `ObstacleChildren` array column eradicated in #1554).
+//
+// MAX_ENTRIES = LEVEL_COUNT (3) x DIFFICULTY_COUNT (3) survives as the
+// runtime overflow guard in set_score / ensure_entry / high_score_state_from_json.
 struct HighScoreState {
     static constexpr int32_t MAX_ENTRIES = 9;
     static constexpr int32_t KEY_CAP     = 32; // fits "song_id|difficulty\0"
+};
 
-    struct Entry {
-        char    key[KEY_CAP]{};
-        int32_t score{0};
-    };
-
-    std::array<Entry, MAX_ENTRIES> entries{};
-    int32_t entry_count{0};
+// Row component: one entity per stored high score. The printable `key` is
+// retained so JSON persistence preserves the on-disk schema bit-for-bit;
+// `key_hash` is cached at insert time so the hot `get_current_high_score`
+// lookup path doesn't rehash per row.
+struct HighScoreEntry {
+    char                           key[HighScoreState::KEY_CAP]{};
+    entt::hashed_string::hash_type key_hash{0};
+    int32_t                        score{0};
 };
 
 // Active-session pointer into the score table (transient, not persisted).

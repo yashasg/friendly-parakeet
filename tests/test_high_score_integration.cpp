@@ -63,9 +63,8 @@ TEST_CASE("High score integration: setup_play_session loads selected song diffic
     lss.selected_level = 0;
     lss.selected_difficulty = 0;
 
-    auto& high_scores = reg.ctx().get<HighScoreState>();
-    high_score::set_score(high_scores, "1_stomper|easy", 1234);
-    high_score::set_score(high_scores, "1_stomper|hard", 9999);
+    high_score::set_score(reg, "1_stomper|easy", 1234);
+    high_score::set_score(reg, "1_stomper|hard", 9999);
 
     setup_play_session(reg);
 
@@ -119,8 +118,7 @@ TEST_CASE("Play session: missing selected beatmap returns to level select withou
           "[play_session][issue835]") {
     auto reg = make_registry();
     auto& lss = reg.ctx().get<LevelSelectState>();
-    auto& high_scores = reg.ctx().get<HighScoreState>();
-    high_score::set_score(high_scores, "1_stomper|medium", 4321);
+    high_score::set_score(reg, "1_stomper|medium", 4321);
     auto& session = reg.ctx().get<HighScoreSession>();
     session.key_hash = high_score::make_key_hash("1_stomper", "medium");
     reg.ctx().insert_or_assign(LevelSelectConfirmedTag{});
@@ -139,7 +137,7 @@ TEST_CASE("Play session: missing selected beatmap returns to level select withou
     CHECK(reg.view<PlayerTag>().empty());
     CHECK(reg.ctx().find<ScoreState>() == nullptr);
     CHECK(session.key_hash == 0);
-    CHECK(high_scores.entry_count == 1);
+    CHECK(high_score::entry_count(reg) == 1);
 
     reg.ctx().erase<PlaySessionContentOverride>();
     lss.selected_level = content_config::DEFAULT_LEVEL_INDEX;
@@ -172,9 +170,8 @@ TEST_CASE("Play session: high score key uses loaded fallback difficulty",
     })json");
 
     auto reg = make_registry();
-    auto& high_scores = reg.ctx().get<HighScoreState>();
-    high_score::set_score(high_scores, "shapeshifter_issue847|medium", 4321);
-    high_score::set_score(high_scores, "shapeshifter_issue847|hard", 9999);
+    high_score::set_score(reg, "shapeshifter_issue847|medium", 4321);
+    high_score::set_score(reg, "shapeshifter_issue847|hard", 9999);
     reg.ctx().emplace<PlaySessionContentOverride>(
         PlaySessionContentOverride{beatmap.path.string(), "hard"});
 
@@ -223,10 +220,9 @@ TEST_CASE("High score integration: new song-complete high score persists",
 
     auto reg = make_registry();
     reg.ctx().get<HighScorePersistence>().path = file.string();
-    auto& high_scores = reg.ctx().get<HighScoreState>();
-    high_score::ensure_entry(high_scores, "song_001|easy");
+    high_score::ensure_entry(reg, "song_001|easy");
     reg.ctx().get<HighScoreSession>().key_hash = high_score::make_key_hash("song_001", "easy");
-    high_score::set_score(high_scores, "song_001|easy", 1000);
+    high_score::set_score(reg, "song_001|easy", 1000);
 
     auto& score = reg.ctx().get<ScoreState>();
     auto& current = reg.ctx().get<CurrentSongHighScore>();
@@ -238,9 +234,9 @@ TEST_CASE("High score integration: new song-complete high score persists",
     game_state_system(reg, 0.016f);
 
     CHECK(current.value == 2500);
-    CHECK(high_score::get_score(high_scores, "song_001|easy") == 2500);
+    CHECK(high_score::get_score(reg, "song_001|easy") == 2500);
 
-    HighScoreState loaded;
+    entt::registry loaded;
     REQUIRE(high_score::load_high_scores(loaded, file).ok());
     CHECK(high_score::get_score(loaded, "song_001|easy") == 2500);
 
@@ -254,10 +250,9 @@ TEST_CASE("High score integration: lower game-over score does not overwrite pers
 
     auto reg = make_registry();
     reg.ctx().get<HighScorePersistence>().path = file.string();
-    auto& high_scores = reg.ctx().get<HighScoreState>();
-    high_score::ensure_entry(high_scores, "song_001|easy");
+    high_score::ensure_entry(reg, "song_001|easy");
     reg.ctx().get<HighScoreSession>().key_hash = high_score::make_key_hash("song_001", "easy");
-    high_score::set_score(high_scores, "song_001|easy", 3000);
+    high_score::set_score(reg, "song_001|easy", 3000);
 
     auto& score = reg.ctx().get<ScoreState>();
     auto& current = reg.ctx().get<CurrentSongHighScore>();
@@ -269,7 +264,7 @@ TEST_CASE("High score integration: lower game-over score does not overwrite pers
     game_state_system(reg, 0.016f);
 
     CHECK(current.value == 3000);
-    CHECK(high_score::get_score(high_scores, "song_001|easy") == 3000);
+    CHECK(high_score::get_score(reg, "song_001|easy") == 3000);
     CHECK_FALSE(std::filesystem::exists(file));
 
     remove_path(file);
@@ -278,10 +273,9 @@ TEST_CASE("High score integration: lower game-over score does not overwrite pers
 TEST_CASE("High score integration: missing active entry does not report new best",
           "[high_score][gamestate][issue1004]") {
     auto reg = make_registry();
-    auto& high_scores = reg.ctx().get<HighScoreState>();
     for (int32_t i = 0; i < HighScoreState::MAX_ENTRIES; ++i) {
         const std::string key = "song_" + std::to_string(i) + "|easy";
-        REQUIRE(high_score::set_score(high_scores, key.c_str(), i * 100));
+        REQUIRE(high_score::set_score(reg, key.c_str(), i * 100));
     }
     reg.ctx().get<HighScoreSession>().key_hash = high_score::make_key_hash("overflow", "hard");
 
@@ -297,7 +291,7 @@ TEST_CASE("High score integration: missing active entry does not report new best
     CHECK(current.value == 1000);
     CHECK_FALSE(reg.ctx().contains<NewBestRecord>());
     CHECK_FALSE(reg.ctx().contains<HighScoreDirtyTag>());
-    CHECK(high_score::get_score(high_scores, "overflow|hard") == 0);
+    CHECK(high_score::get_score(reg, "overflow|hard") == 0);
 }
 
 TEST_CASE("High score integration: failed save keeps dirty state for retry",
@@ -315,10 +309,9 @@ TEST_CASE("High score integration: failed save keeps dirty state for retry",
 
     auto reg = make_registry();
     reg.ctx().get<HighScorePersistence>().path = blocked_file.string();
-    auto& high_scores = reg.ctx().get<HighScoreState>();
-    high_score::ensure_entry(high_scores, "song_001|easy");
+    high_score::ensure_entry(reg, "song_001|easy");
     reg.ctx().get<HighScoreSession>().key_hash = high_score::make_key_hash("song_001", "easy");
-    high_score::set_score(high_scores, "song_001|easy", 1000);
+    high_score::set_score(reg, "song_001|easy", 1000);
 
     auto& score = reg.ctx().get<ScoreState>();
     auto& current = reg.ctx().get<CurrentSongHighScore>();
@@ -345,7 +338,7 @@ TEST_CASE("High score integration: failed save keeps dirty state for retry",
     CHECK_FALSE(reg.ctx().contains<HighScoreDirtyTag>());
     CHECK(retried_persistence.last_save.status == persistence::Status::Success);
 
-    HighScoreState loaded;
+    entt::registry loaded;
     REQUIRE(high_score::load_high_scores(loaded, retry_file).ok());
     CHECK(high_score::get_score(loaded, "song_001|easy") == 2500);
 
@@ -357,14 +350,12 @@ TEST_CASE("High score bootstrap: persistence path is populated for save call sit
     const auto file = temp_high_score_path("shapeshifter_issue_302_high_scores_bootstrap.json");
     remove_path(file);
 
-    HighScoreState seeded;
+    entt::registry seeded;
     high_score::set_score(seeded, "song_001|easy", 1000);
     REQUIRE(high_score::save_high_scores(seeded, file).ok());
 
     auto reg = make_registry();
-    HighScoreState loaded_at_bootstrap;
-    CHECK(high_score::load_high_scores(loaded_at_bootstrap, file).ok());
-    reg.ctx().get<HighScoreState>() = loaded_at_bootstrap;
+    CHECK(high_score::load_high_scores(reg, file).ok());
     reg.ctx().get<HighScorePersistence>() = HighScorePersistence{file.string()};
     reg.ctx().get<GameState>() = GameState{ 0.0f };
     sync_game_phase_tags<GamePhasePlayingTag>(reg);
@@ -374,8 +365,7 @@ TEST_CASE("High score bootstrap: persistence path is populated for save call sit
     current.value = 1000;
     score.score = 2500;
 
-    auto& high_scores = reg.ctx().get<HighScoreState>();
-    high_score::ensure_entry(high_scores, "song_001|easy");
+    high_score::ensure_entry(reg, "song_001|easy");
     reg.ctx().get<HighScoreSession>().key_hash = high_score::make_key_hash("song_001", "easy");
 
     const auto& persistence = reg.ctx().get<HighScorePersistence>();
@@ -384,7 +374,7 @@ TEST_CASE("High score bootstrap: persistence path is populated for save call sit
 
     game_state_system(reg, 0.016f);
 
-    HighScoreState loaded;
+    entt::registry loaded;
     REQUIRE(high_score::load_high_scores(loaded, file).ok());
     CHECK(high_score::get_score(loaded, "song_001|easy") == 2500);
 
