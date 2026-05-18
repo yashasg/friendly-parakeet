@@ -31,8 +31,11 @@ struct SongState {
     float morph_duration  = 0.1f;   // shape-morph animation length in seconds
 
     // ── Per-frame mutable fields ─────────────────────────────────────────────
+    // The former `int current_beat = -1` sentinel migrated to the
+    // `BeatCursor` ctx-singleton row table below (Fabian Principle 3 /
+    // issue #1545): membership IS "at least one beat has been crossed",
+    // and `last_crossed` is always meaningful while the row exists.
     float  song_time     = 0.0f;   // mutated every frame by song_playback_system
-    int    current_beat  = -1;     // mutated every frame by song_playback_system
     bool   playing       = false;  // set true by setup_play_session; cleared by
                                    //   song_playback_system or terminal GameOver entry
     bool   finished      = false;  // set true by song_playback_system or terminal GameOver entry
@@ -76,4 +79,19 @@ struct SongResults {
     int   miss_count    = 0;
     int   max_chain     = 0;
     int   total_notes   = 0;
+};
+
+// ── Beat Cursor (singleton row table, lives in registry context) ─────────────
+// Presence in `reg.ctx()` IS "at least one beat has been crossed for the
+// current session"; `last_crossed` is the highest beat index that has been
+// crossed, always meaningful while the row exists. Per Fabian Principle 3
+// (.squad/decisions.md § 9 / issue #1545): the former
+// `SongState::current_beat = -1` sentinel was a NULL column in disguise
+// (a value whose meaning depended on whether it equalled the absent-beat
+// marker). Writers: `song_playback_system` emplaces on first crossing and
+// mutates `last_crossed` on subsequent crossings. Readers: `beat_log_system`
+// and `camera_system` join on presence and read `last_crossed`.
+// Reset path: `setup_play_session` erases any prior row at session init.
+struct BeatCursor {
+    int last_crossed = 0;
 };

@@ -59,6 +59,12 @@ void test_player_init(entt::registry& reg, SkillConfig skill,
     auto& slog = reg.ctx().get<SessionLog>();
     session_log_close(slog);
     slog = SessionLog{};
+    // Reset the LastLoggedBeat row table (Fabian Principle 3 / issue #1545):
+    // membership IS "at least one beat has been emitted", so erase any
+    // carry-over from a prior test session before the new log opens.
+    if (reg.ctx().contains<LastLoggedBeat>()) {
+        reg.ctx().erase<LastLoggedBeat>();
+    }
     const double runtime_seconds = GetTime();
     const auto runtime_millis = static_cast<unsigned long long>(runtime_seconds * 1000.0);
     const uint32_t sequence = ++session_state->log_sequence;

@@ -124,16 +124,16 @@ TEST_CASE("song_playback: positive audio_offset delays beat crossing",
 
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 0.0f;
-    song.current_beat = -1;
+    set_beat_cursor(reg, -1);
 
     auto& map = beat_map(reg);
     map.beat_times = {1.0f};
 
     song_playback_system(reg, 1.1f);
-    CHECK(song.current_beat == -1);
+    CHECK(beat_cursor_value(reg) == -1);
 
     song_playback_system(reg, 0.1f);
-    CHECK(song.current_beat == 0);
+    CHECK(beat_cursor_value(reg) == 0);
 }
 
 TEST_CASE("song_playback: negative audio_offset advances beat crossing",
@@ -144,13 +144,13 @@ TEST_CASE("song_playback: negative audio_offset advances beat crossing",
 
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 0.0f;
-    song.current_beat = -1;
+    set_beat_cursor(reg, -1);
 
     auto& map = beat_map(reg);
     map.beat_times = {1.0f};
 
     song_playback_system(reg, 0.85f);
-    CHECK(song.current_beat == 0);
+    CHECK(beat_cursor_value(reg) == 0);
 }
 
 TEST_CASE("beat_scheduler: audio_offset gates spawn before calibrated spawn time",
@@ -180,7 +180,7 @@ TEST_CASE("audio_offset: zero setting matches absent SettingsState",
     auto playback_with_zero = make_rhythm_registry();
     auto& zero_song = playback_with_zero.ctx().get<SongState>();
     zero_song.song_time = 0.0f;
-    zero_song.current_beat = -1;
+    set_beat_cursor(playback_with_zero, -1);
     beat_map(playback_with_zero).beat_times = {0.4f, 0.9f, 1.6f};
     song_playback_system(playback_with_zero, 1.0f);
 
@@ -188,11 +188,12 @@ TEST_CASE("audio_offset: zero setting matches absent SettingsState",
     destroy_settings_entity(playback_without_settings);
     auto& absent_song = playback_without_settings.ctx().get<SongState>();
     absent_song.song_time = 0.0f;
-    absent_song.current_beat = -1;
+    set_beat_cursor(playback_without_settings, -1);
     beat_map(playback_without_settings).beat_times = {0.4f, 0.9f, 1.6f};
     song_playback_system(playback_without_settings, 1.0f);
 
-    CHECK(absent_song.current_beat == zero_song.current_beat);
+    CHECK(beat_cursor_value(playback_without_settings) ==
+          beat_cursor_value(playback_with_zero));
 
     auto scheduler_with_zero = make_rhythm_registry();
     auto& zero_schedule_song = scheduler_with_zero.ctx().get<SongState>();
@@ -366,7 +367,7 @@ TEST_CASE("game camera floor pulse honors audio_offset_ms",
 
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 1.25f;
-    song.current_beat = 0;
+    set_beat_cursor(reg, 0);
     song.playing = true;
 
     auto& map = beat_map(reg);

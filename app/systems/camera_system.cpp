@@ -332,10 +332,11 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
         auto* map = find_beat_map(reg);
         const auto* settings = find_settings_state(reg);
         const float audio_offset_sec = settings ? settings::audio_offset_seconds(*settings) : 0.0f;
+        const auto* cursor = reg.ctx().find<BeatCursor>();
         float pulse = 0.0f;
-        if (song && song->playing && song->beat_period > 0.0f && song->current_beat >= 0) {
-            float beat_time = song->offset + static_cast<float>(song->current_beat) * song->beat_period;
-            const auto beat_index = static_cast<size_t>(song->current_beat);
+        if (song && song->playing && song->beat_period > 0.0f && cursor) {
+            float beat_time = song->offset + static_cast<float>(cursor->last_crossed) * song->beat_period;
+            const auto beat_index = static_cast<size_t>(cursor->last_crossed);
             if (map && beat_index < map->beat_times.size()) {
                 beat_time = map->beat_times[beat_index];
             }

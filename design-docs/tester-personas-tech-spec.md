@@ -259,9 +259,12 @@ runtime beat telemetry comes from `beat_log_system`.
 The runtime struct lives in `app/systems/session_logger_system.h` — see that header for
 the authoritative definition. Beyond `FILE* file` and `uint32_t frame`, it
 also owns a per-frame `std::string buffer` (pre-reserved at
-`kMaxLogBufferBytes = 4096`, so the hot write path never reallocates) and a
-`last_logged_beat` cursor used by `beat_log_system`. The struct is move-only
-with an explicit destructor / `release()` that closes the file handle.
+`kMaxLogBufferBytes = 4096`, so the hot write path never reallocates). The
+beat-log cursor that used to live on `SessionLog::last_logged_beat = -1`
+migrated to the `LastLoggedBeat { int beat; }` ctx-singleton row table in
+the same header (Fabian Principle 3 / issue #1545); membership IS "at
+least one beat has been emitted". The struct is move-only with an
+explicit destructor / `release()` that closes the file handle.
 
 Helper functions are free functions, not methods. The write entry point is
 `session_log_write`, paired with `session_log_open` / `session_log_close` /

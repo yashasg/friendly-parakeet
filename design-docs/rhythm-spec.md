@@ -262,8 +262,12 @@ struct SongState {
     float morph_duration  = 0.1f;   // shape-morph animation length in seconds
 
     // ── Per-frame mutable fields ─────────────────────────────────────────────
+    // The former `int current_beat = -1` sentinel migrated to the
+    // `BeatCursor { int last_crossed; }` ctx-singleton row table (Fabian
+    // Principle 3 / issue #1545): membership IS "at least one beat has
+    // been crossed", and `last_crossed` is always meaningful while the
+    // row exists.
     float  song_time     = 0.0f;   // mutated every frame by song_playback_system
-    int    current_beat  = -1;     // mutated every frame by song_playback_system
     bool   playing       = false;  // set true by setup_play_session; cleared by
                                    //   song_playback_system or terminal GameOver entry
     bool   finished      = false;  // set true by song_playback_system or terminal GameOver entry

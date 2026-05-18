@@ -87,19 +87,30 @@ void song_playback_system(entt::registry& reg, float dt) {
     const auto* settings = find_settings_state(reg);
     const float audio_offset_sec = settings ? settings::audio_offset_seconds(*settings) : 0.0f;
 
-    // Current beat (non-decreasing)
+    // Current beat (non-decreasing). The `BeatCursor` ctx-singleton row
+    // (issue #1545 / Fabian Principle 3) is absent until the first beat
+    // is crossed; absence == -1 in the local int below so the index
+    // arithmetic stays identical to the legacy sentinel form.
+    auto* cursor = ctx.find<BeatCursor>();
+    int current = cursor ? cursor->last_crossed : -1;
     if (map && !map->beat_times.empty()) {
-        while ((song->current_beat + 1) >= 0 &&
-               static_cast<size_t>(song->current_beat + 1) < map->beat_times.size() &&
+        while (static_cast<size_t>(current + 1) < map->beat_times.size() &&
                song->song_time >=
-                   map->beat_times[static_cast<size_t>(song->current_beat + 1)] + audio_offset_sec) {
-            ++song->current_beat;
+                   map->beat_times[static_cast<size_t>(current + 1)] + audio_offset_sec) {
+            ++current;
         }
     } else if (song->beat_period > 0.0f && song->song_time >= song->offset + audio_offset_sec) {
         int beat = static_cast<int>(
             (song->song_time - (song->offset + audio_offset_sec)) / song->beat_period);
-        if (beat > song->current_beat) {
-            song->current_beat = beat;
+        if (beat > current) {
+            current = beat;
+        }
+    }
+    if (current >= 0) {
+        if (cursor) {
+            cursor->last_crossed = current;
+        } else {
+            ctx.emplace<BeatCursor>(BeatCursor{current});
         }
     }
 
