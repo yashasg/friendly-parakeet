@@ -1273,13 +1273,13 @@ int main(int argc, char* argv[]) {
     │   // 1. Process shape button (rhythm mode)             │
     │   player_input_handle_press_square(                    │
     │       ShapePressSquareEvent) {                         │
-    │       ShapeWindow.target_shape = Shape::Square;        │──▶ ShapeWindow
-    │       ShapeWindow.phase        = MorphIn;              │    { target: Square,
-    │       PlayerShape.morph_t      = 0.0f;                 │      phase: MorphIn }
-    │       disp.enqueue(PlaySfxEvent{ShapeShift});          │
-    │       // PlayerShape.current is promoted to            │──▶ PlayerShape
-    │       // target_shape once MorphIn completes           │    { current: Square,
-    │       // (shape_window_activation_system).             │      morph_t: 1.0 }
+    │       set_target_shape_tag(reg, player, Square);       │──▶ player rows:
+    │       reg.emplace<ShapeWindowMorphInTag>(player);      │    +TargetShapeSquareTag
+    │       PlayerShape.morph_t      = 0.0f;                 │    +ShapeWindowMorphInTag
+    │       disp.enqueue(PlaySfxEvent{ShapeShift});          │    (per #1202/#1204)
+    │       // player's current Shape*Tag is swapped to the  │──▶ PlayerShape
+    │       // TargetShape*Tag once MorphIn->Active fires    │    { morph_t: 1.0 }
+    │       // (shape_window_activation_system).             │
     │   }                                                    │
     │                                                        │
     │   // 2. Process direction — one handler per direction  │

@@ -348,7 +348,7 @@ struct SongResults {
   │ shape_window_activation_system                ★ NEW        │
   │   → ticks the MorphIn phase before collision so the player │
   │     finishes morphing (MorphIn → Active) before            │
-  │     collision_system reads ShapeWindow.phase               │
+  │     collision_system checks ShapeWindow*Tag (#1202/#1204)  │
   │   → guarded by SongState existing (not song->playing)      │
   └────────────────────────────────────────────────────────────┘
            ↓
