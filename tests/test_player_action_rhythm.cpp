@@ -202,7 +202,8 @@ TEST_CASE("player_action: swipe left works in rhythm mode", "[player_rhythm]") {
 
     run_semantic_input_tick(reg, 0.016f);
 
-    CHECK(reg.get<Lane>(player).target == 0);
+    REQUIRE(reg.all_of<LaneTransition>(player));
+    CHECK(reg.get<LaneTransition>(player).target == 0);
 }
 
 TEST_CASE("player_action: jump works in rhythm mode", "[player_rhythm]") {
@@ -229,16 +230,17 @@ TEST_CASE("player_input: GoEvents consumed after first tick, lane lerp_t not res
 
     // First tick: starts lane transition, consumes the event.
     run_semantic_input_tick(reg, 1.0f / 60.0f);
-    CHECK(lane.target == 0);
-    CHECK(lane.lerp_t == 0.0f);
+    REQUIRE(reg.all_of<LaneTransition>(player));
+    CHECK(reg.get<LaneTransition>(player).target == 0);
+    CHECK(reg.get<LaneTransition>(player).lerp_t == 0.0f);
 
     // Simulate partial lerp progress (as player_movement_system would do).
-    lane.lerp_t = 0.3f;
+    reg.get<LaneTransition>(player).lerp_t = 0.3f;
 
     // Second tick: GoEvent must NOT be replayed — lerp_t must not reset.
     run_semantic_input_tick(reg, 1.0f / 60.0f);
-    CHECK(lane.lerp_t == 0.3f);  // unchanged: event was consumed on tick 1
-    CHECK(lane.target == 0);
+    CHECK(reg.get<LaneTransition>(player).lerp_t == 0.3f);  // unchanged: event was consumed on tick 1
+    CHECK(reg.get<LaneTransition>(player).target == 0);
 }
 
 TEST_CASE("player_input: ShapePress*Events consumed after first tick (#213)", "[player_rhythm]") {

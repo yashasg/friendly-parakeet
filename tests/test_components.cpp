@@ -60,8 +60,16 @@ TEST_CASE("components: PlayerShape defaults", "[components]") {
 TEST_CASE("components: Lane defaults to center", "[components]") {
     Lane l{};
     CHECK(l.current == 1);
-    CHECK(l.target == -1);
-    CHECK(l.lerp_t == 1.0f);
+}
+
+TEST_CASE("components: LaneTransition defaults to invalid target", "[components]") {
+    // Presence of `LaneTransition` IS "lane transition in flight" — both
+    // columns are always meaningful while the row exists. The defaulted
+    // `target == -1` only surfaces if a caller emplaces the row without
+    // initializing it; normal writers always set `target` to a valid lane.
+    LaneTransition lt{};
+    CHECK(lt.target == -1);
+    CHECK(lt.lerp_t == 0.0f);
 }
 
 TEST_CASE("components: player defaults to grounded (no Jumping/Sliding)", "[components]") {
@@ -151,14 +159,15 @@ TEST_CASE("ecs: make_registry dispatcher is wired — Go*Event listeners registe
     // Promote to Playing so player_input_handle_go_right has observable effect.
     set_test_phase<GamePhasePlayingTag>(reg);
     auto player = make_player(reg);
-    auto& lane  = reg.get<Lane>(player);
 
     auto& disp = reg.ctx().get<entt::dispatcher>();
     disp.enqueue(GoRightEvent{});
     disp.update<GoRightEvent>();
 
-    // If dispatcher listeners were NOT wired, lane.target would remain -1.
-    CHECK(lane.target == 2);   // listener wired: player_input_handle_go_right fired
+    // If dispatcher listeners were NOT wired, no LaneTransition row would
+    // be emplaced on the player.
+    REQUIRE(reg.all_of<LaneTransition>(player));
+    CHECK(reg.get<LaneTransition>(player).target == 2);   // listener wired: player_input_handle_go_right fired
 }
 
 TEST_CASE("ecs: make_registry dispatcher is wired — ShapePress*Event listeners registered", "[ecs][dispatcher]") {
@@ -184,16 +193,16 @@ TEST_CASE("ecs: make_registry dispatcher ctx — second update is a no-op (no re
     // Applies to both Go*Event and the per-shape ShapePress*Event pools.
     auto reg = make_rhythm_registry();
     auto player = make_rhythm_player(reg);
-    auto& lane  = reg.get<Lane>(player);
 
     auto& disp = reg.ctx().get<entt::dispatcher>();
     disp.enqueue(GoRightEvent{});
     disp.update<GoRightEvent>();
-    CHECK(lane.target == 2);
+    REQUIRE(reg.all_of<LaneTransition>(player));
+    CHECK(reg.get<LaneTransition>(player).target == 2);
 
     // Second drain — must be a no-op.
     disp.update<GoRightEvent>();
-    CHECK(lane.target == 2);   // not replayed
+    CHECK(reg.get<LaneTransition>(player).target == 2);   // not replayed
 }
 
 TEST_CASE("ecs: wire_input_dispatcher is idempotent", "[ecs][dispatcher]") {
@@ -362,7 +371,7 @@ TEST_CASE("ecs: registry teardown without unwire_* is safe (no UAF)",
         auto& disp = reg.ctx().get<entt::dispatcher>();
         disp.enqueue<GoRightEvent>(GoRightEvent{});
         disp.update<GoRightEvent>();
-        CHECK(reg.get<Lane>(player).target == 2);
+        CHECK(reg.get<LaneTransition>(player).target == 2);
         // Inner-block exit destroys the registry. With `scoped_connection`,
         // libstdc++ would SIGSEGV here because the dispatcher's `sigh` is
         // destroyed before the holder's auto-release runs.

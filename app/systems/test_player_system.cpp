@@ -231,7 +231,7 @@ void test_player_system(entt::registry& reg, float dt) {
     auto player_entity = *player_view.begin();
     auto [p_transform, p_shape, p_window, p_lane] =
         player_view.get<WorldPosition, PlayerShape, ShapeWindow, Lane>(player_entity);
-    lane_utils::normalize(p_lane, &p_transform);
+    lane_utils::normalize(reg, player_entity, p_lane, &p_transform);
 
     // Per-frame constant: player's vertical offset (Grounded/Sliding → 0,
     // Jumping → parabolic arc) used in collision-zone math below.
@@ -240,9 +240,14 @@ void test_player_system(entt::registry& reg, float dt) {
 
     // ── PERCEIVE: scan obstacles in vision range ─────────────
     // Compute the "effective lane" — where the player will be after
-    // all pending lane changes in the action queue execute.
+    // all pending lane changes in the action queue execute. A
+    // `LaneTransition` row on the player IS "lane change in flight"
+    // (Fabian Principle 3, issue #1533); read its target lane directly.
     int8_t effective_lane = p_lane.current;
-    if (lane_utils::is_valid(p_lane.target)) effective_lane = p_lane.target;
+    if (const auto* p_transition = reg.try_get<LaneTransition>(player_entity);
+        p_transition && lane_utils::is_valid(p_transition->target)) {
+        effective_lane = p_transition->target;
+    }
     for (int i = 0; i < state->action_count; ++i) {
         if (lane_utils::is_valid(state->actions[i].target_lane) &&
             !test_player_lane_done(state->actions[i])) {
@@ -463,7 +468,7 @@ void test_player_system(entt::registry& reg, float dt) {
             }
         }
 
-        if (test_player_needs_lane(action) && !lane_utils::is_valid(p_lane.target) &&
+        if (test_player_needs_lane(action) && !reg.all_of<LaneTransition>(player_entity) &&
             state->swipe_cooldown_timer <= 0.0f
             && !zone_blocked && !blocked_by_shape && !move_would_fail_closer) {
             if (action.target_lane < p_lane.current) {

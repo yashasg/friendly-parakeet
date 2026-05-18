@@ -44,31 +44,28 @@ TEST_CASE("player_action: no shape change when same shape pressed", "[player]") 
 
 TEST_CASE("player_action: swipe left changes lane", "[player]") {
     auto reg = make_registry();
-    make_player(reg);
+    auto player = make_player(reg);
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoLeftEvent>({});
 
     run_semantic_input_tick(reg, 0.016f);
 
-    auto view = reg.view<PlayerTag, Lane>();
-    for (auto [e, lane] : view.each()) {
-        CHECK(lane.target == 0);
-        CHECK(lane.lerp_t == 0.0f);
-    }
+    REQUIRE(reg.all_of<LaneTransition>(player));
+    const auto& transition = reg.get<LaneTransition>(player);
+    CHECK(transition.target == 0);
+    CHECK(transition.lerp_t == 0.0f);
 }
 
 TEST_CASE("player_action: swipe right changes lane", "[player]") {
     auto reg = make_registry();
-    make_player(reg);
+    auto player = make_player(reg);
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoRightEvent>({});
 
     run_semantic_input_tick(reg, 0.016f);
 
-    auto view = reg.view<PlayerTag, Lane>();
-    for (auto [e, lane] : view.each()) {
-        CHECK(lane.target == 2);
-    }
+    REQUIRE(reg.all_of<LaneTransition>(player));
+    CHECK(reg.get<LaneTransition>(player).target == 2);
 }
 
 TEST_CASE("player_action: repeated lane input during transition does not restart interpolation",
@@ -79,15 +76,16 @@ TEST_CASE("player_action: repeated lane input during transition does not restart
     reg.ctx().get<entt::dispatcher>().enqueue<GoRightEvent>({});
     run_semantic_input_tick(reg, 0.016f);
 
-    auto& lane = reg.get<Lane>(p);
-    lane.lerp_t = 0.4f;
+    auto& transition = reg.get<LaneTransition>(p);
+    transition.lerp_t = 0.4f;
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoRightEvent>({});
     run_semantic_input_tick(reg, 0.016f);
 
-    CHECK(lane.current == 1);
-    CHECK(lane.target == 2);
-    CHECK_THAT(lane.lerp_t, Catch::Matchers::WithinAbs(0.4f, 0.0001f));
+    CHECK(reg.get<Lane>(p).current == 1);
+    CHECK(reg.get<LaneTransition>(p).target == 2);
+    CHECK_THAT(reg.get<LaneTransition>(p).lerp_t,
+               Catch::Matchers::WithinAbs(0.4f, 0.0001f));
 }
 
 TEST_CASE("player_action: opposite lane input during transition waits for completion",
@@ -95,17 +93,17 @@ TEST_CASE("player_action: opposite lane input during transition waits for comple
     auto reg = make_registry();
     auto p = make_player(reg);
 
-    auto& lane = reg.get<Lane>(p);
-    lane.current = 1;
-    lane.target = 2;
-    lane.lerp_t = 0.4f;
+    reg.get<Lane>(p).current = 1;
+    reg.emplace<LaneTransition>(p, LaneTransition{2, 0.4f});
 
     reg.ctx().get<entt::dispatcher>().enqueue<GoLeftEvent>({});
     run_semantic_input_tick(reg, 0.016f);
 
-    CHECK(lane.current == 1);
-    CHECK(lane.target == 2);
-    CHECK_THAT(lane.lerp_t, Catch::Matchers::WithinAbs(0.4f, 0.0001f));
+    CHECK(reg.get<Lane>(p).current == 1);
+    REQUIRE(reg.all_of<LaneTransition>(p));
+    CHECK(reg.get<LaneTransition>(p).target == 2);
+    CHECK_THAT(reg.get<LaneTransition>(p).lerp_t,
+               Catch::Matchers::WithinAbs(0.4f, 0.0001f));
 }
 
 TEST_CASE("player_action: swipe left at lane 0 is clamped", "[player]") {
@@ -117,7 +115,7 @@ TEST_CASE("player_action: swipe left at lane 0 is clamped", "[player]") {
 
     run_semantic_input_tick(reg, 0.016f);
 
-    CHECK(reg.get<Lane>(p).target == -1);  // no transition started
+    CHECK_FALSE(reg.all_of<LaneTransition>(p));  // no transition started
 }
 
 TEST_CASE("player_action: swipe right at lane 2 is clamped", "[player]") {
@@ -129,7 +127,7 @@ TEST_CASE("player_action: swipe right at lane 2 is clamped", "[player]") {
 
     run_semantic_input_tick(reg, 0.016f);
 
-    CHECK(reg.get<Lane>(p).target == -1);
+    CHECK_FALSE(reg.all_of<LaneTransition>(p));
 }
 
 TEST_CASE("player_action: swipe up starts jump", "[player]") {
@@ -185,8 +183,7 @@ TEST_CASE("player_movement: morph_t advances toward 1.0", "[player]") {
 TEST_CASE("player_movement: lane transition moves position", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
-    reg.get<Lane>(p).target = 0;
-    reg.get<Lane>(p).lerp_t = 0.0f;
+    reg.emplace<LaneTransition>(p, LaneTransition{0, 0.0f});
 
     float initial_x = reg.get<WorldPosition>(p).position.x;
     player_movement_system(reg, 0.016f);
@@ -197,8 +194,7 @@ TEST_CASE("player_movement: lane transition moves position", "[player]") {
 TEST_CASE("player_movement: lane transition completes", "[player]") {
     auto reg = make_registry();
     auto p = make_player(reg);
-    reg.get<Lane>(p).target = 2;
-    reg.get<Lane>(p).lerp_t = 0.0f;
+    reg.emplace<LaneTransition>(p, LaneTransition{2, 0.0f});
 
     // Run enough frames for transition to complete
     for (int i = 0; i < 120; ++i) {
@@ -206,7 +202,7 @@ TEST_CASE("player_movement: lane transition completes", "[player]") {
     }
 
     CHECK(reg.get<Lane>(p).current == 2);
-    CHECK(reg.get<Lane>(p).target == -1);
+    CHECK_FALSE(reg.all_of<LaneTransition>(p));
     CHECK(reg.get<WorldPosition>(p).position.x == constants::LANE_X[2]);
 }
 
@@ -216,14 +212,12 @@ TEST_CASE("player_movement: clears stale lane target when target equals current"
     auto& lane = reg.get<Lane>(p);
     auto& transform = reg.get<WorldPosition>(p);
     lane.current = 1;
-    lane.target = 1;
-    lane.lerp_t = 0.0f;
+    reg.emplace<LaneTransition>(p, LaneTransition{1, 0.0f});
     transform.position.x = (constants::LANE_X[1] + constants::LANE_X[2]) * 0.5f;
 
     player_movement_system(reg, 0.016f);
 
-    CHECK(lane.target == -1);
-    CHECK(lane.lerp_t == 1.0f);
+    CHECK_FALSE(reg.all_of<LaneTransition>(p));
     CHECK(transform.position.x == constants::LANE_X[1]);
 }
 
@@ -233,15 +227,13 @@ TEST_CASE("player_movement: normalizes invalid current lane", "[player][issue900
     auto& lane = reg.get<Lane>(p);
     auto& transform = reg.get<WorldPosition>(p);
     lane.current = -1;
-    lane.target = 0;
-    lane.lerp_t = 0.0f;
+    reg.emplace<LaneTransition>(p, LaneTransition{0, 0.0f});
     transform.position.x = -999.0f;
 
     player_movement_system(reg, 0.016f);
 
     CHECK(lane.current == constants::DEFAULT_LANE);
-    CHECK(lane.target == -1);
-    CHECK(lane.lerp_t == 1.0f);
+    CHECK_FALSE(reg.all_of<LaneTransition>(p));
     CHECK(transform.position.x == constants::LANE_X[constants::DEFAULT_LANE]);
 }
 
@@ -251,15 +243,14 @@ TEST_CASE("player_movement: normalizes invalid target lane", "[player][issue900]
     auto& lane = reg.get<Lane>(p);
     auto& transform = reg.get<WorldPosition>(p);
     lane.current = 1;
-    lane.target = constants::LANE_COUNT;
-    lane.lerp_t = 0.0f;
+    reg.emplace<LaneTransition>(p,
+        LaneTransition{static_cast<int8_t>(constants::LANE_COUNT), 0.0f});
     transform.position.x = (constants::LANE_X[1] + constants::LANE_X[2]) * 0.5f;
 
     player_movement_system(reg, 0.016f);
 
     CHECK(lane.current == 1);
-    CHECK(lane.target == -1);
-    CHECK(lane.lerp_t == 1.0f);
+    CHECK_FALSE(reg.all_of<LaneTransition>(p));
     CHECK(transform.position.x == constants::LANE_X[1]);
 }
 

@@ -90,13 +90,14 @@ TEST_CASE("player_input_rhythm: shape press does not target authored motif lane"
     auto player = make_rhythm_player(reg);
     auto& lane = reg.get<Lane>(player);
     REQUIRE(lane.current == 1);
-    lane.target = lane.current;
+    // No LaneTransition row → settled. A shape press must not synthesize one.
 
     auto btn = make_shape_button(reg, Shape::Triangle);
     press_button(reg, btn);
     run_semantic_input_tick(reg);
 
-    CHECK(lane.target == 1);
+    CHECK_FALSE(reg.all_of<LaneTransition>(player));
+    CHECK(lane.current == 1);
 }
 
 TEST_CASE("player_input_rhythm: shape press does not set stale target when already in authored motif lane",
@@ -105,13 +106,13 @@ TEST_CASE("player_input_rhythm: shape press does not set stale target when alrea
     auto player = make_rhythm_player(reg);
     auto& lane = reg.get<Lane>(player);
     lane.current = 0;
-    lane.target = -1;
+    // No LaneTransition row → settled.
 
     auto btn = make_shape_button(reg, Shape::Circle);
     press_button(reg, btn);
     run_semantic_input_tick(reg);
 
-    CHECK(lane.target == -1);
+    CHECK_FALSE(reg.all_of<LaneTransition>(player));
 }
 
 TEST_CASE("player_input_rhythm: shape press preserves in-flight lane target",
@@ -120,15 +121,15 @@ TEST_CASE("player_input_rhythm: shape press preserves in-flight lane target",
     auto player = make_rhythm_player(reg);
     auto& lane = reg.get<Lane>(player);
     lane.current = 1;
-    lane.target = 2;
-    lane.lerp_t = 0.5f;
+    reg.emplace<LaneTransition>(player, LaneTransition{2, 0.5f});
 
     auto btn = make_shape_button(reg, Shape::Square);
     press_button(reg, btn);
     run_semantic_input_tick(reg);
 
-    CHECK(lane.target == 2);
-    CHECK(lane.lerp_t == 0.5f);
+    REQUIRE(reg.all_of<LaneTransition>(player));
+    CHECK(reg.get<LaneTransition>(player).target == 2);
+    CHECK(reg.get<LaneTransition>(player).lerp_t == 0.5f);
 }
 
 TEST_CASE("player_input_rhythm: lane change works in rhythm mode", "[player][rhythm]") {
@@ -139,8 +140,8 @@ TEST_CASE("player_input_rhythm: lane change works in rhythm mode", "[player][rhy
 
     run_semantic_input_tick(reg);
 
-    auto& lane = reg.get<Lane>(player);
-    CHECK(lane.target == 0);
+    REQUIRE(reg.all_of<LaneTransition>(player));
+    CHECK(reg.get<LaneTransition>(player).target == 0);
 }
 
 TEST_CASE("player_input: non-rhythm shape press changes immediately", "[player]") {
@@ -159,8 +160,7 @@ TEST_CASE("player_input: non-rhythm shape press changes immediately", "[player]"
         CHECK(ps.morph_t == 1.0f);
     }
 
-    auto& lane = reg.get<Lane>(player);
-    CHECK(lane.target == -1);
+    CHECK_FALSE(reg.all_of<LaneTransition>(player));
 }
 
 TEST_CASE("player_input: non-rhythm same shape press does nothing", "[player]") {
@@ -205,8 +205,7 @@ TEST_CASE("player_input_rhythm: circle press in lane 0 does not force mismatch b
     auto& transform = reg.get<WorldPosition>(player);
 
     lane.current = 0;
-    lane.target = -1;
-    lane.lerp_t = 1.0f;
+    // No LaneTransition row → settled.
     transform.position.x = constants::LANE_X[0];
 
     set_player_shape_tag(reg, player, Shape::Hexagon);
@@ -224,7 +223,7 @@ TEST_CASE("player_input_rhythm: circle press in lane 0 does not force mismatch b
     player_movement_system(reg, 0.016f);
     collision_system(reg, 0.016f);
 
-    CHECK(lane.target == -1);
+    CHECK_FALSE(reg.all_of<LaneTransition>(player));
     CHECK(reg.all_of<ScoredTag>(obs));
     CHECK_FALSE(reg.all_of<MissTag>(obs));
 }

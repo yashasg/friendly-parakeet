@@ -15,7 +15,7 @@ void player_movement_system(entt::registry& reg, float dt) {
 
     auto view = reg.view<PlayerTag, WorldPosition, PlayerShape, Lane>();
     for (auto [entity, transform, pshape, lane] : view.each()) {
-        lane_utils::normalize(lane, &transform);
+        lane_utils::normalize(reg, entity, lane, &transform);
 
         // Morph animation — freeplay only.
         // In rhythm mode shape_window_system owns morph_t (derives from song_time);
@@ -24,22 +24,24 @@ void player_movement_system(entt::registry& reg, float dt) {
             pshape.morph_t = Clamp(pshape.morph_t + dt / constants::MORPH_DURATION, 0.0f, 1.0f);
         }
 
-        // Lane transition
-        if (lane.target == lane.current) {
-            lane.target = lane_utils::kNoTargetLane;
-            lane.lerp_t = 1.0f;
+        // Lane transition — presence of `LaneTransition` IS the "mid-transition"
+        // signal (Fabian Principle 3, issue #1533). A row whose target equals
+        // current is a no-op leftover that was never advanced; collapse it.
+        auto* transition = reg.try_get<LaneTransition>(entity);
+        if (transition && transition->target == lane.current) {
+            reg.remove<LaneTransition>(entity);
             transform.position.x = constants::LANE_X[lane.current];
+            transition = nullptr;
         }
-        if (lane_utils::is_valid(lane.target) && lane.target != lane.current) {
-            lane.lerp_t += dt * constants::LANE_SWITCH_SPEED;
-            float from_x = constants::LANE_X[lane.current];
-            float to_x   = constants::LANE_X[lane.target];
-            transform.position.x = Lerp(from_x, to_x, lane.lerp_t);
+        if (transition && lane_utils::is_valid(transition->target)) {
+            transition->lerp_t += dt * constants::LANE_SWITCH_SPEED;
+            const float from_x = constants::LANE_X[lane.current];
+            const float to_x   = constants::LANE_X[transition->target];
+            transform.position.x = Lerp(from_x, to_x, transition->lerp_t);
 
-            if (lane.lerp_t >= 1.0f) {
-                lane.current = lane.target;
-                lane.target  = lane_utils::kNoTargetLane;
-                lane.lerp_t  = 1.0f;
+            if (transition->lerp_t >= 1.0f) {
+                lane.current = transition->target;
+                reg.remove<LaneTransition>(entity);
                 transform.position.x = constants::LANE_X[lane.current];
             }
         }

@@ -218,12 +218,24 @@ struct Pressed {
 /// player IS "this press has been graded by collision_system" (replaces the
 /// former `ShapeWindow::graded` bool).
 
-/// Lane occupancy and transition. 8 bytes.
+/// Lane occupancy. The transition columns (`target`, `lerp_t`) live on a
+/// `LaneTransition` row table per Fabian Principle 3 / issue #1533: every
+/// column here is always meaningful. 1 byte.
 /// Hot: read by collision_system, player input handlers, player_movement_system.
 struct Lane {
     int8_t   current;      // 0 = left, 1 = center, 2 = right
-    int8_t   target;       // where we're heading (-1 = no transition)
-    float    lerp_t;       // 0.0..1.0 transition progress
+};
+
+/// In-flight lane transition. Presence on the player entity IS "the player
+/// is mid-lane-transition"; both columns are always meaningful while the
+/// row exists. Replaces the former `Lane::target = -1` sentinel + always-
+/// present `Lane::lerp_t` optional (issue #1533).
+/// Writers: `player_input_system` emplaces on swipe (target = current ± 1,
+/// lerp_t = 0.0); `player_movement_system` removes when `lerp_t >= 1.0`
+/// (after committing the new `Lane::current`).
+struct LaneTransition {
+    int8_t target;         // where we're heading (always a valid lane)
+    float  lerp_t;         // 0.0..1.0 transition progress
 };
 
 // Per-state vertical motion tables (issue #1202/#1204; Fabian existential
@@ -652,7 +664,8 @@ ScorePopup          16     HOT        popup expiry/render fade
 PlayerTag            0     HOT        collision/filter
 PlayerShape          8     HOT        shape_window, collision, render, player_action
 ShapeWindow         24     HOT        shape_window, input dispatcher, collision
-Lane                 8     HOT        collision, render, player_action
+Lane                 1     HOT        collision, render, player_action
+LaneTransition       8     HOT        present when mid-lane-shift; movement, collision, player_action
 Jumping              8     HOT        present when mid-jump; collision (y_offset), camera, movement
 Sliding              4     HOT        present when mid-slide; movement, render
 ObstacleTag          0     HOT        scroll, collision, cleanup
@@ -917,7 +930,8 @@ In code, reusable construction lives in `app/entities/` factory functions
 │ PlayerShape           { morph_t: 1.0 }                    │
 │ ShapeWindow           { window_timer: 0, window_start: 0 }│
 │ TargetShapeHexagonTag  (tag, 0 bytes; idle reset)         │
-│ Lane                  { current: 1, target: -1, lerp_t:1 }│
+│ Lane                  { current: 1 }                       │
+│ (LaneTransition absent → settled; row added on swipe per #1533)│
 │ (Jumping/Sliding absent → grounded; rows added on demand) │
 │ (ShapeWindow{MorphIn,Active,MorphOut}Tag absent → Idle)   │
 │ (Pressed{press_time} added on press, removed at MorphOut) │
@@ -1315,10 +1329,11 @@ int main(int argc, char* argv[]) {
     │                                                        │
     │   // 2. Process direction — one handler per direction  │
     │   player_input_handle_go_left(GoLeftEvent) {           │
-    │       if (Lane.current > 0) {                          │──▶ Lane
-    │           Lane.target = Lane.current - 1;              │    { current: 1,
-    │           Lane.lerp_t = 0.0f;                          │      target: 0,
-    │       }                                                │      lerp_t: 0.0 }
+    │       if (Lane.current > 0) {                          │──▶ LaneTransition (new row)
+    │           reg.emplace_or_replace<LaneTransition>(      │    { target: 0,
+    │               player,                                  │      lerp_t: 0.0 }
+    │               LaneTransition{Lane.current - 1, 0.0f}); │
+    │       }                                                │
     │   }                                                    │
     │   player_input_handle_go_up(GoUpEvent) {               │
     │       if (!reg.all_of<Jumping, Sliding>(player)) {     │──▶ Jumping (new row)
@@ -1395,6 +1410,7 @@ This entire game state fits in L1 cache (~32-64 KB).
   │
   │  □ PlayerShape     (shape window + collision + render, every frame, R)
   │  □ Lane            (collision + render, every frame, R)
+  │  □ LaneTransition  (present only when mid-lane-shift; movement + collision, R+W)
   │  □ Jumping/Sliding (present only when mid-jump/slide; movement + camera + collision, R+W)
   │  □ Obstacle        (collision + scoring, every frame, R)
   │
@@ -1681,6 +1697,9 @@ app/
 ├── components/                  ← all component structs
 │   ├── transform.h              ← WorldPosition, MotionVelocity
 │   ├── player.h                 ← PlayerTag, PlayerShape, ShapeWindow, Lane,
+│   │                              LaneTransition (present when mid-lane-
+│   │                              shift; row table per Fabian Principle 3,
+│   │                              issue #1533),
 │   │                              Jumping, Sliding (per-state vertical motion tables;
 │   │                              absence of both = grounded). Window phase lives
 │   │                              as `ShapeWindow*Tag` on the player entity (see

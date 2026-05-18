@@ -73,10 +73,28 @@ struct Pressed {
     float press_time = 0.0f;
 };
 
+// Lane occupancy. The transition columns (`target`, `lerp_t`) moved to the
+// `LaneTransition` row table below per Fabian Principle 3 / issue #1533:
+// every column here is always meaningful. Hot: read by `collision_system`,
+// `player_input_system`, `player_movement_system`, `test_player_system`.
 struct Lane {
     int8_t current = 1;
-    int8_t target  = -1;
-    float  lerp_t  = 1.0f;
+};
+
+// In-flight lane transition. Presence on the player entity IS "the player
+// is mid-lane-transition"; both columns are always meaningful while the
+// row exists (Fabian Principle 3 / issue #1533). Replaces the former
+// `Lane::target = -1` sentinel + always-present `Lane::lerp_t` optional.
+//
+// Writers: `player_input_system` emplaces on swipe (target = current ± 1,
+// lerp_t = 0.0); `player_movement_system` removes when `lerp_t >= 1.0` and
+// commits the new `Lane::current`.
+// Readers: `player_movement_system` advances `lerp_t` and interpolates the
+// world x-position; `test_player_system` reads `target` to compute the
+// player's effective lane during action planning.
+struct LaneTransition {
+    int8_t target = -1;
+    float  lerp_t = 0.0f;
 };
 
 // ── Vertical motion state (per-state component tables) ──────

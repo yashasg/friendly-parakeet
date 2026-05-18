@@ -56,13 +56,11 @@ TEST_CASE("collision: shape gate does not clear from target lane before strafe a
           "[collision][issue892]") {
     auto reg = make_registry();
     auto player = make_player(reg);
-    auto& lane = reg.get<Lane>(player);
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
 
     reg.get<WorldPosition>(obs).position.x = constants::LANE_X[0];
     reg.get<int8_t>(obs) = int8_t{0};
-    lane.target = 0;
-    lane.lerp_t = 0.0f;
+    reg.emplace<LaneTransition>(player, LaneTransition{0, 0.0f});
 
     collision_system(reg, 0.016f);
 
@@ -88,14 +86,12 @@ TEST_CASE("collision: shape gate clears when interpolated player hitbox reaches 
           "[collision][issue892]") {
     auto reg = make_registry();
     auto player = make_player(reg);
-    auto& lane = reg.get<Lane>(player);
     auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y);
 
     reg.get<WorldPosition>(obs).position.x = constants::LANE_X[0];
     reg.get<int8_t>(obs) = int8_t{0};
     reg.get<WorldPosition>(player).position.x = constants::LANE_X[0];
-    lane.target = 0;
-    lane.lerp_t = 1.0f;
+    reg.emplace<LaneTransition>(player, LaneTransition{0, 1.0f});
 
     collision_system(reg, 0.016f);
 
@@ -110,10 +106,10 @@ TEST_CASE("collision: split path uses interpolated player lane during transition
     auto& lane = reg.get<Lane>(player);
     auto& transform = reg.get<WorldPosition>(player);
     lane.current = 1;
-    lane.target = 2;
-    lane.lerp_t = 0.9f;
+    auto& transition =
+        reg.emplace<LaneTransition>(player, LaneTransition{2, 0.9f});
     transform.position.x = constants::LANE_X[1] +
-        (constants::LANE_X[2] - constants::LANE_X[1]) * lane.lerp_t;
+        (constants::LANE_X[2] - constants::LANE_X[1]) * transition.lerp_t;
     auto obs = make_split_path(reg, Shape::Circle, 2, constants::PLAYER_Y);
 
     collision_system(reg, 0.016f);
