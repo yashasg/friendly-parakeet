@@ -49,10 +49,6 @@ struct GameplayHudBindContext {
     const CurrentSongHighScore* current;
 };
 
-bool bind_pos_matches(float x, float y, float ex, float ey) noexcept {
-    return ex == x && ey == y;
-}
-
 void bind_score(const GameplayHudBindContext& ctx, entt::registry& reg, entt::entity e, UiLabel& label) {
     if (ctx.display == nullptr) {
         ui_label_set(label, "");
@@ -132,7 +128,7 @@ void gameplay_hud_bind_system(entt::registry& reg) {
         const auto& pos = view.get<UiPosition>(entity);
         auto& label     = view.get<UiLabel>(entity);
         for (const auto& row : kGameplayHudSlots) {
-            if (bind_pos_matches(row.x, row.y, pos.x, pos.y)) {
+            if (pos.x == row.x && pos.y == row.y) {
                 row.fn(ctx, reg, entity, label);
                 break;
             }
