@@ -201,34 +201,16 @@ RenderTargets& RenderTargets::operator=(RenderTargets&& o) noexcept {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-// GenMeshCube is centered at origin. Translate to position the slab's
-// bottom-left corner at (x, 0) and center depth on z so z is the beat/timing plane.
-static Matrix slab_matrix(float x, float z, float w, float h, float d) {
-    return MatrixMultiply(MatrixScale(w, h, d),
-                          MatrixTranslate(x + w / 2, h / 2, z));
-}
-
-static Matrix shape_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
-    float s = sz * radius_scale;
-    return MatrixMultiply(MatrixScale(s, s, s),
-                          MatrixTranslate(cx, y_3d, cz));
-}
-
-// Triangular prism rotated so one vertex of the cross-section points up (△)
-static Matrix prism_matrix(float cx, float y_3d, float cz, float sz, float radius_scale) {
-    float s = sz * radius_scale;
-    Matrix scale = MatrixScale(s, s, s);
-    Matrix rot = MatrixRotateY(90.0f * DEG2RAD);
-    Matrix translate = MatrixTranslate(cx, y_3d, cz);
-    return MatrixMultiply(MatrixMultiply(scale, rot), translate);
-}
-
-// Pick the correct matrix for a shape mesh (triangle prism needs rotation)
+// Pick the correct matrix for a shape mesh. Triangle prism is rotated 90°
+// around Y so one vertex of the cross-section points up (△); other shapes
+// are uniform-scaled and translated to (cx, y_3d, cz).
 static Matrix make_shape_matrix(uint8_t mesh_index, float cx, float y_3d, float cz,
                                 float sz, float radius_scale) {
+    const float s = sz * radius_scale;
+    Matrix m = MatrixScale(s, s, s);
     if (mesh_index == static_cast<uint8_t>(Shape::Triangle))
-        return prism_matrix(cx, y_3d, cz, sz, radius_scale);
-    return shape_matrix(cx, y_3d, cz, sz, radius_scale);
+        m = MatrixMultiply(m, MatrixRotateY(90.0f * DEG2RAD));
+    return MatrixMultiply(m, MatrixTranslate(cx, y_3d, cz));
 }
 
 // ── game_camera_system: model-to-world transforms for all 3D renderables ────
@@ -262,11 +244,16 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
         };
 
         // Slab children: no per-kind columns.
+        // GenMeshCube is centered at origin; translate so the slab's bottom-left
+        // corner sits at (mc.x, 0) and the depth dimension is centred on z (the
+        // beat/timing plane).
         for (auto [entity, mc] : reg.view<MeshChild, MeshKindSlab>().each()) {
             float z = 0.0f;
             if (!record_stale_or_compute_z(entity, mc, z)) continue;
             reg.get_or_emplace<ModelTransform>(entity) =
-                ModelTransform{slab_matrix(mc.x, z, mc.width, mc.height, mc.depth),
+                ModelTransform{MatrixMultiply(MatrixScale(mc.width, mc.height, mc.depth),
+                                              MatrixTranslate(mc.x + mc.width / 2,
+                                                              mc.height / 2, z)),
                                 mc.tint};
         }
 
