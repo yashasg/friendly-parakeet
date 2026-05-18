@@ -25,14 +25,6 @@ struct AudioHapticDispatcherConnections {
     }
 };
 
-void warm_audio_haptic_dispatcher(entt::dispatcher& disp) {
-    // Move first vector allocation out of the first gameplay audio frame.
-    disp.enqueue<PlaySfxEvent>(PlaySfxEvent{});
-    disp.enqueue<PlayHapticEvent>(PlayHapticEvent{});
-    disp.clear<PlaySfxEvent>();
-    disp.clear<PlayHapticEvent>();
-}
-
 }  // namespace
 
 // audio_system and haptic_system own their post-render event drains.
@@ -58,7 +50,11 @@ void wire_audio_haptic_dispatcher(entt::registry& reg) {
     state->haptic =
         disp->sink<PlayHapticEvent>().connect<&haptic_handle_play>(reg);
 
-    warm_audio_haptic_dispatcher(*disp);
+    // Move first vector allocation out of the first gameplay audio frame.
+    disp->enqueue<PlaySfxEvent>(PlaySfxEvent{});
+    disp->enqueue<PlayHapticEvent>(PlayHapticEvent{});
+    disp->clear<PlaySfxEvent>();
+    disp->clear<PlayHapticEvent>();
 }
 
 void unwire_audio_haptic_dispatcher(entt::registry& reg) {
