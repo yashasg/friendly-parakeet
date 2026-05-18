@@ -12,10 +12,12 @@ namespace {
 
 // Bind context — owns the per-frame singleton reads so the per-slot
 // `bind_*` functions are pure transforms over their slot's `UiLabel`.
-// `TerminalResultState` may be absent during the Game Over debounce
-// window before `game_state_enter_terminal_phase_game_over` populates
-// it, so it is carried as a nullable pointer. `EnergyDepletedDeath`
-// is a presence-only ctx tag (no payload) so we carry a bool for it.
+// `NewBestRecord` is present-iff the just-finished session set a new
+// high score (Fabian Principle 3, issue #1533 site #3); its membership
+// in the ctx singleton table IS the "is_new_best" predicate, so we
+// carry a nullable pointer instead of a discriminator bool.
+// `EnergyDepletedDeath` is a presence-only ctx tag (no payload) so we
+// carry a bool for it.
 //
 // Per-binder prefix (`GameOver*`) avoids an anonymous-namespace ODR
 // collision with the sibling `*_bind_system.cpp` files when CMake Unity
@@ -23,14 +25,14 @@ namespace {
 struct GameOverBindContext {
     const ScoreState& score;
     const CurrentSongHighScore& current;
-    const TerminalResultState* result;
+    const NewBestRecord* new_best;
     bool energy_depleted;
 };
 
 using GameOverSlotBindFn = void (*)(const GameOverBindContext&, UiLabel&);
 
 bool is_new_best(const GameOverBindContext& ctx) {
-    return ctx.result != nullptr && ctx.result->new_best;
+    return ctx.new_best != nullptr;
 }
 
 void bind_score(const GameOverBindContext& ctx, UiLabel& label) {
@@ -51,7 +53,7 @@ void bind_prev_best(const GameOverBindContext& ctx, UiLabel& label) {
         return;
     }
     char buf[32];
-    std::snprintf(buf, sizeof(buf), "PREV %d", ctx.result->previous_best);
+    std::snprintf(buf, sizeof(buf), "PREV %d", ctx.new_best->previous_best);
     ui_label_set(label, buf);
 }
 
@@ -109,7 +111,7 @@ void game_over_scoreboard_bind_system(entt::registry& reg) {
     const GameOverBindContext ctx{
         reg.ctx().get<ScoreState>(),
         reg.ctx().get<CurrentSongHighScore>(),
-        reg.ctx().find<TerminalResultState>(),
+        reg.ctx().find<NewBestRecord>(),
         reg.ctx().find<EnergyDepletedDeath>() != nullptr,
     };
 

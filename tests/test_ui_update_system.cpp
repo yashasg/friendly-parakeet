@@ -446,7 +446,7 @@ TEST_CASE("song_complete_scoreboard_bind_system: writes score / high score / sta
     CHECK(resolve(120.0f, 684.0f) == "OK 2     BAD 1     MISS 0");
     CHECK(resolve(120.0f, 718.0f) == "MAX CHAIN 11");
     CHECK(resolve(120.0f, 752.0f) == "ENERGY 75%");
-    // NEW BEST line is empty when no TerminalResultState is present.
+    // NEW BEST line is empty when no NewBestRecord ctx row is present.
     CHECK(resolve(120.0f, 620.0f).empty());
 }
 
@@ -456,7 +456,7 @@ TEST_CASE("song_complete_scoreboard_bind_system: writes NEW BEST line when termi
     entt::registry reg = make_registry();
     prime_song_complete_entry(reg);
 
-    reg.ctx().insert_or_assign(TerminalResultState{true, 4242});
+    reg.ctx().insert_or_assign(NewBestRecord{4242});
 
     song_complete_scoreboard_bind_system(reg);
 
@@ -620,7 +620,7 @@ TEST_CASE("game_over_scoreboard_bind_system: writes score / high-score into slot
 
     CHECK(resolve_game_over_slot(reg, 210.0f, 540.0f) == "12345");
     CHECK(resolve_game_over_slot(reg, 210.0f, 634.0f) == "9000");
-    // No TerminalResultState / EnergyDepletedDeath — all dynamic reason /
+    // No NewBestRecord / EnergyDepletedDeath — all dynamic reason /
     // best slots empty.
     CHECK(resolve_game_over_slot(reg, 110.0f, 665.0f).empty());
     CHECK(resolve_game_over_slot(reg, 110.0f, 712.0f).empty());
@@ -649,7 +649,7 @@ TEST_CASE("game_over_scoreboard_bind_system: ENERGY DEPLETED shifts to y=742 + N
     prime_game_over_entry(reg);
 
     reg.ctx().insert_or_assign(EnergyDepletedDeath{});
-    reg.ctx().insert_or_assign(TerminalResultState{true, 3000});
+    reg.ctx().insert_or_assign(NewBestRecord{3000});
 
     game_over_scoreboard_bind_system(reg);
 
@@ -666,7 +666,7 @@ TEST_CASE("game_over_scoreboard_bind_system: NEW BEST/PREV without death cause l
           "[ui][game_over_scoreboard_bind_system][issue1293]") {
     entt::registry reg = make_registry();
     prime_game_over_entry(reg);
-    reg.ctx().insert_or_assign(TerminalResultState{true, 4242});
+    reg.ctx().insert_or_assign(NewBestRecord{4242});
 
     game_over_scoreboard_bind_system(reg);
 

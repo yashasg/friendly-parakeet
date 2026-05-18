@@ -29,11 +29,19 @@ struct LevelSelectState {
     int selected_difficulty  = 1;  // default medium
 };
 
-// ── Terminal Result Snapshot (singleton) ─────────────────────
-// Captured by game_state_terminal_phase_system at the moment of song
-// completion / game over.  Read by the Game Over / Song Complete screen
-// controllers (and high-score haptic feedback) to surface "new best" UI.
-struct TerminalResultState {
-    bool    new_best      = false;
+// ── New-Best Record (singleton row table) ─────────────────────
+// Emplaced by game_state_terminal_phase_system at the moment of song
+// completion / game over IFF the just-finished session set a new high
+// score for the active (song, difficulty) key. Read by the Game Over /
+// Song Complete screen controllers to surface the "NEW BEST!" / "PREV N"
+// lines.
+//
+// Per Fabian Principle 3 (issue #1533, site #3): the previous
+// `TerminalResultState { bool new_best; int32_t previous_best; }` shape
+// embedded a NULL column — `previous_best` was meaningful only when
+// `new_best == true`. The ctx-singleton's *membership* now expresses
+// the new-best precondition; the row carries only the always-meaningful
+// `previous_best` payload.
+struct NewBestRecord {
     int32_t previous_best = 0;
 };

@@ -1715,8 +1715,11 @@ app/
 │   │                              Menu*Event, per-direction Go*Event
 │   │                              (in systems/, #1277/#1278/#1279)
 │   ├── game_state.h             ← GameState (phase_timer only), LevelSelectState,
-│   │                              TerminalResultState. Phase identity lives on
-│   │                              `GamePhase*Tag` ctx slots in `app/tags/tags.h`.
+│   │                              NewBestRecord (present iff terminal session
+│   │                              set a new high score; row table per Fabian
+│   │                              Principle 3, issue #1533). Phase identity
+│   │                              lives on `GamePhase*Tag` ctx slots in
+│   │                              `app/tags/tags.h`.
 │   ├── rendering.h              ← DrawSize, ScreenPosition; back-compat shim
 │   │                              for the camera/mesh splits (issue #1194)
 │   ├── particle.h               ← ParticleData, ParticleTag

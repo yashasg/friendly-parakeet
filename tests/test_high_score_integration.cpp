@@ -292,7 +292,7 @@ TEST_CASE("High score integration: missing active entry does not report new best
     game_state_system(reg, 0.016f);
 
     CHECK(current.value == 1000);
-    CHECK_FALSE(reg.ctx().get<TerminalResultState>().new_best);
+    CHECK_FALSE(reg.ctx().contains<NewBestRecord>());
     CHECK_FALSE(reg.ctx().contains<HighScoreDirtyTag>());
     CHECK(high_score::get_score(high_scores, "overflow|hard") == 0);
 }

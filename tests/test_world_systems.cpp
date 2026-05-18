@@ -258,9 +258,8 @@ TEST_CASE("game_state: enter_game_over updates high score", "[gamestate]") {
 
     CHECK(current.value == 5000);
     CHECK(reg.ctx().contains<GamePhaseGameOverTag>());
-    const auto& terminal = reg.ctx().get<TerminalResultState>();
-    CHECK(terminal.new_best);
-    CHECK(terminal.previous_best == 3000);
+    REQUIRE(reg.ctx().contains<NewBestRecord>());
+    CHECK(reg.ctx().get<NewBestRecord>().previous_best == 3000);
 }
 
 TEST_CASE("game_state: enter_game_over pushes Crash SFX", "[gamestate]") {
@@ -288,9 +287,7 @@ TEST_CASE("game_state: enter_game_over preserves high score if lower", "[gamesta
     game_state_system(reg, 0.016f);
 
     CHECK(current.value == 5000);
-    const auto& terminal = reg.ctx().get<TerminalResultState>();
-    CHECK_FALSE(terminal.new_best);
-    CHECK(terminal.previous_best == 5000);
+    CHECK_FALSE(reg.ctx().contains<NewBestRecord>());
 }
 
 TEST_CASE("game_state: paused to playing on touch", "[gamestate]") {

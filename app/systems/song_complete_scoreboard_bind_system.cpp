@@ -14,10 +14,12 @@ namespace {
 
 // Bind context — owns the per-frame singleton reads so the per-slot
 // `bind_*` functions are pure transforms over their slot's `UiLabel`.
-// `SongResults`, `EnergyState`, and `TerminalResultState` may each be
-// absent during the Song Complete debounce window before
-// `game_state_enter_terminal_phase_song_complete` populates them, so
-// they are carried as nullable pointers.
+// `SongResults` and `EnergyState` may be absent during the Song Complete
+// debounce window before `game_state_enter_terminal_phase_song_complete`
+// populates them, so they are carried as nullable pointers. The
+// `NewBestRecord` ctx row is present-iff the just-finished session set a
+// new high score (Fabian Principle 3, issue #1533 site #3): we carry the
+// nullable pointer so the new-best precondition is just a null check.
 //
 // Per-binder prefix (`SongComplete*`) avoids an anonymous-namespace ODR
 // collision with the sibling `*_bind_system.cpp` files when CMake Unity
@@ -25,7 +27,7 @@ namespace {
 struct SongCompleteBindContext {
     const ScoreState& score;
     const CurrentSongHighScore& current;
-    const TerminalResultState* result;
+    const NewBestRecord* new_best;
     const SongResults* results;
     const EnergyState* energy;
 };
@@ -41,12 +43,12 @@ void bind_high_score(const SongCompleteBindContext& ctx, UiLabel& label) {
 }
 
 void bind_new_best(const SongCompleteBindContext& ctx, UiLabel& label) {
-    if (ctx.result == nullptr || !ctx.result->new_best) {
+    if (ctx.new_best == nullptr) {
         ui_label_set(label, "");
         return;
     }
     char buf[48];
-    std::snprintf(buf, sizeof(buf), "NEW BEST! PREV %d", ctx.result->previous_best);
+    std::snprintf(buf, sizeof(buf), "NEW BEST! PREV %d", ctx.new_best->previous_best);
     ui_label_set(label, buf);
 }
 
@@ -116,7 +118,7 @@ void song_complete_scoreboard_bind_system(entt::registry& reg) {
     const SongCompleteBindContext ctx{
         reg.ctx().get<ScoreState>(),
         reg.ctx().get<CurrentSongHighScore>(),
-        reg.ctx().find<TerminalResultState>(),
+        reg.ctx().find<NewBestRecord>(),
         reg.ctx().find<SongResults>(),
         reg.ctx().find<EnergyState>(),
     };

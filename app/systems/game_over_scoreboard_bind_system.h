@@ -13,9 +13,10 @@
 // (x, y, write fn) — no `switch` over a discriminator (Fabian Principle 1).
 //
 // The two reason slots (`ReasonSlot` at y=685 and `ReasonSlotNewBest` at
-// y=742) mirror the legacy controller's positional shift: when
-// `TerminalResultState.new_best` is set, the "ENERGY DEPLETED" reason moves
-// down to make room for the "NEW BEST!" + "PREV N" lines.
+// y=742) mirror the legacy controller's positional shift: when the
+// `NewBestRecord` ctx row is present (issue #1533 site #3), the
+// "ENERGY DEPLETED" reason moves down to make room for the "NEW BEST!"
+// + "PREV N" lines.
 //
 // Runs after `screen_lifecycle_system` so the GameOver entity set is
 // guaranteed to exist whenever `GamePhaseGameOverTag` is the active phase;
