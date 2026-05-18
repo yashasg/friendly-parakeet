@@ -9,28 +9,6 @@
 #include <cmath>
 #include <raymath.h>
 
-namespace {
-
-float energy_bar_bounce(float song_time, float beat_period, bool reduce_motion) {
-    if (reduce_motion) return 0.0f;
-    if (beat_period <= 0.0f) return 0.0f;
-    float phase = std::fmod(song_time, beat_period) / beat_period;
-    if (phase < 0.0f) phase = 0.0f;
-    float bounce = 1.0f - phase;
-    return bounce * bounce * bounce;
-}
-
-float energy_critical_pulse(float pulse_time, bool reduce_motion) {
-    if (reduce_motion) return 0.5f;
-    return 0.5f + 0.5f * std::sin(pulse_time * 10.0f);
-}
-
-float flash_overlay_strength(float flash_ratio, bool reduce_motion) {
-    return reduce_motion ? 0.0f : flash_ratio;
-}
-
-} // namespace
-
 void energy_bar_system(entt::registry& reg, [[maybe_unused]] float dt) {
     if (!reg.ctx().contains<GamePhasePlayingTag>()) return;
 
@@ -43,15 +21,18 @@ void energy_bar_system(entt::registry& reg, [[maybe_unused]] float dt) {
     const bool song_playing = song && song->playing;
 
     float bounce = 0.0f;
-    if (song_playing) {
-        bounce = energy_bar_bounce(song->song_time, song->beat_period, reduce_motion);
+    if (song_playing && !reduce_motion && song->beat_period > 0.0f) {
+        float phase = std::fmod(song->song_time, song->beat_period) / song->beat_period;
+        if (phase < 0.0f) phase = 0.0f;
+        const float inv = 1.0f - phase;
+        bounce = inv * inv * inv;
     }
 
     float flash_ratio = 0.0f;
     if (energy->flash_timer > 0.0f && constants::ENERGY_FLASH_DURATION > 0.0f) {
         flash_ratio = Clamp(energy->flash_timer / constants::ENERGY_FLASH_DURATION, 0.0f, 1.0f);
     }
-    const float flash_overlay = flash_overlay_strength(flash_ratio, reduce_motion);
+    const float flash_overlay = reduce_motion ? 0.0f : flash_ratio;
 
     const float fill = Clamp(energy->display, 0.0f, 1.0f);
     float critical_ratio = 0.0f;
@@ -61,7 +42,9 @@ void energy_bar_system(entt::registry& reg, [[maybe_unused]] float dt) {
     }
 
     const float pulse_time = song_playing ? song->song_time : 0.0f;
-    const float critical_pulse = energy_critical_pulse(pulse_time, reduce_motion);
+    const float critical_pulse = reduce_motion
+        ? 0.5f
+        : 0.5f + 0.5f * std::sin(pulse_time * 10.0f);
     const float critical_intensity = critical_ratio * (0.35f + 0.65f * critical_pulse);
 
     auto view = reg.view<EnergyBarTag, EnergyBarLayout, EnergyBarVisual>();
