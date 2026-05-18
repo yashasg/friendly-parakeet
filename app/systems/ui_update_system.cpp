@@ -283,13 +283,6 @@ constexpr std::array<PhaseDebounceRow, 2> kPhaseDebounceRows = {{
     {&phase_tag_present<GamePhaseSongCompleteTag>, constants::SONG_COMPLETE_INPUT_DELAY},
 }};
 
-float effective_debounce(const entt::registry& reg) {
-    for (const auto& row : kPhaseDebounceRows) {
-        if (row.phase_active(reg)) return row.seconds;
-    }
-    return constants::UI_ENTRY_DEBOUNCE;
-}
-
 // ── Lane button hit-test (issue #1297) ──────────────────────────────
 //
 // Per Fabian Principle 1, each (shape-tag, event) pairing is its own
@@ -336,9 +329,14 @@ void ui_update_system(entt::registry& reg) {
     // Debounce: ignore button presses inside the active phase's input-delay
     // window so a click that opened the phase does not also dismiss it,
     // and so end-screen prompts honour their longer settling time before
-    // accepting input.
+    // accepting input. The phase-row table picks the per-phase delay; any
+    // phase not listed falls through to the default `UI_ENTRY_DEBOUNCE`.
     const auto& gs = reg.ctx().get<GameState>();
-    if (gs.phase_timer <= effective_debounce(reg)) return;
+    float debounce_sec = constants::UI_ENTRY_DEBOUNCE;
+    for (const auto& row : kPhaseDebounceRows) {
+        if (row.phase_active(reg)) { debounce_sec = row.seconds; break; }
+    }
+    if (gs.phase_timer <= debounce_sec) return;
 
     // ── Pass D — Gameplay HUD lane buttons (issue #1297) ─────────────
     //
