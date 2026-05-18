@@ -1077,7 +1077,7 @@ int main(int argc, char* argv[]) {
 
         // ── INPUT (once per frame, outside fixed loop) ──
         input_system(reg, raw_dt);
-        gameplay_hud_process_button_input(reg);
+        ui_update_system(reg);
         test_player_system(reg, raw_dt);
 
         // ── FIXED TIMESTEP LOOP ──────────────────────────────

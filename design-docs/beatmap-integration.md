@@ -233,7 +233,7 @@ creates the standard runtime obstacle archetypes via the kind-specific
   │  PER-FRAME (variable dt — game_loop.cpp):                        │
   │  ✅ compute_screen_transform   (refresh letterbox + scale)      │
   │  ✅ input_system               (raylib → InputState + events)   │
-  │  ✅ gameplay_hud_process_button_input (HUD buttons → events)    │
+  │  ✅ ui_update_system                  (HUD buttons → events)    │
   │  ✅ test_player_system         (autoplay perception/planning)   │
   │       │                                                          │
   │       ▼  while (accumulator >= FIXED_DT) tick_fixed_systems(dt) │
