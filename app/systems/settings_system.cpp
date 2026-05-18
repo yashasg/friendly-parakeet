@@ -259,18 +259,14 @@ void clamp_audio_offset(SettingsState& state) {
         SettingsState::MAX_AUDIO_OFFSET_MS);
 }
 
-void clamp_ftue_run_count(SettingsState& state) {
-    state.ftue_run_count = static_cast<uint8_t>(std::clamp(
-        static_cast<int>(state.ftue_run_count),
-        static_cast<int>(SettingsState::MIN_FTUE_RUN_COUNT),
-        static_cast<int>(SettingsState::MAX_FTUE_RUN_COUNT)));
-}
-
 void mark_ftue_complete(SettingsState& state) {
     if (state.ftue_run_count == 0) {
         state.ftue_run_count = 1;
     }
-    clamp_ftue_run_count(state);
+    state.ftue_run_count = static_cast<uint8_t>(std::clamp(
+        static_cast<int>(state.ftue_run_count),
+        static_cast<int>(SettingsState::MIN_FTUE_RUN_COUNT),
+        static_cast<int>(SettingsState::MAX_FTUE_RUN_COUNT)));
 }
 
 float audio_offset_seconds(const SettingsState& state) {

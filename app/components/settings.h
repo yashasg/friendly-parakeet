@@ -7,9 +7,11 @@
 
 // Settings entity component data — read by gameplay/UI systems each frame.
 //
-// Field bounds enforced by settings::clamp_audio_offset / clamp_ftue_run_count
-// (see systems/settings_system.h). Values outside the constants below get
-// pulled back into range on load.
+// Field bounds enforced by settings::clamp_audio_offset (audio offset on load
+// and per user adjustment) and by settings::mark_ftue_complete (FTUE run
+// count, clamped inline when marking the FTUE complete). See
+// systems/settings_system.h. Values outside the constants below get pulled
+// back into range on load.
 struct SettingsState {
     static constexpr int16_t MIN_AUDIO_OFFSET_MS = -250;
     static constexpr int16_t MAX_AUDIO_OFFSET_MS = 250;

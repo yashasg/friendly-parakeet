@@ -33,7 +33,6 @@ persistence::Result get_settings_file_path(
 nlohmann::json settings_to_json(const SettingsState& state);
 bool settings_from_json(const nlohmann::json& obj, SettingsState& state);
 void clamp_audio_offset(SettingsState& state);
-void clamp_ftue_run_count(SettingsState& state);
 void mark_ftue_complete(SettingsState& state);
 float audio_offset_seconds(const SettingsState& state);
 bool ftue_complete(const SettingsState& state);
