@@ -164,9 +164,11 @@ struct PlayerShape {
     float    morph_t = 1.0f;           // 0.0 = morph just started, 1.0 = settled
 };
 
-/// Rhythm-mode timing window state for the player. 16 bytes
-/// (1 bool + 3 floats; the former `target_shape` and `WindowPhase phase`
-/// fields are now per-tag rows — see migration notes below).
+/// Rhythm-mode timing window state for the player. 8 bytes (2 floats).
+/// The former `bool graded` and `float press_time` migrated to the
+/// `WindowGraded` tag and `Pressed` row table (issue #1533); the former
+/// `target_shape` and `WindowPhase phase` fields are now per-tag rows
+/// (issues #1202/#1204; see migration notes below).
 /// Hot: read/written by shape_window_system and input dispatcher callbacks;
 /// read by collision_system. Lives on the player entity alongside PlayerShape.
 ///
@@ -677,7 +679,7 @@ ParticleData        12     HOT        particle expiry/render fade
 ScorePopup          16     HOT        popup expiry/render fade
 PlayerTag            0     HOT        collision/filter
 PlayerShape          4     HOT        shape_window, collision, render, player_action
-ShapeWindow         24     HOT        shape_window, input dispatcher, collision
+ShapeWindow          8     HOT        shape_window, input dispatcher, collision
 Lane                 1     HOT        collision, render, player_action
 LaneTransition       8     HOT        present when mid-lane-shift; movement, collision, player_action
 Jumping              8     HOT        present when mid-jump; collision (y_offset), camera, movement
