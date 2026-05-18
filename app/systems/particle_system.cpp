@@ -6,23 +6,15 @@
 #include "../constants.h"
 #include "../entities/settings.h"
 
-namespace {
-
-ParticleSystemScratch& particle_scratch_for(entt::registry& reg) {
-    return reg.ctx().get<ParticleSystemScratch>();
-}
-
-}  // namespace
-
 void particle_system(entt::registry& reg, float dt) {
-    auto& expired = particle_scratch_for(reg).expired;
+    auto& scratch = reg.ctx().get<ParticleSystemScratch>();
+    auto& expired = scratch.expired;
     expired.clear();
 
     auto view = reg.view<ParticleTag, ParticleData>();
     for (auto [entity, pdata] : view.each()) {
         pdata.remaining -= dt;
         if (pdata.remaining <= 0.0f) {
-            auto& scratch = particle_scratch_for(reg);
             if (expired.size() >= expired.capacity()) {
                 ++scratch.capacity_exceeded_count;
             }
