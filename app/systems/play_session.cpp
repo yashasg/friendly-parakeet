@@ -27,10 +27,6 @@
 
 namespace {
 
-bool is_runtime_allowed_validation_error(const BeatMapError& error) {
-    return error.message == "Different-shape gates must be >= 3 beats apart";
-}
-
 bool load_runtime_beat_map(const char* path,
                            BeatMap& out,
                            std::vector<BeatMapError>& errors,
@@ -46,9 +42,12 @@ bool load_runtime_beat_map(const char* path,
         return true;
     }
 
+    // Runtime tolerates the "Different-shape gates must be >= 3 beats apart"
+    // validation error and treats it as a warning; any other validation error
+    // fails the load.
     bool only_allowed_errors = !validation_errors.empty();
     for (const BeatMapError& error : validation_errors) {
-        if (!is_runtime_allowed_validation_error(error)) {
+        if (error.message != "Different-shape gates must be >= 3 beats apart") {
             only_allowed_errors = false;
         }
         errors.push_back(error);
