@@ -71,39 +71,17 @@ static const char* MESH_FS =
     "}\n";
 #endif
 
-static ShapeMeshes build_shape_meshes(const ShapeMeshConfig& config) {
-    ShapeMeshes sm = {};
-
-    sm.shapes[0] = GenMeshCylinder(1.0f, config.props[0].height_ratio, 12);
-    sm.shapes[1] = GenMeshCube(2.0f, config.props[1].height_ratio, 2.0f);
-    sm.shapes[2] = GenMeshCylinder(1.0f, config.props[2].height_ratio, 3);
-    sm.shapes[3] = GenMeshCylinder(1.0f, config.props[3].height_ratio, 6);
-    sm.slab = GenMeshCube(1.0f, 1.0f, 1.0f);
-    sm.quad = GenMeshPlane(1.0f, 1.0f, 1, 1);
-
-    Shader shader = LoadShaderFromMemory(MESH_VS, MESH_FS);
-    sm.material = LoadMaterialDefault();
-    sm.material.shader = shader;
-
-    sm.owned = true;
-    return sm;
-}
-
-static void unload_shape_meshes(ShapeMeshes& sm) {
-    for (int i = 0; i < 4; ++i)
-        UnloadMesh(sm.shapes[i]);
-    UnloadMesh(sm.slab);
-    UnloadMesh(sm.quad);
-    // raylib's UnloadMaterial() owns material.shader; unloading it separately
-    // double-frees the shader's location array.
-    UnloadMaterial(sm.material);
-}
-
 // ── ShapeMeshes RAII member definitions ─────────────────────────────────────
 
 void ShapeMeshes::release() {
     if (!owned) return;
-    unload_shape_meshes(*this);
+    for (int i = 0; i < 4; ++i)
+        UnloadMesh(shapes[i]);
+    UnloadMesh(slab);
+    UnloadMesh(quad);
+    // raylib's UnloadMaterial() owns material.shader; unloading it separately
+    // double-frees the shader's location array.
+    UnloadMaterial(material);
     for (int i = 0; i < 4; ++i) shapes[i] = {};
     slab = {}; quad = {}; material = {};
     owned = false;
@@ -154,7 +132,21 @@ void init(entt::registry& reg) {
     reg.ctx().emplace<ScreenTransform>();
     reg.ctx().emplace<FloorParams>();
     const auto& mesh_config = reg.ctx().emplace<ShapeMeshConfig>();
-    reg.ctx().emplace<ShapeMeshes>(build_shape_meshes(mesh_config));
+
+    ShapeMeshes sm = {};
+    sm.shapes[0] = GenMeshCylinder(1.0f, mesh_config.props[0].height_ratio, 12);
+    sm.shapes[1] = GenMeshCube(2.0f, mesh_config.props[1].height_ratio, 2.0f);
+    sm.shapes[2] = GenMeshCylinder(1.0f, mesh_config.props[2].height_ratio, 3);
+    sm.shapes[3] = GenMeshCylinder(1.0f, mesh_config.props[3].height_ratio, 6);
+    sm.slab = GenMeshCube(1.0f, 1.0f, 1.0f);
+    sm.quad = GenMeshPlane(1.0f, 1.0f, 1, 1);
+
+    Shader shader = LoadShaderFromMemory(MESH_VS, MESH_FS);
+    sm.material = LoadMaterialDefault();
+    sm.material.shader = shader;
+
+    sm.owned = true;
+    reg.ctx().emplace<ShapeMeshes>(std::move(sm));
 }
 
 void shutdown(entt::registry& reg) {
