@@ -18,24 +18,12 @@
 
 namespace {
 
-ScoringSystemScratch& scoring_scratch_for(entt::registry& reg) {
-    return reg.ctx().get<ScoringSystemScratch>();
-}
-
-PendingEnergyEffects& pending_energy_for(entt::registry& reg) {
-    return reg.ctx().get<PendingEnergyEffects>();
-}
-
 void enqueue_energy_effect(entt::registry& reg, float delta, bool flash = false) {
-    auto& pending = pending_energy_for(reg);
+    auto& pending = reg.ctx().get<PendingEnergyEffects>();
     if (pending.events.size() >= pending.events.capacity()) {
         ++pending.capacity_exceeded_count;
     }
     pending.events.push_back(PendingEnergyEffects::Event{delta, flash});
-}
-
-ScorePopupRequestQueue& popup_queue_for(entt::registry& reg) {
-    return reg.ctx().get<ScorePopupRequestQueue>();
 }
 
 // Per-tier traits — Fabian per-value table: each specialization carries the
@@ -261,8 +249,8 @@ void scoring_system(entt::registry& reg, float dt) {
     auto* results = reg.ctx().find<SongResults>();   // #309: hoisted above loop
 
     // Hoist single scratch lookup — miss_buf and hit_buf share the same struct.
-    auto& scratch     = scoring_scratch_for(reg);
-    auto& popup_queue = popup_queue_for(reg);
+    auto& scratch     = reg.ctx().get<ScoringSystemScratch>();
+    auto& popup_queue = reg.ctx().get<ScorePopupRequestQueue>();
 
     // Miss pass: single owner of ENERGY_DRAIN_MISS and miss_count.
     // Collect first, then remove view components after iteration (#315).
