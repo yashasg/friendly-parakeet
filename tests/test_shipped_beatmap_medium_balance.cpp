@@ -63,8 +63,22 @@ TEST_CASE("medium balance: shipped beatmaps keep motif lane mapping",
         if (!load_beat_map(path, map, errors, "medium")) continue;
 
         // Per #1202/#1204: shape-gate entries live in their own per-(kind, shape) vectors.
+        // Per #1533: each per-(kind, shape) cell has both indexed and timed sub-bins.
         int total_shape_gates = 0;
         auto check_bin = [&](const std::vector<BeatEntry>& bin, Shape shape) {
+            const int expected_lane = expected_lane_for_shape(shape);
+            for (const auto& beat : bin) {
+                ++total_shape_gates;
+                if (beat.lane != expected_lane) {
+                    FAIL_CHECK("medium balance: " << path
+                               << " beat " << beat.beat_index
+                               << " shape enum=" << static_cast<int>(shape)
+                               << " expected lane " << expected_lane
+                               << " but found lane " << static_cast<int>(beat.lane));
+                }
+            }
+        };
+        auto check_bin_timed = [&](const std::vector<BeatEntryTimed>& bin, Shape shape) {
             const int expected_lane = expected_lane_for_shape(shape);
             for (const auto& beat : bin) {
                 ++total_shape_gates;
@@ -80,6 +94,9 @@ TEST_CASE("medium balance: shipped beatmaps keep motif lane mapping",
         check_bin(map.shape_gate_circle_beats,   Shape::Circle);
         check_bin(map.shape_gate_square_beats,   Shape::Square);
         check_bin(map.shape_gate_triangle_beats, Shape::Triangle);
+        check_bin_timed(map.shape_gate_circle_beats_timed,   Shape::Circle);
+        check_bin_timed(map.shape_gate_square_beats_timed,   Shape::Square);
+        check_bin_timed(map.shape_gate_triangle_beats_timed, Shape::Triangle);
         REQUIRE(total_shape_gates > 0);
     }
 }

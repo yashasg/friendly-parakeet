@@ -12,7 +12,7 @@ TEST_CASE("beat_scheduler: no spawn when not Playing", "[beat_scheduler]") {
     set_test_phase<GamePhaseTitleTag>(reg);
 
     auto& map = beat_map(reg);
-    map.shape_gate_circle_beats.push_back({0, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({0, 1});
 
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 10.0f;
@@ -40,7 +40,7 @@ TEST_CASE("beat_scheduler: no spawn when song not playing", "[beat_scheduler]") 
     reg.ctx().get<SongState>().playing = false;
 
     auto& map = beat_map(reg);
-    map.shape_gate_circle_beats.push_back({0, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({0, 1});
 
     beat_scheduler_system(reg, 0.016f);
 
@@ -67,7 +67,7 @@ TEST_CASE("beat_scheduler: spawns ShapeGate when time passes spawn_time", "[beat
     auto& map = beat_map(reg);
 
     // Add a beat at index 0
-    map.shape_gate_circle_beats.push_back({0, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({0, 1});
 
     // The spawn_time = offset + beat_index * beat_period - lead_time
     // For beat 0: spawn_time = 0 + 0 * 0.5 - 2.0 = -2.0
@@ -98,7 +98,7 @@ TEST_CASE("beat_scheduler: defaults invalid ShapeGate lane to center lane", "[be
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
 
-    map.shape_gate_circle_beats.push_back({0, 9, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({0, 9});
     song.song_time = 0.0f;
     song.next_shape_gate_circle_idx = 0;
     song.next_split_path_circle_idx = 0;
@@ -120,7 +120,7 @@ TEST_CASE("beat_scheduler: does not spawn before spawn_time", "[beat_scheduler]"
     auto& map = beat_map(reg);
 
     // Beat at index 20 — spawn_time = 0 + 20 * 0.5 - 2.0 = 8.0
-    map.shape_gate_square_beats.push_back({20, 1, 0.0f, false});
+    map.shape_gate_square_beats.push_back({20, 1});
 
     song.song_time = 5.0f;  // Before spawn_time of 8.0
     song.next_shape_gate_circle_idx = 0;
@@ -138,7 +138,7 @@ TEST_CASE("beat_scheduler: increments per-kind cursor after spawn", "[beat_sched
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
 
-    map.shape_gate_circle_beats.push_back({0, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({0, 1});
     song.song_time = 10.0f;
     song.next_shape_gate_circle_idx = 0;
     song.next_split_path_circle_idx = 0;
@@ -160,7 +160,7 @@ TEST_CASE("beat_scheduler: uses beat_times array for arrival time when present",
     song.bpm = 120.0f;
     song_state_compute_derived(song);
     map.beat_times = {0.3f, 0.85f, 1.47f};
-    map.shape_gate_circle_beats.push_back({2, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({2, 1});
 
     song.song_time = 0.0f;
     song.next_shape_gate_circle_idx = 0;
@@ -187,15 +187,15 @@ TEST_CASE("beat_scheduler: uses BeatEntry time_sec for arrival time when authore
     song_state_compute_derived(song);
     map.beat_times = {0.3f, 0.85f, 1.47f};
 
-    BeatEntry authored_entry;
+    BeatEntryTimed authored_entry;
     authored_entry.beat_index = 2;
     authored_entry.lane = 1;
     authored_entry.time_sec = 1.33f;
-    authored_entry.has_time_sec = true;
-    map.shape_gate_circle_beats.push_back(authored_entry);
+    map.shape_gate_circle_beats_timed.push_back(authored_entry);
 
     song.song_time = 0.0f;
     song.next_shape_gate_circle_idx = 0;
+    song.next_shape_gate_circle_timed_idx = 0;
     song.next_split_path_circle_idx = 0;
     song.next_onset_marker_idx = 0;
     beat_scheduler_system(reg, 0.016f);
@@ -219,7 +219,7 @@ TEST_CASE("beat_scheduler: falls back to beat_times when BeatEntry time_sec is a
     song.bpm = 120.0f;
     song_state_compute_derived(song);
     map.beat_times = {0.3f, 0.85f, 1.47f};
-    map.shape_gate_circle_beats.push_back({2, 1, 99.0f, false});
+    map.shape_gate_circle_beats.push_back({2, 1});
 
     song.song_time = 30.0f;
     song.next_shape_gate_circle_idx = 0;
@@ -278,10 +278,10 @@ TEST_CASE("beat_scheduler: spawns multiple beats when time is past all", "[beat_
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
 
-    map.shape_gate_circle_beats.push_back({0, 1, 0.0f, false});
-    map.shape_gate_square_beats.push_back({2, 1, 0.0f, false});
-    map.onset_marker_beats.push_back({4, 1, 0.0f, false});
-    map.shape_gate_triangle_beats.push_back({6, 2, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({0, 1});
+    map.shape_gate_square_beats.push_back({2, 1});
+    map.onset_marker_beats.push_back({4, 1});
+    map.shape_gate_triangle_beats.push_back({6, 2});
 
     song.song_time = 30.0f;  // Well past all spawn times
     song.next_shape_gate_circle_idx = 0;
@@ -310,7 +310,7 @@ TEST_CASE("beat_scheduler: spawns OnsetMarker as visible non-scorable cue",
     auto& energy = reg.ctx().get<EnergyState>();
     auto& results = reg.ctx().get<SongResults>();
 
-    map.onset_marker_beats.push_back({0, 1, 0.0f, false});
+    map.onset_marker_beats.push_back({0, 1});
     song.song_time = 10.0f;
     song.next_shape_gate_circle_idx = 0;
     song.next_split_path_circle_idx = 0;
@@ -364,7 +364,7 @@ TEST_CASE("beat_scheduler: spawns SplitPath in authored lane", "[beat_scheduler]
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
 
-    map.split_path_triangle_beats.push_back({0, 2, 0.0f, false});
+    map.split_path_triangle_beats.push_back({0, 2});
     song.song_time = 10.0f;
     song.next_shape_gate_circle_idx = 0;
     song.next_split_path_circle_idx = 0;
@@ -386,7 +386,7 @@ TEST_CASE("beat_scheduler: defaults invalid SplitPath lane to center lane", "[be
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
 
-    map.split_path_square_beats.push_back({0, 9, 0.0f, false});
+    map.split_path_square_beats.push_back({0, 9});
     song.song_time = 10.0f;
     song.next_shape_gate_circle_idx = 0;
     song.next_split_path_circle_idx = 0;
@@ -413,9 +413,9 @@ TEST_CASE("beat_scheduler: spawns all queued beats from BeatMap entries", "[beat
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
 
-    map.shape_gate_square_beats.push_back({0, 1, 0.0f, false});
-    map.onset_marker_beats.push_back({0, 1, 0.0f, false});
-    map.shape_gate_triangle_beats.push_back({0, 2, 0.0f, false});
+    map.shape_gate_square_beats.push_back({0, 1});
+    map.onset_marker_beats.push_back({0, 1});
+    map.shape_gate_triangle_beats.push_back({0, 2});
     song.song_time = 10.0f;
     song.next_shape_gate_circle_idx = 0;
     song.next_split_path_circle_idx = 0;
@@ -443,7 +443,7 @@ TEST_CASE("beat_scheduler: all spawned obstacles have BeatInfo", "[beat_schedule
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
 
-    map.shape_gate_circle_beats.push_back({4, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({4, 1});
     song.song_time = 30.0f;
     song.next_shape_gate_circle_idx = 0;
     song.next_split_path_circle_idx = 0;
@@ -465,7 +465,7 @@ TEST_CASE("beat_scheduler: obstacles spawn with overshoot compensation", "[beat_
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
 
-    map.shape_gate_circle_beats.push_back({0, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({0, 1});
     song.song_time = 10.0f;
     song.next_shape_gate_circle_idx = 0;
     song.next_split_path_circle_idx = 0;
@@ -485,7 +485,7 @@ TEST_CASE("beat_scheduler: rhythm obstacles omit Vector2", "[beat_scheduler]") {
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
 
-    map.shape_gate_circle_beats.push_back({0, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({0, 1});
     song.song_time = 10.0f;
     song.next_shape_gate_circle_idx = 0;
     song.next_split_path_circle_idx = 0;
@@ -507,7 +507,7 @@ TEST_CASE("beat_scheduler: ShapeGate Circle has blue color", "[beat_scheduler]")
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
 
-    map.shape_gate_circle_beats.push_back({0, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({0, 1});
     song.song_time = 10.0f;
     song.next_shape_gate_circle_idx = 0;
     song.next_split_path_circle_idx = 0;
@@ -527,7 +527,7 @@ TEST_CASE("beat_scheduler: ShapeGate Square has red color", "[beat_scheduler]") 
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
 
-    map.shape_gate_square_beats.push_back({0, 1, 0.0f, false});
+    map.shape_gate_square_beats.push_back({0, 1});
     song.song_time = 10.0f;
     song.next_shape_gate_circle_idx = 0;
     song.next_split_path_circle_idx = 0;
@@ -547,7 +547,7 @@ TEST_CASE("beat_scheduler: ShapeGate Triangle has green color", "[beat_scheduler
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
 
-    map.shape_gate_triangle_beats.push_back({0, 1, 0.0f, false});
+    map.shape_gate_triangle_beats.push_back({0, 1});
     song.song_time = 10.0f;
     song.next_shape_gate_circle_idx = 0;
     song.next_split_path_circle_idx = 0;
@@ -574,7 +574,7 @@ TEST_CASE("beat_scheduler: clamped late-spawn stores adjusted spawn_time in Beat
     auto& map = beat_map(reg);
 
     // Use beat 0 whose spawn_time is deeply in the past
-    map.shape_gate_circle_beats.push_back({0, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({0, 1});
     // Set song_time so the overshoot pushes start_y well past PLAYER_Y
     song.song_time = 100.0f;
     song.next_shape_gate_circle_idx = 0;
@@ -605,7 +605,7 @@ TEST_CASE("beat_scheduler: invalid scroll_speed skips late-spawn division", "[be
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
 
-    map.shape_gate_circle_beats.push_back({0, 1, 0.0f, false});
+    map.shape_gate_circle_beats.push_back({0, 1});
     song.song_time = 100.0f;
     song.scroll_speed = 0.0f;
     song.next_shape_gate_circle_idx = 0;

@@ -524,8 +524,24 @@ struct BeatMap {
     int         lead_beats = 4;
     float       duration   = 180.0f;
     std::string difficulty;
-    std::vector<float>     beat_times;
-    std::vector<BeatEntry> beats;
+    std::vector<float>          beat_times;
+    // Fourteen per-(kind, shape, time-source) vectors — see rhythm-spec.md
+    // and `app/components/beat_map.h`. The former single `beats` vector
+    // was decomposed by issues #1198 / #1202 / #1204 / #1533.
+    std::vector<BeatEntry>      shape_gate_circle_beats;
+    std::vector<BeatEntry>      shape_gate_square_beats;
+    std::vector<BeatEntry>      shape_gate_triangle_beats;
+    std::vector<BeatEntry>      split_path_circle_beats;
+    std::vector<BeatEntry>      split_path_square_beats;
+    std::vector<BeatEntry>      split_path_triangle_beats;
+    std::vector<BeatEntry>      onset_marker_beats;
+    std::vector<BeatEntryTimed> shape_gate_circle_beats_timed;
+    std::vector<BeatEntryTimed> shape_gate_square_beats_timed;
+    std::vector<BeatEntryTimed> shape_gate_triangle_beats_timed;
+    std::vector<BeatEntryTimed> split_path_circle_beats_timed;
+    std::vector<BeatEntryTimed> split_path_square_beats_timed;
+    std::vector<BeatEntryTimed> split_path_triangle_beats_timed;
+    std::vector<BeatEntryTimed> onset_marker_beats_timed;
 
     BeatMap()                          = default;
     BeatMap(const BeatMap&)            = delete;
@@ -538,12 +554,17 @@ struct BeatMap {
 ### Beat Time Resolution
 
 ```cpp
-float beat_time = song.offset + entry.beat_index * song.beat_period;
-if (!entry.has_time_sec && beat_index_in_range(map.beat_times, entry.beat_index)) {
-    beat_time = map.beat_times[entry.beat_index];
-}
-if (entry.has_time_sec) {
+// Per #1533: time-source is a table-membership fact, not a row-level flag.
+// Indexed entries (BeatEntry, in *_beats) resolve via beat_times[…] when
+// loaded, else via the BPM grid. Timed siblings (BeatEntryTimed, in
+// *_beats_timed) always carry their own time_sec.
+float beat_time;
+if constexpr (entry_is_timed) {                                     // *_beats_timed
     beat_time = entry.time_sec;
+} else if (beat_index_in_range(map.beat_times, entry.beat_index)) { // *_beats + analysed onsets
+    beat_time = map.beat_times[entry.beat_index];
+} else {                                                            // *_beats + BPM grid
+    beat_time = song.offset + entry.beat_index * song.beat_period;
 }
 
 float calibrated_arrival_time = beat_time + audio_offset_seconds(settings);

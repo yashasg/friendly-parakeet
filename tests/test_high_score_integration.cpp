@@ -201,9 +201,12 @@ TEST_CASE("Play session: SongResults total_notes excludes onset marker metadata"
             const auto& beatmap = beat_map(reg);
             const size_t total_beats = shape_gate_count(beatmap) +
                                        split_path_count(beatmap) +
-                                       beatmap.onset_marker_beats.size();
+                                       beatmap.onset_marker_beats.size() +
+                                       beatmap.onset_marker_beats_timed.size();
             REQUIRE(total_beats > 0);
-            saw_onset_marker = saw_onset_marker || !beatmap.onset_marker_beats.empty();
+            saw_onset_marker = saw_onset_marker
+                || !beatmap.onset_marker_beats.empty()
+                || !beatmap.onset_marker_beats_timed.empty();
 
             CAPTURE(content_config::LEVELS[level].title);
             CAPTURE(content_config::DIFFICULTY_KEYS[difficulty]);

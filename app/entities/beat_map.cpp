@@ -254,24 +254,31 @@ static std::optional<Shape> parse_shape(const std::string& s) {
     return std::nullopt;
 }
 
-// ── Per-(kind, shape) beat-entry sinks (issue #1202/#1204) ──────────
+// ── Per-(kind, shape, timing-source) beat-entry sinks (#1202/#1204/#1533) ──
 // The former `BeatEntry::shape` discriminator is encoded by which per-shape
-// vector receives the entry. The sink table is indexed by `shape_index()`;
-// Shape::Hexagon is not a valid required shape for shape_gate / split_path,
-// so its slot points at `null_shape_sink` (shared between both tables) —
+// vector receives the entry; the former `BeatEntry::has_time_sec` optionality
+// is encoded by whether the indexed (`*_beats`) or the authored-onset
+// (`*_beats_timed`) sibling vector receives it. The sink tables are indexed
+// by `shape_index()`; Shape::Hexagon is not a valid required shape for
+// shape_gate / split_path, so its slot points at a `null_*_sink` accessor —
 // the loader treats nullptr as a parse error and emits a "Shape 'hexagon'
 // is not a valid required shape" message.
-using ShapeBinAccessor = std::vector<BeatEntry>* (*)(BeatMap&);
+using ShapeBinAccessor      = std::vector<BeatEntry>*      (*)(BeatMap&);
+using ShapeBinTimedAccessor = std::vector<BeatEntryTimed>* (*)(BeatMap&);
 
 // One template instantiation per non-null sink slot (issue #1456 finishes the
 // dedupe started by #1420/#1421). The six per-(kind, shape) bodies previously
 // differed only by which `BeatMap` data-member pointer was named; the function
-// pointer stored in `kShapeGateSinks` / `kSplitPathSinks` still has the
-// `std::vector<BeatEntry>* (*)(BeatMap&)` signature required by `ShapeBinAccessor`.
+// pointers stored in `kShapeGate*Sinks` / `kSplitPath*Sinks` still have the
+// `std::vector<…>* (*)(BeatMap&)` signatures required by the accessor aliases.
 template <std::vector<BeatEntry> BeatMap::*Field>
 std::vector<BeatEntry>* shape_field_sink(BeatMap& m) { return &(m.*Field); }
 
-std::vector<BeatEntry>* null_shape_sink(BeatMap& m) { (void)m; return nullptr; }
+template <std::vector<BeatEntryTimed> BeatMap::*Field>
+std::vector<BeatEntryTimed>* shape_field_sink_timed(BeatMap& m) { return &(m.*Field); }
+
+std::vector<BeatEntry>*      null_shape_sink(BeatMap& m)       { (void)m; return nullptr; }
+std::vector<BeatEntryTimed>* null_shape_sink_timed(BeatMap& m) { (void)m; return nullptr; }
 
 inline constexpr std::array<ShapeBinAccessor, kShapeCount> kShapeGateSinks{
     &shape_field_sink<&BeatMap::shape_gate_circle_beats>,
@@ -284,6 +291,18 @@ inline constexpr std::array<ShapeBinAccessor, kShapeCount> kSplitPathSinks{
     &shape_field_sink<&BeatMap::split_path_square_beats>,
     &shape_field_sink<&BeatMap::split_path_triangle_beats>,
     &null_shape_sink
+};
+inline constexpr std::array<ShapeBinTimedAccessor, kShapeCount> kShapeGateTimedSinks{
+    &shape_field_sink_timed<&BeatMap::shape_gate_circle_beats_timed>,
+    &shape_field_sink_timed<&BeatMap::shape_gate_square_beats_timed>,
+    &shape_field_sink_timed<&BeatMap::shape_gate_triangle_beats_timed>,
+    &null_shape_sink_timed
+};
+inline constexpr std::array<ShapeBinTimedAccessor, kShapeCount> kSplitPathTimedSinks{
+    &shape_field_sink_timed<&BeatMap::split_path_circle_beats_timed>,
+    &shape_field_sink_timed<&BeatMap::split_path_square_beats_timed>,
+    &shape_field_sink_timed<&BeatMap::split_path_triangle_beats_timed>,
+    &null_shape_sink_timed
 };
 
 // ── Per-kind beat-entry sinks (issue #1202/#1204) ───────────
@@ -329,6 +348,13 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
     out.split_path_square_beats.clear();
     out.split_path_triangle_beats.clear();
     out.onset_marker_beats.clear();
+    out.shape_gate_circle_beats_timed.clear();
+    out.shape_gate_square_beats_timed.clear();
+    out.shape_gate_triangle_beats_timed.clear();
+    out.split_path_circle_beats_timed.clear();
+    out.split_path_square_beats_timed.clear();
+    out.split_path_triangle_beats_timed.clear();
+    out.onset_marker_beats_timed.clear();
     out.beat_times.clear();
     out.song_id.clear();
     out.title.clear();
@@ -531,18 +557,21 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
         }
         entry.lane = static_cast<int8_t>(lane_value);
 
+        // Resolve the indexed-source arrival time once for the mismatch warn.
+        // Authored entries route into `*_beats_timed` and carry their explicit
+        // `time_sec`; indexed entries route into `*_beats` and resolve at
+        // schedule time from `beat_times[beat_index]` (or grid time).
         const float grid_time = out.offset + entry.beat_index * (60.0f / out.bpm);
-        float beat_time = grid_time;
+        float indexed_time = grid_time;
         if (!out.beat_times.empty() &&
             entry.beat_index >= 0 &&
             static_cast<size_t>(entry.beat_index) < out.beat_times.size()) {
-            beat_time = out.beat_times[static_cast<size_t>(entry.beat_index)];
+            indexed_time = out.beat_times[static_cast<size_t>(entry.beat_index)];
         }
 
         const bool has_time_sec = b.contains("time_sec");
-        entry.has_time_sec = has_time_sec;
-        entry.time_sec = beat_time;
-        if (has_time_sec && !read_optional_float(b, "time_sec", entry.time_sec, errors, entry.beat_index)) {
+        float authored_time_sec = indexed_time;
+        if (has_time_sec && !read_optional_float(b, "time_sec", authored_time_sec, errors, entry.beat_index)) {
             parse_ok = false;
             continue;
         }
@@ -556,10 +585,10 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             entry.beat_index >= 0 &&
             static_cast<size_t>(entry.beat_index) < out.beat_times.size()) {
             constexpr float kBeatTimeMismatchWarnSec = 0.010f;
-            if (std::fabs(entry.time_sec - beat_time) > kBeatTimeMismatchWarnSec) {
+            if (std::fabs(authored_time_sec - indexed_time) > kBeatTimeMismatchWarnSec) {
                 TraceLog(LOG_WARNING,
                          "Beat time mismatch at beat=%d: time_sec=%.6f, beat_times[%d]=%.6f",
-                         entry.beat_index, entry.time_sec, entry.beat_index, beat_time);
+                         entry.beat_index, authored_time_sec, entry.beat_index, indexed_time);
             }
         }
 
@@ -575,39 +604,69 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
             continue;
         }
 
-        // Per-(kind, shape) dispatch into the appropriate vector (issue
-        // #1202/#1204). No discriminator enum survives in the data model —
-        // the row lives in exactly one of seven per-(kind, shape) tables.
-        // Hexagon is not a valid required shape for shape_gate / split_path;
-        // the sink table returns nullptr in that slot so the loader rejects
-        // it explicitly.
+        // Per-(kind, shape, timing-source) dispatch into the appropriate
+        // vector (issues #1202/#1204/#1533). No discriminator enum and no
+        // `has_time_sec` optionality flag survive in the data model — the
+        // row lives in exactly one of fourteen per-(kind, shape, timing-source)
+        // tables. Hexagon is not a valid required shape for shape_gate /
+        // split_path; the sink table returns nullptr in that slot so the
+        // loader rejects it explicitly.
         if (kind_str == "onset_marker") {
-            out.onset_marker_beats.push_back(entry);
+            if (has_time_sec) {
+                out.onset_marker_beats_timed.push_back(
+                    BeatEntryTimed{entry.beat_index, entry.lane, authored_time_sec});
+            } else {
+                out.onset_marker_beats.push_back(entry);
+            }
         } else {
-            const auto& sinks = (kind_str == "shape_gate") ? kShapeGateSinks
-                                                           : kSplitPathSinks;
             const int idx = shape_index(parsed_shape);
-            std::vector<BeatEntry>* sink = (idx >= 0) ? sinks[static_cast<size_t>(idx)](out)
-                                                      : nullptr;
-            if (!sink) {
+            if (idx < 0) {
                 errors.push_back({entry.beat_index,
                     "Shape 'hexagon' is not a valid required shape for obstacle kind '"
                     + kind_str + "' at beat " + std::to_string(entry.beat_index)});
                 parse_ok = false;
                 continue;
             }
-            sink->push_back(entry);
+            if (has_time_sec) {
+                const auto& sinks = (kind_str == "shape_gate") ? kShapeGateTimedSinks
+                                                               : kSplitPathTimedSinks;
+                std::vector<BeatEntryTimed>* sink = sinks[static_cast<size_t>(idx)](out);
+                if (!sink) {
+                    errors.push_back({entry.beat_index,
+                        "Shape 'hexagon' is not a valid required shape for obstacle kind '"
+                        + kind_str + "' at beat " + std::to_string(entry.beat_index)});
+                    parse_ok = false;
+                    continue;
+                }
+                sink->push_back(
+                    BeatEntryTimed{entry.beat_index, entry.lane, authored_time_sec});
+            } else {
+                const auto& sinks = (kind_str == "shape_gate") ? kShapeGateSinks
+                                                               : kSplitPathSinks;
+                std::vector<BeatEntry>* sink = sinks[static_cast<size_t>(idx)](out);
+                if (!sink) {
+                    errors.push_back({entry.beat_index,
+                        "Shape 'hexagon' is not a valid required shape for obstacle kind '"
+                        + kind_str + "' at beat " + std::to_string(entry.beat_index)});
+                    parse_ok = false;
+                    continue;
+                }
+                sink->push_back(entry);
+            }
         }
         (void)has_parsed_shape;
     }
 
     if (!parse_ok) return false;
 
-    // Sort each per-(kind, shape) vector by beat_index; for ties, sort by
-    // resolved time_sec so authored timing within the same beat stays
-    // schedulable in-order. Stable sort preserves authored order when keys
-    // are identical.
-    auto by_beat = [](const BeatEntry& a, const BeatEntry& b) {
+    // Sort each per-(kind, shape, timing-source) vector. Indexed bins have
+    // no row-level time_sec, so beat_index is the only sort key; ties keep
+    // authored order via stable_sort. Timed bins sort by (beat_index,
+    // time_sec) so same-beat authored onsets remain monotonic.
+    auto by_beat_indexed = [](const BeatEntry& a, const BeatEntry& b) {
+        return a.beat_index < b.beat_index;
+    };
+    auto by_beat_timed = [](const BeatEntryTimed& a, const BeatEntryTimed& b) {
         if (a.beat_index != b.beat_index) {
             return a.beat_index < b.beat_index;
         }
@@ -616,27 +675,49 @@ bool parse_beat_map(const std::string& json_str, BeatMap& out,
         }
         return false;
     };
-    auto sort_bin = [&](std::vector<BeatEntry>& v) { std::stable_sort(v.begin(), v.end(), by_beat); };
-    sort_bin(out.shape_gate_circle_beats);
-    sort_bin(out.shape_gate_square_beats);
-    sort_bin(out.shape_gate_triangle_beats);
-    sort_bin(out.split_path_circle_beats);
-    sort_bin(out.split_path_square_beats);
-    sort_bin(out.split_path_triangle_beats);
-    sort_bin(out.onset_marker_beats);
+    auto sort_indexed = [&](std::vector<BeatEntry>& v) {
+        std::stable_sort(v.begin(), v.end(), by_beat_indexed);
+    };
+    auto sort_timed = [&](std::vector<BeatEntryTimed>& v) {
+        std::stable_sort(v.begin(), v.end(), by_beat_timed);
+    };
+    sort_indexed(out.shape_gate_circle_beats);
+    sort_indexed(out.shape_gate_square_beats);
+    sort_indexed(out.shape_gate_triangle_beats);
+    sort_indexed(out.split_path_circle_beats);
+    sort_indexed(out.split_path_square_beats);
+    sort_indexed(out.split_path_triangle_beats);
+    sort_indexed(out.onset_marker_beats);
+    sort_timed(out.shape_gate_circle_beats_timed);
+    sort_timed(out.shape_gate_square_beats_timed);
+    sort_timed(out.shape_gate_triangle_beats_timed);
+    sort_timed(out.split_path_circle_beats_timed);
+    sort_timed(out.split_path_square_beats_timed);
+    sort_timed(out.split_path_triangle_beats_timed);
+    sort_timed(out.onset_marker_beats_timed);
 
     if (out.beat_times.empty()) {
         int max_beat = -1;
-        auto consider_max = [&](const std::vector<BeatEntry>& v) {
+        auto consider_max_indexed = [&](const std::vector<BeatEntry>& v) {
             if (!v.empty()) max_beat = std::max(max_beat, v.back().beat_index);
         };
-        consider_max(out.shape_gate_circle_beats);
-        consider_max(out.shape_gate_square_beats);
-        consider_max(out.shape_gate_triangle_beats);
-        consider_max(out.split_path_circle_beats);
-        consider_max(out.split_path_square_beats);
-        consider_max(out.split_path_triangle_beats);
-        consider_max(out.onset_marker_beats);
+        auto consider_max_timed = [&](const std::vector<BeatEntryTimed>& v) {
+            if (!v.empty()) max_beat = std::max(max_beat, v.back().beat_index);
+        };
+        consider_max_indexed(out.shape_gate_circle_beats);
+        consider_max_indexed(out.shape_gate_square_beats);
+        consider_max_indexed(out.shape_gate_triangle_beats);
+        consider_max_indexed(out.split_path_circle_beats);
+        consider_max_indexed(out.split_path_square_beats);
+        consider_max_indexed(out.split_path_triangle_beats);
+        consider_max_indexed(out.onset_marker_beats);
+        consider_max_timed(out.shape_gate_circle_beats_timed);
+        consider_max_timed(out.shape_gate_square_beats_timed);
+        consider_max_timed(out.shape_gate_triangle_beats_timed);
+        consider_max_timed(out.split_path_circle_beats_timed);
+        consider_max_timed(out.split_path_square_beats_timed);
+        consider_max_timed(out.split_path_triangle_beats_timed);
+        consider_max_timed(out.onset_marker_beats_timed);
 
         if (max_beat >= 0) {
             const auto max_derived_beat = max_derived_beat_for_metadata(out.bpm, out.duration);
@@ -768,17 +849,18 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
         }
     }
 
-    // Per-row rules: walk each per-(kind, shape) vector once. Cross-table
-    // ordering rules (Rule 1 — monotonic beat indices, intra-beat
+    // Per-row rules: walk each per-(kind, shape, timing-source) vector once.
+    // Cross-table ordering rules (Rule 1 — monotonic beat indices, intra-beat
     // resolved-time monotonicity, time_sec monotonicity) are evaluated by
-    // walking a beat-index merge over the seven vectors below.
+    // walking a beat-index merge over the fourteen vectors below.
     //
     // Kind-specific rule references:
     //   has_shape       — true for shape_gate_* and split_path_* vectors
-    //   requires_lane   — same set (onset_marker_beats default lane is
+    //                     (both indexed and timed)
+    //   requires_lane   — same set (onset_marker_beats[_timed] default lane is
     //                     not validated against [0,2] semantics)
-    auto validate_per_entry = [&](const BeatEntry& entry,
-                                  bool has_shape, bool requires_lane) {
+    auto validate_indexed_entry = [&](const BeatEntry& entry,
+                                      bool has_shape, bool requires_lane) {
         // Rule 2: beat index must be within the playable song range
         if (entry.beat_index < 0) {
             errors.push_back({entry.beat_index, "Beat index must be non-negative"});
@@ -801,58 +883,106 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
             errors.push_back({entry.beat_index, "Lane must be 0-2"});
             valid = false;
         }
-
-        if (entry.has_time_sec) {
-            if (!std::isfinite(entry.time_sec)) {
-                errors.push_back({entry.beat_index, "time_sec must be finite when provided"});
-                valid = false;
-            } else {
-                if (entry.time_sec < 0.0f) {
-                    errors.push_back({entry.beat_index, "time_sec must be >= 0 when provided"});
-                    valid = false;
-                }
-                if (std::isfinite(map.duration) && entry.time_sec > map.duration) {
-                    errors.push_back({entry.beat_index, "time_sec must be <= duration_sec when provided"});
-                    valid = false;
-                }
-            }
-        }
         (void)has_shape;
     };
 
-    for (const auto& entry : map.shape_gate_circle_beats)   validate_per_entry(entry, true,  true);
-    for (const auto& entry : map.shape_gate_square_beats)   validate_per_entry(entry, true,  true);
-    for (const auto& entry : map.shape_gate_triangle_beats) validate_per_entry(entry, true,  true);
-    for (const auto& entry : map.split_path_circle_beats)   validate_per_entry(entry, true,  true);
-    for (const auto& entry : map.split_path_square_beats)   validate_per_entry(entry, true,  true);
-    for (const auto& entry : map.split_path_triangle_beats) validate_per_entry(entry, true,  true);
-    for (const auto& entry : map.onset_marker_beats)        validate_per_entry(entry, false, false);
+    auto validate_timed_entry = [&](const BeatEntryTimed& entry,
+                                    bool has_shape, bool requires_lane) {
+        // Reuse the indexed checks for the always-meaningful columns…
+        validate_indexed_entry({entry.beat_index, entry.lane}, has_shape, requires_lane);
+        // …then add the timed-only checks. Membership in a *_beats_timed
+        // vector IS the precondition that time_sec is authored, so there
+        // is no in-row optionality flag to consult — the row simply has
+        // an always-meaningful `time_sec` column.
+        if (!std::isfinite(entry.time_sec)) {
+            errors.push_back({entry.beat_index, "time_sec must be finite when provided"});
+            valid = false;
+        } else {
+            if (entry.time_sec < 0.0f) {
+                errors.push_back({entry.beat_index, "time_sec must be >= 0 when provided"});
+                valid = false;
+            }
+            if (std::isfinite(map.duration) && entry.time_sec > map.duration) {
+                errors.push_back({entry.beat_index, "time_sec must be <= duration_sec when provided"});
+                valid = false;
+            }
+        }
+    };
 
-    // Cross-table ordering: walk the seven sorted vectors in beat-index
+    for (const auto& entry : map.shape_gate_circle_beats)         validate_indexed_entry(entry, true,  true);
+    for (const auto& entry : map.shape_gate_square_beats)         validate_indexed_entry(entry, true,  true);
+    for (const auto& entry : map.shape_gate_triangle_beats)       validate_indexed_entry(entry, true,  true);
+    for (const auto& entry : map.split_path_circle_beats)         validate_indexed_entry(entry, true,  true);
+    for (const auto& entry : map.split_path_square_beats)         validate_indexed_entry(entry, true,  true);
+    for (const auto& entry : map.split_path_triangle_beats)       validate_indexed_entry(entry, true,  true);
+    for (const auto& entry : map.onset_marker_beats)              validate_indexed_entry(entry, false, false);
+    for (const auto& entry : map.shape_gate_circle_beats_timed)   validate_timed_entry(entry, true,  true);
+    for (const auto& entry : map.shape_gate_square_beats_timed)   validate_timed_entry(entry, true,  true);
+    for (const auto& entry : map.shape_gate_triangle_beats_timed) validate_timed_entry(entry, true,  true);
+    for (const auto& entry : map.split_path_circle_beats_timed)   validate_timed_entry(entry, true,  true);
+    for (const auto& entry : map.split_path_square_beats_timed)   validate_timed_entry(entry, true,  true);
+    for (const auto& entry : map.split_path_triangle_beats_timed) validate_timed_entry(entry, true,  true);
+    for (const auto& entry : map.onset_marker_beats_timed)        validate_timed_entry(entry, false, false);
+
+    // Cross-table ordering: walk the fourteen sorted vectors in beat-index
     // merge order so Rule 1 (monotonic), the intra-beat resolved-time
     // rule, and Rule 6 (different-shape gates) see the same total order
-    // the parser produced.
+    // the parser produced. The walker normalizes each step into a
+    // transient `MergeEntry` projection that carries the always-meaningful
+    // columns plus shape_idx and (for timed bins) the authored time_sec.
     //
-    // Each vector carries an int8_t shape_idx (0=Circle, 1=Square, 2=Triangle,
-    // -1 for onset_marker which has no shape). Rule 6 compares shape_idx
-    // values instead of a `Shape` field on the row — the discriminator
-    // lives in the vector identity, not on the entry.
+    // Each merge vector carries an int8_t shape_idx (0=Circle, 1=Square,
+    // 2=Triangle, -1 for onset_marker which has no shape) and a flag
+    // recording whether the source bin is the authored-onset sibling.
+    // Rule 6 compares shape_idx values instead of a `Shape` field on the
+    // row — the discriminator lives in the vector identity, not on the entry.
+    struct MergeEntry {
+        int    beat_index;
+        int8_t lane;
+        bool   is_timed;
+        float  time_sec;
+    };
     struct MergeVectorRef {
-        const std::vector<BeatEntry>* entries;
+        const std::vector<BeatEntry>*      indexed_entries;
+        const std::vector<BeatEntryTimed>* timed_entries;
         size_t* cursor;
         int8_t shape_idx;
+        bool   is_timed;
     };
+    auto entry_at = [](const MergeVectorRef& v) -> MergeEntry {
+        if (v.is_timed) {
+            const auto& e = (*v.timed_entries)[*v.cursor];
+            return MergeEntry{e.beat_index, e.lane, true, e.time_sec};
+        }
+        const auto& e = (*v.indexed_entries)[*v.cursor];
+        return MergeEntry{e.beat_index, e.lane, false, 0.0f};
+    };
+    auto remaining = [](const MergeVectorRef& v) -> bool {
+        if (v.is_timed) return *v.cursor < v.timed_entries->size();
+        return *v.cursor < v.indexed_entries->size();
+    };
+
     size_t i_sg_c = 0, i_sg_s = 0, i_sg_t = 0;
     size_t i_sp_c = 0, i_sp_s = 0, i_sp_t = 0;
     size_t i_om   = 0;
-    const std::array<MergeVectorRef, 7> merge_vectors{{
-        {&map.shape_gate_circle_beats,   &i_sg_c,  0},
-        {&map.shape_gate_square_beats,   &i_sg_s,  1},
-        {&map.shape_gate_triangle_beats, &i_sg_t,  2},
-        {&map.split_path_circle_beats,   &i_sp_c,  0},
-        {&map.split_path_square_beats,   &i_sp_s,  1},
-        {&map.split_path_triangle_beats, &i_sp_t,  2},
-        {&map.onset_marker_beats,        &i_om,   -1},
+    size_t ti_sg_c = 0, ti_sg_s = 0, ti_sg_t = 0;
+    size_t ti_sp_c = 0, ti_sp_s = 0, ti_sp_t = 0;
+    size_t ti_om   = 0;
+    const std::array<MergeVectorRef, 14> merge_vectors{{
+        {&map.shape_gate_circle_beats,         nullptr, &i_sg_c,  0, false},
+        {&map.shape_gate_square_beats,         nullptr, &i_sg_s,  1, false},
+        {&map.shape_gate_triangle_beats,       nullptr, &i_sg_t,  2, false},
+        {&map.split_path_circle_beats,         nullptr, &i_sp_c,  0, false},
+        {&map.split_path_square_beats,         nullptr, &i_sp_s,  1, false},
+        {&map.split_path_triangle_beats,       nullptr, &i_sp_t,  2, false},
+        {&map.onset_marker_beats,              nullptr, &i_om,   -1, false},
+        {nullptr, &map.shape_gate_circle_beats_timed,   &ti_sg_c, 0, true},
+        {nullptr, &map.shape_gate_square_beats_timed,   &ti_sg_s, 1, true},
+        {nullptr, &map.shape_gate_triangle_beats_timed, &ti_sg_t, 2, true},
+        {nullptr, &map.split_path_circle_beats_timed,   &ti_sp_c, 0, true},
+        {nullptr, &map.split_path_square_beats_timed,   &ti_sp_s, 1, true},
+        {nullptr, &map.split_path_triangle_beats_timed, &ti_sp_t, 2, true},
+        {nullptr, &map.onset_marker_beats_timed,        &ti_om,  -1, true},
     }};
 
     int prev_beat = -1;
@@ -863,12 +993,12 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
     bool has_prev_resolved_time_for_beat = false;
     float prev_resolved_time_for_beat = 0.0f;
 
-    auto resolve_time = [&](const BeatEntry& entry) {
+    auto resolve_time = [&](const MergeEntry& entry) {
         float resolved_time = 0.0f;
         if (timing_metadata_valid) {
             resolved_time = map.offset + static_cast<float>(entry.beat_index) * beat_period;
         }
-        if (entry.has_time_sec) {
+        if (entry.is_timed) {
             resolved_time = entry.time_sec;
         } else if (!map.beat_times.empty() &&
                    entry.beat_index >= 0 &&
@@ -878,31 +1008,41 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
         return resolved_time;
     };
 
-    // Pick the next-smallest entry by (beat_index, time_sec) across the
-    // seven sorted vectors. Each merge_vectors row advances its own cursor.
-    auto step_merge = [&](int8_t& shape_idx_out) -> const BeatEntry* {
-        const BeatEntry* best = nullptr;
+    // Pick the next-smallest entry by (beat_index, resolved_time) across the
+    // fourteen sorted vectors. Indexed and timed siblings on the same beat
+    // are interleaved by the resolved time each row would spawn at, so
+    // Rule 1 and the same-beat ordering rule below see them in their
+    // true temporal order.
+    auto step_merge = [&](int8_t& shape_idx_out, bool& is_timed_out) -> std::optional<MergeEntry> {
+        std::optional<MergeEntry> best;
+        float best_resolved = 0.0f;
         size_t* best_cursor = nullptr;
         int8_t  best_shape_idx = -1;
+        bool    best_is_timed = false;
         for (const auto& v : merge_vectors) {
-            if (*v.cursor >= v.entries->size()) continue;
-            const auto* cand = &(*v.entries)[*v.cursor];
+            if (!remaining(v)) continue;
+            const MergeEntry cand = entry_at(v);
+            const float cand_resolved = resolve_time(cand);
             if (!best ||
-                cand->beat_index < best->beat_index ||
-                (cand->beat_index == best->beat_index && cand->time_sec < best->time_sec)) {
+                cand.beat_index < best->beat_index ||
+                (cand.beat_index == best->beat_index && cand_resolved < best_resolved)) {
                 best = cand;
+                best_resolved = cand_resolved;
                 best_cursor = v.cursor;
                 best_shape_idx = v.shape_idx;
+                best_is_timed = v.is_timed;
             }
         }
         if (best_cursor) (*best_cursor)++;
         shape_idx_out = best_shape_idx;
+        is_timed_out  = best_is_timed;
         return best;
     };
 
     int8_t entry_shape_idx = -1;
-    while (const auto* entry_ptr = step_merge(entry_shape_idx)) {
-        const auto& entry = *entry_ptr;
+    bool   entry_is_timed  = false;
+    while (auto entry_opt = step_merge(entry_shape_idx, entry_is_timed)) {
+        const MergeEntry& entry = *entry_opt;
         const float resolved_time = resolve_time(entry);
 
         // Rule 1: beat indices monotonically non-decreasing
@@ -925,7 +1065,7 @@ bool validate_beat_map(const BeatMap& map, std::vector<BeatMapError>& errors,
             has_prev_resolved_time_for_beat = true;
         }
 
-        if (entry.has_time_sec && std::isfinite(entry.time_sec)) {
+        if (entry.is_timed && std::isfinite(entry.time_sec)) {
             if (has_prev_authored_time && entry.time_sec < prev_authored_time) {
                 errors.push_back({entry.beat_index,
                     "time_sec must be non-decreasing across authored beat entries"});
@@ -962,12 +1102,19 @@ void init_song_state(SongState& state, const BeatMap& map) {
     state.current_beat = -1;
     state.playing      = false;
     state.finished     = false;
-    state.next_shape_gate_circle_idx   = 0;
-    state.next_shape_gate_square_idx   = 0;
-    state.next_shape_gate_triangle_idx = 0;
-    state.next_split_path_circle_idx   = 0;
-    state.next_split_path_square_idx   = 0;
-    state.next_split_path_triangle_idx = 0;
-    state.next_onset_marker_idx        = 0;
+    state.next_shape_gate_circle_idx         = 0;
+    state.next_shape_gate_square_idx         = 0;
+    state.next_shape_gate_triangle_idx       = 0;
+    state.next_split_path_circle_idx         = 0;
+    state.next_split_path_square_idx         = 0;
+    state.next_split_path_triangle_idx       = 0;
+    state.next_onset_marker_idx              = 0;
+    state.next_shape_gate_circle_timed_idx   = 0;
+    state.next_shape_gate_square_timed_idx   = 0;
+    state.next_shape_gate_triangle_timed_idx = 0;
+    state.next_split_path_circle_timed_idx   = 0;
+    state.next_split_path_square_timed_idx   = 0;
+    state.next_split_path_triangle_timed_idx = 0;
+    state.next_onset_marker_timed_idx        = 0;
     song_state_compute_derived(state);
 }

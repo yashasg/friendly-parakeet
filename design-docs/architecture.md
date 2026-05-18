@@ -422,7 +422,9 @@ struct SongState {
     bool  playing         = false;
     bool  finished        = false;
     bool  restart_music   = false;
-    size_t next_spawn_idx = 0;
+    size_t next_spawn_idx = 0;  // (legacy doc shape — actual SongState has fourteen
+                                //  per-(kind, shape, time-source) cursors per #1533;
+                                //  see rhythm-spec.md and app/components/song_state.h)
 };
 
 /// Singleton: survival meter displayed by the HUD energy bar.
@@ -1352,7 +1354,7 @@ int main(int argc, char* argv[]) {
     ui_render_system(reg):
 
     SongState.song_time  ─┐
-    BeatMap.beats        ├─ find next unresolved note near the active shape
+    BeatMap.*_beats[_timed] ├─ find next unresolved note near the active shape
     Shape*Tag (current) ─┘
 
     proximity = clamp((arrival_time - song_time) / SongState.half_window)
