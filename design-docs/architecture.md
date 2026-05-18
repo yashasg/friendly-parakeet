@@ -700,9 +700,9 @@ DrawSize             8     COLD       render
 PopupDisplay        24     COLD       popup_display (fade), ui_render
 PopupTextMeasured   12     COLD       ui_render (per-entity text-width cache; presence + key-match IS valid)
 ParticleTag          0     COLD       render (filter)
-EnergyBarTag         0     COLD       energy_bar_system (filter), gameplay_hud (filter)
-EnergyBarLayout     24     COLD       energy_bar_system (read), gameplay_hud (read)
-EnergyBarVisual     24     COLD       energy_bar_system (write), gameplay_hud (read)
+EnergyBarTag         0     COLD       energy_bar_system (filter), ui_render_system (filter)
+EnergyBarLayout     24     COLD       energy_bar_system (read), ui_render_system (read)
+EnergyBarVisual     24     COLD       energy_bar_system (write), ui_render_system (read)
 ─────────────────────────────────────────────────────────────
 SINGLETONS (ctx)
 ─────────────────────────────────────────────────────────────
@@ -747,10 +747,9 @@ system in the same frame (unidirectional data flow).
  │  │                           Go*Event / ShapePress*Event /│
  │  │                           Menu*Event.                  │
  │  │                                                        │
- │  │  3. other producers       gameplay_hud_process_button_ │
- │  │                           input and test_player_system │
- │  │                           enqueue the same semantic    │
- │  │                           events.                      │
+ │  │  3. other producers       ui_update_system and         │
+ │  │                           test_player_system enqueue   │
+ │  │                           the same semantic events.    │
  │  └────────────────────────────────────────────────────────┘
  │
  │  ┌─ PHASE 2: GAME STATE GATE ────────────────────────────┐
