@@ -6,17 +6,6 @@
 #include "../constants.h"
 #include <raymath.h>
 
-namespace {
-
-void request_energy_depleted_game_over(entt::registry& reg) {
-    if (is_phase_transition_pending(reg)) return;
-
-    reg.ctx().insert_or_assign(EnergyDepletedDeath{});
-    request_phase_transition<NextPhaseGameOverTag>(reg);
-}
-
-}  // namespace
-
 void energy_system(entt::registry& reg, float dt) {
     if (!reg.ctx().contains<GamePhasePlayingTag>()) return;
     auto* energy = reg.ctx().find<EnergyState>();
@@ -41,8 +30,9 @@ void energy_system(entt::registry& reg, float dt) {
         pending.events.clear();
     }
 
-    if (song && energy->energy <= 0.0f) {
-        request_energy_depleted_game_over(reg);
+    if (song && energy->energy <= 0.0f && !is_phase_transition_pending(reg)) {
+        reg.ctx().insert_or_assign(EnergyDepletedDeath{});
+        request_phase_transition<NextPhaseGameOverTag>(reg);
     }
 
     // Smooth display toward actual energy
