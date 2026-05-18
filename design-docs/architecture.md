@@ -162,17 +162,28 @@ struct PlayerShape {
     float    morph_t = 1.0f;           // 0.0 = morph just started, 1.0 = settled
 };
 
-/// Rhythm-mode timing window state for the player. 24 bytes.
+/// Rhythm-mode timing window state for the player. 16 bytes
+/// (1 bool + 3 floats; the former `target_shape` and `WindowPhase phase`
+/// fields are now per-tag rows — see migration notes below).
 /// Hot: read/written by shape_window_system and input dispatcher callbacks;
 /// read by collision_system. Lives on the player entity alongside PlayerShape.
 ///
 /// Relationship to PlayerShape:
-///   - `target_shape`     is the shape the player is morphing toward when a
-///                        ButtonPressEvent or test-player event lands in or
-///                        near the active window.
-///   - When `phase == MorphIn` completes, shape_window_activation_system
-///                        promotes `target_shape` into `PlayerShape.current`
-///                        and resets the morph animation.
+///   - The active `TargetShape*Tag` (Circle/Square/Triangle/Hexagon) on the
+///                        player encodes which shape the press is morphing
+///                        toward when a ButtonPressEvent or test-player event
+///                        lands in or near the active window (issue
+///                        #1202/#1204 — replaces the former `target_shape`
+///                        field).
+///   - When the `ShapeWindowMorphInTag` → `ShapeWindowActiveTag` transition
+///                        fires, `shape_window_system` swaps the player's
+///                        current `Shape*Tag` to match the `TargetShape*Tag`
+///                        and resets the morph animation (replaces the
+///                        former MorphIn-completion path that promoted the
+///                        legacy target field into the legacy current-shape
+///                        field — eradicated per #1202/#1204; see
+///                        `app/systems/shape_window_system.cpp` for the
+///                        canonical transitions).
 ///   - `press_time`       feeds timing-grade computation when an obstacle
 ///                        resolves (collision_system compares it against
 ///                        BeatInfo.arrival_time).
@@ -892,17 +903,26 @@ In code, reusable construction lives in `app/entities/` factory functions
 
 ```
 ┌─ Player ──────────────────────────────────────────────────┐
-│ PlayerTag          (tag, 0 bytes)                         │
-│ WorldPosition     { position: {360.0, 920.0} }          │
-│ PlayerShape        { current: Hexagon, morph_t: 1.0 }     │
-│ ShapeWindow        { target: Hexagon, phase: Idle, ... }  │
-│ Lane               { current: 1, target: -1, lerp_t: 1 } │
+│ PlayerTag              (tag, 0 bytes)                     │
+│ WorldPosition         { position: {360.0, 920.0} }        │
+│ ShapeHexagonTag        (tag, 0 bytes; current shape)      │
+│ PlayerShape           { morph_t: 1.0 }                    │
+│ ShapeWindow           { graded: 0, window_timer: 0,       │
+│                         window_start: 0, press_time: -1 } │
+│ TargetShapeHexagonTag  (tag, 0 bytes; idle reset)         │
+│ Lane                  { current: 1, target: -1, lerp_t:1 }│
 │ (Jumping/Sliding absent → grounded; rows added on demand) │
-│ Color              { r: 80, g: 180, b: 255, a: 255 }     │
-│ DrawSize           { w: 64, h: 64 }                       │
-│ TagWorldPass       (tag, 0 bytes)                         │
+│ (ShapeWindow{MorphIn,Active,MorphOut}Tag absent → Idle)   │
+│ Color                 { r: 80, g: 180, b: 255, a: 255 }   │
+│ DrawSize              { w: 64, h: 64 }                    │
+│ TagWorldPass           (tag, 0 bytes)                     │
 └───────────────────────────────────────────────────────────┘
-Total: ~97 bytes per entity (1 entity)
+Total: ~48 bytes of component data per entity (1 entity).
+The current shape and shape-window phase are zero-byte tag rows
+(`Shape*Tag` / `ShapeWindow*Tag` / `TargetShape*Tag`) per issue
+#1202/#1204 — the former `PlayerShape::current`, `ShapeWindow::phase`
+(`WindowPhase` enum), and `ShapeWindow::target_shape` fields are
+eradicated.
 ```
 
 ### 5.2 Shape Gate Entity
@@ -1307,7 +1327,7 @@ int main(int argc, char* argv[]) {
 
     SongState.song_time  ─┐
     BeatMap.beats        ├─ find next unresolved note near the active shape
-    PlayerShape.current ─┘
+    Shape*Tag (current) ─┘
 
     proximity = clamp((arrival_time - song_time) / SongState.half_window)
     draw ring around the corresponding shape button:
