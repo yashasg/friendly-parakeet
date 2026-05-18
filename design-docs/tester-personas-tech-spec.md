@@ -53,8 +53,12 @@
   ├──────────────────────┼──────┼────────────┼────────────────────────┤
   │ TestPlayerState      │~2.6KB│ 1 singleton│ COLD: once per frame   │
   │ SessionLog           │ 16B  │ 1 singleton│ COLD: on events only   │
-  │ TestPlayerConfig     │ 20B  │ 1 singleton│ COLD: read-only        │
   └──────────────────────┴──────┴────────────┴────────────────────────┘
+
+  Skill config is not a separate singleton: `SkillConfig` is a value
+  type embedded in `TestPlayerState.skill` (see § 3) and surfaced as
+  the compile-time named constants `SKILL_PRO` / `SKILL_GOOD` /
+  `SKILL_BAD` in `app/systems/test_player.h`.
 
   Max ~10 obstacles on screen at 120 BPM, 4 lead beats.
   All obstacle data fits in < 1 cache line per entity.
@@ -642,8 +646,8 @@ inside `tick_playing_systems`.
       │                           Platform-portable: enqueues events
       │                           directly on the EnTT dispatcher
       all_systems.h            ← System declarations
-    session_logger.h           ← SessionLog struct, session_log_write() and friends
-    session_logger.cpp         ← File I/O, EnTT signal handlers, formatting
+      session_logger_system.h  ← SessionLog struct, session_log_write() and friends
+      session_logger_system.cpp ← File I/O, EnTT signal handlers, formatting
     main.cpp                   ← CLI arg parsing, setup, system insertion
 ```
 
