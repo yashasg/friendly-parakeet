@@ -21,14 +21,18 @@ void set_web_title(const char* phase_name) {
         title.c_str());
 }
 
-// Per Fabian's existential processing (issue #1202/#1204, PR G): the former
-// eight-case `switch (phase)` over the WASM smoke title is replaced by per-tag
-// transforms on the `GamePhase*Tag` ctx mirror seeded by `enter_phase<...>()`.
-// The mirror invariant pinned by `tests/test_game_phase_tags.cpp` guarantees
-// that exactly one `GamePhase*Tag` is present at any time, so these eight
-// `if` blocks are mutually exclusive even without `else` chaining and
-// dispatch on tag presence rather than on an enum compare.
-void update_web_title(entt::registry& reg) {
+}  // namespace
+#endif
+
+void notify_phase_changed(entt::registry& reg) {
+#if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
+    // Per Fabian's existential processing (issue #1202/#1204, PR G): the former
+    // eight-case `switch (phase)` over the WASM smoke title is replaced by per-tag
+    // transforms on the `GamePhase*Tag` ctx mirror seeded by `enter_phase<...>()`.
+    // The mirror invariant pinned by `tests/test_game_phase_tags.cpp` guarantees
+    // that exactly one `GamePhase*Tag` is present at any time, so these eight
+    // `if` blocks are mutually exclusive even without `else` chaining and
+    // dispatch on tag presence rather than on an enum compare.
     const auto& ctx = reg.ctx();
     if (ctx.contains<GamePhaseTitleTag>())        { set_web_title("Title"); }
     if (ctx.contains<GamePhaseLevelSelectTag>())  { set_web_title("LevelSelect"); }
@@ -38,14 +42,6 @@ void update_web_title(entt::registry& reg) {
     if (ctx.contains<GamePhaseSongCompleteTag>()) { set_web_title("SongComplete"); }
     if (ctx.contains<GamePhaseSettingsTag>())     { set_web_title("Settings"); }
     if (ctx.contains<GamePhaseTutorialTag>())     { set_web_title("Tutorial"); }
-}
-
-}  // namespace
-#endif
-
-void notify_phase_changed(entt::registry& reg) {
-#if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
-    update_web_title(reg);
 #else
     (void)reg;
 #endif
