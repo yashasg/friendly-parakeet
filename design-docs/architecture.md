@@ -327,12 +327,14 @@ struct Obstacle {
     int16_t base_points = 200;
 };
 
-// Owned mesh children for a logical obstacle entity. destroy_obstacle_with_children
-// cleans up in O(count). Lives on the parent obstacle entity.
+// Sizing constant for obstacle mesh-child fan-out. Per Fabian Principle 3
+// (issue #1554), child-ownership is a row table: each child entity carries
+// `MeshChild { parent }`, and "the children of obstacle X" is
+// `view<MeshChild>` filtered by `parent == X`. `MAX` survives only as the
+// hard cap enforced by `require_child_capacity` and as the worst-case
+// fan-out used to size `MeshChildCleanupScratch`.
 struct ObstacleChildren {
     static constexpr int MAX = 8;
-    entt::entity children[MAX]{};
-    int          count = 0;
 };
 ```
 

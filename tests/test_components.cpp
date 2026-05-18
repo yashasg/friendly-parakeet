@@ -45,11 +45,7 @@ TEST_CASE("components: rendering components are safely default constructible",
     CHECK(child.tint.b == 255);
     CHECK(child.tint.a == 255);
 
-    ObstacleChildren children{};
-    CHECK(children.count == 0);
-    for (const auto entity : children.children) {
-        CHECK(entity == entt::entity{});
-    }
+    static_assert(ObstacleChildren::MAX > 0);
 }
 
 TEST_CASE("components: PlayerShape defaults", "[components]") {
