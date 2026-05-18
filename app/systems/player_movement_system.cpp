@@ -9,46 +9,6 @@
 #include "../util/lane_utils.h"
 #include <raymath.h>
 
-namespace {
-
-// Tick all jumping entities: advance the parabolic-arc timer, update
-// y_offset, and remove the Jumping component when the jump lands
-// (firing the JumpLand haptic). Per Fabian, this is the "Jumping"
-// table's per-row transform; entities without a Jumping row are not
-// touched.
-void tick_jumping(entt::registry& reg, float dt) {
-    auto view = reg.view<PlayerTag, Jumping>();
-    for (auto [entity, jump] : view.each()) {
-        jump.timer -= dt;
-        const float half = constants::JUMP_DURATION / 2.0f;
-        const float t = constants::JUMP_DURATION - jump.timer;
-        const float normalized = t / half - 1.0f;
-        jump.y_offset = -constants::JUMP_HEIGHT * (1.0f - normalized * normalized);
-
-        if (jump.timer <= 0.0f) {
-            if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
-                disp->enqueue<PlayHapticEvent>({HapticEvent::JumpLand});
-            }
-            reg.remove<Jumping>(entity);
-        }
-    }
-}
-
-// Tick all sliding entities: advance the slide timer and remove the
-// Sliding component when the slide completes. Slide has no vertical
-// offset — the visual squash is applied by the render system.
-void tick_sliding(entt::registry& reg, float dt) {
-    auto view = reg.view<PlayerTag, Sliding>();
-    for (auto [entity, slide] : view.each()) {
-        slide.timer -= dt;
-        if (slide.timer <= 0.0f) {
-            reg.remove<Sliding>(entity);
-        }
-    }
-}
-
-}  // namespace
-
 void player_movement_system(entt::registry& reg, float dt) {
     auto* song = reg.ctx().find<SongState>();
     const bool rhythm_mode = (song != nullptr && (song->playing || song->finished));
@@ -89,6 +49,34 @@ void player_movement_system(entt::registry& reg, float dt) {
     // Per-state vertical-motion transforms (issue #1202/#1204).
     // Grounded entities have neither Jumping nor Sliding, so no transform
     // runs for them.
-    tick_jumping(reg, dt);
-    tick_sliding(reg, dt);
+
+    // Tick all jumping entities: advance the parabolic-arc timer, update
+    // y_offset, and remove the Jumping component when the jump lands
+    // (firing the JumpLand haptic). Per Fabian, this is the "Jumping"
+    // table's per-row transform; entities without a Jumping row are not
+    // touched.
+    for (auto [entity, jump] : reg.view<PlayerTag, Jumping>().each()) {
+        jump.timer -= dt;
+        const float half = constants::JUMP_DURATION / 2.0f;
+        const float t = constants::JUMP_DURATION - jump.timer;
+        const float normalized = t / half - 1.0f;
+        jump.y_offset = -constants::JUMP_HEIGHT * (1.0f - normalized * normalized);
+
+        if (jump.timer <= 0.0f) {
+            if (auto* disp = reg.ctx().find<entt::dispatcher>()) {
+                disp->enqueue<PlayHapticEvent>({HapticEvent::JumpLand});
+            }
+            reg.remove<Jumping>(entity);
+        }
+    }
+
+    // Tick all sliding entities: advance the slide timer and remove the
+    // Sliding component when the slide completes. Slide has no vertical
+    // offset — the visual squash is applied by the render system.
+    for (auto [entity, slide] : reg.view<PlayerTag, Sliding>().each()) {
+        slide.timer -= dt;
+        if (slide.timer <= 0.0f) {
+            reg.remove<Sliding>(entity);
+        }
+    }
 }
