@@ -26,37 +26,6 @@ WasmSmokeLaneMarkerState& wasm_smoke_lane_marker_state(entt::registry& reg) {
     return reg.ctx().emplace<WasmSmokeLaneMarkerState>();
 }
 
-void update_web_playing_lane_marker(entt::registry& reg) {
-    auto& marker = wasm_smoke_lane_marker_state(reg);
-    if (!reg.ctx().contains<GamePhasePlayingTag>()) {
-        marker.last_lane = -1;
-        return;
-    }
-
-    auto player_view = reg.view<PlayerTag, Lane>();
-    if (player_view.begin() == player_view.end()) {
-        marker.last_lane = -1;
-        return;
-    }
-
-    const auto player_entity = *player_view.begin();
-    const int lane = static_cast<int>(player_view.get<Lane>(player_entity).current);
-    if (lane == marker.last_lane) {
-        return;
-    }
-    marker.last_lane = lane;
-
-    const std::string title = std::string("SHAPESHIFTER [Playing][Lane:")
-        + std::to_string(lane) + "]";
-    EM_ASM(
-        {
-            if (typeof document !== 'undefined') {
-                document.title = UTF8ToString($0);
-            }
-        },
-        title.c_str());
-}
-
 }  // namespace
 #endif
 
@@ -183,7 +152,34 @@ void game_state_system(entt::registry& reg, float dt) {
     }
 
 #if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
-    update_web_playing_lane_marker(reg);
+    // Update browser tab title with current lane when in Playing phase, so
+    // WASM smoke tests can observe player state via document.title polling.
+    // Title is rewritten only on lane change; absence of player or non-Playing
+    // phase resets the cached lane to -1 so the next entry rewrites the title.
+    {
+        auto& marker = wasm_smoke_lane_marker_state(reg);
+        auto player_view = reg.view<PlayerTag, Lane>();
+        const bool playing = reg.ctx().contains<GamePhasePlayingTag>();
+        const bool has_player = player_view.begin() != player_view.end();
+        if (!playing || !has_player) {
+            marker.last_lane = -1;
+        } else {
+            const auto player_entity = *player_view.begin();
+            const int lane = static_cast<int>(player_view.get<Lane>(player_entity).current);
+            if (lane != marker.last_lane) {
+                marker.last_lane = lane;
+                const std::string title = std::string("SHAPESHIFTER [Playing][Lane:")
+                    + std::to_string(lane) + "]";
+                EM_ASM(
+                    {
+                        if (typeof document !== 'undefined') {
+                            document.title = UTF8ToString($0);
+                        }
+                    },
+                    title.c_str());
+            }
+        }
+    }
 #endif
     // Playing → SongComplete when song finishes (all obstacles cleared)
     if (reg.ctx().contains<GamePhasePlayingTag>()) {
