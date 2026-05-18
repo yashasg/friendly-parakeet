@@ -105,7 +105,7 @@
 ```cpp
 // ── OUTSIDE fixed timestep (once per frame) ─────────
 input_system(reg, raw_dt);          // Phase 0: polls raylib
-gameplay_hud_process_button_input(reg);
+ui_update_system(reg);
 test_player_system(reg, raw_dt);    // Phase 0.5: ★ NEW — injects AI input
 
 // ── INSIDE fixed timestep loop ──────────────────────
@@ -126,7 +126,7 @@ while (accumulator >= FIXED_DT) {
 ## System Dependency Chain
 
 ```
-  input_system ──▶ gameplay_hud_process_button_input ──▶ test_player_system ──▶ game_state_system ──▶ player input handlers
+  input_system ──▶ ui_update_system ──▶ test_player_system ──▶ game_state_system ──▶ player input handlers
        │                │                      │
     clears           writes                 reads
     key_* flags      key_* flags           key_* flags

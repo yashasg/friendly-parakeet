@@ -629,7 +629,7 @@ void obstacle_despawn_system(entt::registry& reg, float dt);
 Per-frame systems outside the fixed timestep:
 
 ```
-compute_screen_transform -> input_system -> gameplay_hud_process_button_input ->
+compute_screen_transform -> input_system -> ui_update_system ->
 test_player_system -> fixed timestep loop -> game_camera_system ->
 ui_camera_system -> game_render_system -> ui_render_system ->
 audio_system -> haptic_system
