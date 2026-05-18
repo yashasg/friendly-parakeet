@@ -676,7 +676,7 @@ COMPONENT          BYTES   ACCESS     ITERATED BY
 WorldPosition       8     HOT        motion, render, collision, despawn
 MotionVelocity       8     HOT        motion, particle effects
 ParticleData        12     HOT        particle expiry/render fade
-ScorePopup          16     HOT        popup expiry/render fade
+ScorePopup          12     HOT        popup expiry/render fade
 PlayerTag            0     HOT        collision/filter
 PlayerShape          4     HOT        shape_window, collision, render, player_action
 ShapeWindow          8     HOT        shape_window, input dispatcher, collision
@@ -685,7 +685,7 @@ LaneTransition       8     HOT        present when mid-lane-shift; movement, col
 Jumping              8     HOT        present when mid-jump; collision (y_offset), camera, movement
 Sliding              4     HOT        present when mid-slide; movement, render
 ObstacleTag          0     HOT        scroll, collision, cleanup
-Obstacle             4     WARM       collision, miss_detection, scoring
+Obstacle             2     WARM       collision, miss_detection, scoring
 RequiredShape*Tag    0     WARM       collision, scoring (one of 4 per obstacle; see tags.h)
 int8_t (lane)        1     WARM       collision (semantics selected by ShapeGateTag vs SplitPathTag)
 ShapeGateTag         0     WARM       collision (gate-archetype kind tag)
@@ -713,10 +713,10 @@ GameState            4     per-frame  game_state_system (phase_timer only; phase
 GamePhase*Tag        0     per-frame  active-phase mirror; one present at a time (see `app/tags/tags.h`)
 NextPhase*Tag        0     per-frame  pending-transition mirror; drained by `clear_next_phase_tags`
 BeatMap             var    session    setup_play_session (write), beat_scheduler (read)
-SongState           48     per-frame  song_playback/beat_scheduler
+SongState          160     per-frame  song_playback/beat_scheduler
 EnergyState         12     per-frame  energy_system (write), ui_render (read)
 PendingEnergyEffects var   per-frame  scoring_system (push), energy_system (drain)
-ScoreState          28     per-frame  scoring_system (write), render (read)
+ScoreState          12     per-frame  scoring_system (write), render (read)
 ScorePopupRequestQueue var per-frame  scoring_system (push), popup_feedback_system (drain)
 PlaySfxEvent        var    per-frame  dispatcher events drained by audio_system
 TestPlayerState     var    session    test_player_system (read/write), test_player_session (init), game_loop (reset)
