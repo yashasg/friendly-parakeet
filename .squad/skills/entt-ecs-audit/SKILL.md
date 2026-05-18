@@ -50,7 +50,7 @@ Per EnTT guide §"What is allowed and what is not":
 - [ ] Reactive storage: disconnected from observed pools before storage is destroyed
 
 ### 9. Hierarchy / child ownership
-- [ ] Parent–child entity relationships use a component (e.g., `ObstacleChildren`) — not raw pointers
+- [ ] Parent–child entity relationships are modeled as a row table on the *child* side (e.g., `MeshChild { entt::entity parent }`) — not as an inline array column on the parent, and not raw pointers. Walk children with `view<ChildRow>` filtered by `parent == X` (Fabian Principle 3 / issue #1554).
 - [ ] Destruction order: child storage pool must be initialized before parent signal is connected (lower pool index = destroyed last in reverse-order teardown)
 
 ---

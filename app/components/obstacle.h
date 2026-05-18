@@ -37,12 +37,15 @@ struct Obstacle {
 // future obstacle archetype must not emplace a raw `int8_t` on the same
 // entity — give them their own per-archetype component table instead.
 
-// Owned mesh children for a logical obstacle entity. destroy_obstacle_with_children
-// in app/entities/obstacle_render_entity.cpp cleans up in O(count). Relocated out
-// of app/components/rendering.h (issue #1194 SPLIT) — child-ownership is an
-// obstacle-archetype concern, not a generic render concept.
+// Sizing constant for obstacle mesh-child fan-out. Per Fabian Principle 3
+// (issue #1554), the inline `children[MAX] + count` array column was
+// normalized away: each child entity carries its own `MeshChild { parent }`
+// row, and "the children of obstacle X" is now `view<MeshChild>` filtered by
+// `parent == X`. The `MAX` cap survives as a hard limit enforced by the
+// obstacle mesh factory (`require_child_capacity` in
+// app/entities/obstacle_render_entity.cpp) and as a worst-case fan-out
+// estimate for `MeshChildCleanupScratch` (see
+// app/systems/runtime_system_scratch.cpp).
 struct ObstacleChildren {
     static constexpr int MAX = 8;
-    entt::entity children[MAX]{};
-    int count = 0;
 };

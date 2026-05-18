@@ -141,19 +141,23 @@ TEST_CASE("MeshChild: ShapeGate renders shape-only (no side slabs)",
 // ═══════════════════════════════════════════════════════════════════════
 // Theme 6 – obstacle mesh lifetime must only destroy children whose parent
 //           is the entity being destroyed, not other obstacles' children.
-// Explicit cleanup follows ObstacleChildren ownership directly, so it does not
-// depend on ObstacleTag pool insertion order.
+// Explicit cleanup walks the MeshChild row table filtered by parent, so it
+// does not depend on ObstacleTag pool insertion order.
 // ═══════════════════════════════════════════════════════════════════════
 
-// Helper: create an obstacle with an ObstacleChildren list.
+// Helper: create an obstacle and attach `kids` as MeshChild rows pointing at it.
 static entt::entity make_obstacle(entt::registry& reg,
                                    std::initializer_list<entt::entity> kids) {
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
-    auto& oc = reg.emplace<ObstacleChildren>(obs);
+    int attached = 0;
     for (auto k : kids) {
-        REQUIRE(oc.count < ObstacleChildren::MAX);
-        oc.children[oc.count++] = k;
+        REQUIRE(attached < ObstacleChildren::MAX);
+        reg.emplace<MeshChild>(k, MeshChild{
+            obs, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f,
+            Color{255, 255, 255, 255}
+        });
+        ++attached;
     }
     return obs;
 }

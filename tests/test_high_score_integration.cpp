@@ -95,10 +95,10 @@ TEST_CASE("Play session: restart clears obstacle mesh children without stale lis
           "[play_session][issue957]") {
     auto reg = make_registry();
     auto obstacle = spawn_shape_gate_obstacle(reg, {360.0f, -120.0f, Shape::Circle});
-    REQUIRE(reg.all_of<ObstacleChildren>(obstacle));
-    const auto children = reg.get<ObstacleChildren>(obstacle);
-    REQUIRE(children.count > 0);
-    const entt::entity first_child = children.children[0];
+    entt::entity first_child = entt::null;
+    for (auto [child, mc] : reg.view<MeshChild>().each()) {
+        if (mc.parent == obstacle) { first_child = child; break; }
+    }
     REQUIRE(reg.valid(first_child));
 
     setup_play_session(reg);

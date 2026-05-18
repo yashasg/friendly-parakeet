@@ -318,23 +318,30 @@ TEST_CASE("beat_scheduler: spawns OnsetMarker as visible non-scorable cue",
     beat_scheduler_system(reg, 0.016f);
 
     auto view = reg.view<ObstacleTag, OnsetMarkerTag, NonScorableTag, Obstacle,
-                         BeatInfo, WorldPosition, ObstacleChildren>();
+                         BeatInfo, WorldPosition>();
     REQUIRE(view.size_hint() == 1);
 
     entt::entity cue = entt::null;
-    for (auto [e, obstacle, beat, wt, children] : view.each()) {
+    for (auto [e, obstacle, beat, wt] : view.each()) {
         (void)beat;
         cue = e;
         CHECK(obstacle.base_points == int16_t{0});
         CHECK_FALSE(has_required_shape_tag(reg, e));
         CHECK_FALSE(reg.all_of<uint8_t>(e));
         CHECK_FALSE(reg.all_of<SplitPathTag>(e));
-        REQUIRE(children.count == 1);
-        const auto child = children.children[0];
-        REQUIRE(reg.valid(child));
-        REQUIRE(reg.all_of<MeshChild>(child));
-        CHECK(reg.all_of<MeshKindSlab>(child));
-        const auto& mesh = reg.get<MeshChild>(child);
+
+        int child_count = 0;
+        entt::entity first_child = entt::null;
+        for (auto [child, mc] : reg.view<MeshChild>().each()) {
+            if (mc.parent != e) continue;
+            if (first_child == entt::null) first_child = child;
+            ++child_count;
+        }
+        REQUIRE(child_count == 1);
+        REQUIRE(reg.valid(first_child));
+        REQUIRE(reg.all_of<MeshChild>(first_child));
+        CHECK(reg.all_of<MeshKindSlab>(first_child));
+        const auto& mesh = reg.get<MeshChild>(first_child);
         CHECK_THAT(mesh.width, Catch::Matchers::WithinAbs(constants::SCREEN_W_F, 0.01f));
 
         wt.position.y = constants::DESTROY_Y + 10.0f;
@@ -393,17 +400,21 @@ TEST_CASE("beat_scheduler: defaults invalid SplitPath lane to center lane", "[be
     song.next_onset_marker_idx = 0;
     CHECK_NOTHROW(beat_scheduler_system(reg, 0.016f));
 
-    auto view = reg.view<ObstacleTag, WorldPosition, SplitPathTag, int8_t, ObstacleChildren>();
+    auto view = reg.view<ObstacleTag, WorldPosition, SplitPathTag, int8_t>();
     REQUIRE(view.size_hint() == 1);
-    for (auto [e, wt, lane, children] : view.each()) {
+    for (auto [e, wt, lane] : view.each()) {
         CHECK_THAT(wt.position.x, Catch::Matchers::WithinAbs(constants::LANE_X[1], 0.01f));
         CHECK(current_required_shape(reg, e) == Shape::Square);
         CHECK(lane == int8_t{1});
-        REQUIRE(children.count == 3);
-        for (int i = 0; i < children.count; ++i) {
-            REQUIRE(reg.valid(children.children[i]));
-            CHECK(reg.all_of<MeshChild>(children.children[i]));
+
+        int child_count = 0;
+        for (auto [child, mc] : reg.view<MeshChild>().each()) {
+            if (mc.parent != e) continue;
+            ++child_count;
+            REQUIRE(reg.valid(child));
+            CHECK(reg.all_of<MeshChild>(child));
         }
+        REQUIRE(child_count == 3);
     }
     CHECK(song.next_split_path_square_idx == 1);
 }

@@ -38,20 +38,20 @@ struct PendingEntity {
 };
 }
 
-static void append_child(entt::registry& reg, entt::entity parent, entt::entity child) {
-    auto& children = reg.get_or_emplace<ObstacleChildren>(parent);
-    if (children.count >= ObstacleChildren::MAX) {
-        throw std::logic_error("ObstacleChildren capacity exceeded");
+static int count_mesh_children_of(entt::registry& reg, entt::entity parent) {
+    int count = 0;
+    for (auto [child, mc] : reg.view<MeshChild>().each()) {
+        (void)child;
+        if (mc.parent == parent) ++count;
     }
-    children.children[children.count++] = child;
+    return count;
 }
 
 // ObstacleChildren::MAX is the hard cap for mesh children owned by one
 // logical obstacle. Factory helpers reserve a slot before reg.create() so an
 // overflow cannot leave an unregistered MeshChild entity behind.
 static void require_child_capacity(entt::registry& reg, entt::entity parent) {
-    auto& children = reg.get_or_emplace<ObstacleChildren>(parent);
-    if (children.count >= ObstacleChildren::MAX) {
+    if (count_mesh_children_of(reg, parent) >= ObstacleChildren::MAX) {
         throw std::logic_error("ObstacleChildren capacity exceeded");
     }
 }
@@ -64,7 +64,6 @@ static entt::entity add_slab_child(entt::registry& reg, entt::entity parent,
     reg.emplace<MeshChild>(e, MeshChild{parent, x, 0.0f, w, d, h, tint});
     reg.emplace<MeshKindSlab>(e);
     reg.emplace<TagWorldPass>(e);
-    append_child(reg, parent, e);
     pending.release();
     return e;
 }
@@ -78,7 +77,6 @@ static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
     reg.emplace<MeshChild>(e, MeshChild{parent, cx, z_offset, size, 0.0f, 0.0f, tint});
     reg.emplace<MeshKindShape>(e, MeshKindShape{mesh_index});
     reg.emplace<TagWorldPass>(e);
-    append_child(reg, parent, e);
     pending.release();
     return e;
 }
@@ -139,14 +137,18 @@ void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
 
 
 void destroy_obstacle_mesh_children(entt::registry& reg, entt::entity parent) {
-    auto* oc = reg.try_get<ObstacleChildren>(parent);
-    if (!oc) return;
-    for (int i = 0; i < oc->count; ++i) {
-        if (reg.valid(oc->children[i]))
-            reg.destroy(oc->children[i]);
-        oc->children[i] = entt::null;
+    // Collect first then destroy: removing entities mid-iteration would
+    // invalidate the MeshChild view's packed-storage iterator.
+    entt::entity to_destroy[ObstacleChildren::MAX];
+    int destroy_count = 0;
+    for (auto [child, mc] : reg.view<MeshChild>().each()) {
+        if (mc.parent != parent) continue;
+        if (destroy_count >= ObstacleChildren::MAX) break;
+        to_destroy[destroy_count++] = child;
     }
-    oc->count = 0;
+    for (int i = 0; i < destroy_count; ++i) {
+        if (reg.valid(to_destroy[i])) reg.destroy(to_destroy[i]);
+    }
 }
 
 void destroy_obstacle_with_children(entt::registry& reg, entt::entity parent) {

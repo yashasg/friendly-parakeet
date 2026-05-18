@@ -41,10 +41,8 @@ entt::entity make_mesh_factory_obstacle(entt::registry& reg) {
 }
 
 void check_no_mesh_children(entt::registry& reg, entt::entity parent) {
+    (void)parent;
     CHECK(count_mesh_children(reg) == 0);
-    if (auto* children = reg.try_get<ObstacleChildren>(parent)) {
-        CHECK(children->count == 0);
-    }
 }
 }
 
@@ -84,13 +82,14 @@ TEST_CASE("entity: obstacle roots and mesh children declare world render pass", 
     auto e = spawn_shape_gate_obstacle(reg, {360.0f, -120.0f, Shape::Circle});
 
     CHECK(reg.all_of<TagWorldPass>(e));
-    REQUIRE(reg.all_of<ObstacleChildren>(e));
-    const auto& children = reg.get<ObstacleChildren>(e);
-    REQUIRE(children.count > 0);
-    for (int i = 0; i < children.count; ++i) {
-        CHECK(reg.all_of<MeshChild>(children.children[i]));
-        CHECK(reg.all_of<TagWorldPass>(children.children[i]));
+    int child_count = 0;
+    for (auto [child, mc] : reg.view<MeshChild>().each()) {
+        if (mc.parent != e) continue;
+        ++child_count;
+        CHECK(reg.all_of<MeshChild>(child));
+        CHECK(reg.all_of<TagWorldPass>(child));
     }
+    REQUIRE(child_count > 0);
 }
 
 TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[archetype][render][cleanup]") {
@@ -103,7 +102,6 @@ TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[a
     reg.emplace<Color>(parent, Color{80, 200, 255, 255});
     set_required_shape_tag(reg, parent, Shape::Circle);
 
-    auto& children = reg.emplace<ObstacleChildren>(parent);
     for (int i = 0; i < ObstacleChildren::MAX; ++i) {
         auto child = reg.create();
         reg.emplace<MeshChild>(child, MeshChild{
@@ -111,7 +109,6 @@ TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[a
             Color{255, 255, 255, 255}
         });
         reg.emplace<MeshKindSlab>(child);
-        children.children[children.count++] = child;
     }
     reg.emplace<ObstacleTag>(parent);
     reg.emplace<ShapeGateTag>(parent);
@@ -119,7 +116,6 @@ TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[a
     CHECK(count_mesh_children(reg) == ObstacleChildren::MAX);
     CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
     CHECK(count_mesh_children(reg) == ObstacleChildren::MAX);
-    CHECK(reg.get<ObstacleChildren>(parent).count == ObstacleChildren::MAX);
 
     destroy_obstacle_with_children(reg, parent);
 
