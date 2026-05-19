@@ -47,6 +47,11 @@ TEST_CASE("join_app_dir: absolute Windows drive-letter rel passes through unchan
     CHECK(util::join_app_dir("C:\\path\\to\\app\\", "c:/temp/beatmap.json") == "c:/temp/beatmap.json");
 }
 
+TEST_CASE("join_app_dir: Windows drive-relative rel is joined under app_dir", "[util][app_dir_path][issue1684]") {
+    CHECK(util::join_app_dir("C:\\path\\to\\app\\", "D:temp\\beatmap.json") == "C:\\path\\to\\app\\D:temp\\beatmap.json");
+    CHECK(util::join_app_dir("C:\\path\\to\\app", "c:temp/beatmap.json") == "C:\\path\\to\\app/c:temp/beatmap.json");
+}
+
 TEST_CASE("join_app_dir: absolute Windows UNC rel passes through unchanged", "[util][app_dir_path][issue1361]") {
     CHECK(util::join_app_dir("C:\\path\\to\\app\\", "\\\\server\\share\\file.json") == "\\\\server\\share\\file.json");
 }
@@ -58,6 +63,8 @@ TEST_CASE("is_absolute_path: recognizes POSIX, Windows UNC, and drive-letter pat
     CHECK(util::is_absolute_path("c:/foo"));
     CHECK_FALSE(util::is_absolute_path(""));
     CHECK_FALSE(util::is_absolute_path("content/x.ttf"));
+    CHECK_FALSE(util::is_absolute_path("C:foo"));
+    CHECK_FALSE(util::is_absolute_path("C:"));
     CHECK_FALSE(util::is_absolute_path("9:not-a-drive"));
     CHECK_FALSE(util::is_absolute_path("AB:not-a-drive")); // two letters then colon is not a drive
 }

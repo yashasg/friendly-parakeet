@@ -8,11 +8,11 @@ namespace util {
 // True if `p` is an absolute path. Recognizes:
 //   - POSIX-rooted: leading '/'
 //   - Windows UNC / drive-rooted: leading '\'
-//   - Windows drive-letter: ASCII letter followed by ':' (e.g. "C:\foo", "C:/foo")
+//   - Windows drive-rooted: ASCII drive + ':' + slash (e.g. "C:\foo", "C:/foo")
 inline bool is_absolute_path(std::string_view p) noexcept {
     if (p.empty()) return false;
     if (p.front() == '/' || p.front() == '\\') return true;
-    if (p.size() >= 2 && p[1] == ':') {
+    if (p.size() >= 3 && p[1] == ':' && (p[2] == '/' || p[2] == '\\')) {
         const char c = p.front();
         return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
     }
