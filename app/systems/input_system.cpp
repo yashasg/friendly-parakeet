@@ -88,31 +88,113 @@ GoEnqueueFn raylib_gesture_swipe_direction() {
     return classify_swipe(drag.x, drag.y, GetGestureHoldDuration());
 }
 
-// Drains a single `ActiveTouchSlot` row's lift-up state onto `InputState`
-// (touch_up flags + end_* / button_end_* coordinates) and feeds any
-// distance/duration-classified swipe through `latest_swipe`. Callers
-// own the entity's destruction — this helper only does the side effects
-// on InputState, mirroring #1612 / Fabian Principle 3 where the row's
-// presence IS its active status (no `slot = TouchSlot{}` reset).
-void release_touch_slot(const ActiveTouchSlot& slot,
-                        InputState& input,
-                        GoEnqueueFn& latest_swipe,
-                        bool& had_swipe_zone_release) {
+bool touch_id_is_current(int touch_id, int touch_point_count) {
+    for (int touch_index = 0; touch_index < touch_point_count; ++touch_index) {
+        if (GetTouchPointId(touch_index) == touch_id) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void collect_touch_destroy(entt::entity entity,
+                           entt::entity* to_destroy,
+                           std::size_t& destroy_count) {
+    if (destroy_count < InputState::MaxTrackedTouches) {
+        to_destroy[destroy_count++] = entity;
+    }
+}
+
+// Drains common lift-up state from a single `ActiveTouchSlot` row. Zone-specific
+// release paths below select behavior by tag-table membership.
+void release_touch_slot_common(const ActiveTouchSlot& slot, InputState& input) {
     input.touch_up = true;
     input.end_x = slot.curr_x;
     input.end_y = slot.curr_y;
-    if (slot.started_in_button_zone) {
-        input.button_touch_up = true;
-        input.button_end_x = slot.curr_x;
-        input.button_end_y = slot.curr_y;
-    } else {
-        had_swipe_zone_release = true;
-        if (auto fn = classify_swipe(slot.curr_x - slot.start_x,
-                                     slot.curr_y - slot.start_y,
-                                     slot.duration)) {
-            latest_swipe = fn;
+}
+
+void release_button_touch_slot(const ActiveTouchSlot& slot, InputState& input) {
+    release_touch_slot_common(slot, input);
+    input.button_touch_up = true;
+    input.button_end_x = slot.curr_x;
+    input.button_end_y = slot.curr_y;
+}
+
+void release_swipe_touch_slot(const ActiveTouchSlot& slot,
+                              InputState& input,
+                              GoEnqueueFn& latest_swipe,
+                              bool& had_swipe_zone_release) {
+    release_touch_slot_common(slot, input);
+    had_swipe_zone_release = true;
+    if (auto fn = classify_swipe(slot.curr_x - slot.start_x,
+                                 slot.curr_y - slot.start_y,
+                                 slot.duration)) {
+        latest_swipe = fn;
+    }
+}
+
+void drain_released_button_touch_slots(entt::registry& reg,
+                                       int touch_point_count,
+                                       InputState& input,
+                                       entt::entity* to_destroy,
+                                       std::size_t& destroy_count) {
+    for (auto [entity, slot] : reg.view<ActiveTouchSlot, ActiveButtonZoneTouch>().each()) {
+        if (!touch_id_is_current(slot.id, touch_point_count)) {
+            release_button_touch_slot(slot, input);
+            collect_touch_destroy(entity, to_destroy, destroy_count);
         }
     }
+}
+
+void drain_released_swipe_touch_slots(entt::registry& reg,
+                                      int touch_point_count,
+                                      InputState& input,
+                                      GoEnqueueFn& latest_swipe,
+                                      bool& had_swipe_zone_release,
+                                      entt::entity* to_destroy,
+                                      std::size_t& destroy_count) {
+    for (auto [entity, slot] : reg.view<ActiveTouchSlot, ActiveSwipeZoneTouch>().each()) {
+        if (!touch_id_is_current(slot.id, touch_point_count)) {
+            release_swipe_touch_slot(slot, input, latest_swipe, had_swipe_zone_release);
+            collect_touch_destroy(entity, to_destroy, destroy_count);
+        }
+    }
+}
+
+void drain_all_button_touch_slots(entt::registry& reg,
+                                  InputState& input,
+                                  entt::entity* to_destroy,
+                                  std::size_t& destroy_count) {
+    for (auto [entity, slot] : reg.view<ActiveTouchSlot, ActiveButtonZoneTouch>().each()) {
+        release_button_touch_slot(slot, input);
+        collect_touch_destroy(entity, to_destroy, destroy_count);
+    }
+}
+
+void drain_all_swipe_touch_slots(entt::registry& reg,
+                                 InputState& input,
+                                 GoEnqueueFn& latest_swipe,
+                                 bool& had_swipe_zone_release,
+                                 entt::entity* to_destroy,
+                                 std::size_t& destroy_count) {
+    for (auto [entity, slot] : reg.view<ActiveTouchSlot, ActiveSwipeZoneTouch>().each()) {
+        release_swipe_touch_slot(slot, input, latest_swipe, had_swipe_zone_release);
+        collect_touch_destroy(entity, to_destroy, destroy_count);
+    }
+}
+
+bool button_zone_touch_taken(entt::registry& reg) {
+    const auto view = reg.view<ActiveTouchSlot, ActiveButtonZoneTouch>();
+    return view.begin() != view.end();
+}
+
+bool swipe_zone_touch_taken(entt::registry& reg) {
+    const auto view = reg.view<ActiveTouchSlot, ActiveSwipeZoneTouch>();
+    return view.begin() != view.end();
+}
+
+bool zone_touch_taken(entt::registry& reg, bool button_zone) {
+    return button_zone ? button_zone_touch_taken(reg) : swipe_zone_touch_taken(reg);
 }
 
 // ── Input-source ctx-tag mutex helper (issues #1202 / #1204) ──────────────
@@ -270,21 +352,11 @@ void input_system(entt::registry& reg, float raw_dt) {
         {
             entt::entity to_destroy[InputState::MaxTrackedTouches];
             std::size_t destroy_count = 0;
-            for (auto [entity, slot] : reg.view<ActiveTouchSlot>().each()) {
-                bool current = false;
-                for (int touch_index = 0; touch_index < touch_point_count; ++touch_index) {
-                    if (GetTouchPointId(touch_index) == slot.id) {
-                        current = true;
-                        break;
-                    }
-                }
-                if (!current) {
-                    release_touch_slot(slot, input, latest_swipe, had_swipe_zone_release);
-                    if (destroy_count < InputState::MaxTrackedTouches) {
-                        to_destroy[destroy_count++] = entity;
-                    }
-                }
-            }
+            drain_released_button_touch_slots(reg, touch_point_count, input,
+                                              to_destroy, destroy_count);
+            drain_released_swipe_touch_slots(reg, touch_point_count, input,
+                                             latest_swipe, had_swipe_zone_release,
+                                             to_destroy, destroy_count);
             for (std::size_t i = 0; i < destroy_count; ++i) {
                 if (reg.valid(to_destroy[i])) reg.destroy(to_destroy[i]);
             }
@@ -306,15 +378,7 @@ void input_system(entt::registry& reg, float raw_dt) {
 
             if (slot_entity == entt::null) {
                 const bool button_zone = tp.y >= zone_y;
-                bool zone_taken = false;
-                for (auto [entity, slot] : reg.view<ActiveTouchSlot>().each()) {
-                    (void)entity;
-                    if (slot.started_in_button_zone == button_zone) {
-                        zone_taken = true;
-                        break;
-                    }
-                }
-                if (zone_taken) {
+                if (zone_touch_taken(reg, button_zone)) {
                     continue;
                 }
                 if (reg.view<ActiveTouchSlot>().size() >=
@@ -324,7 +388,11 @@ void input_system(entt::registry& reg, float raw_dt) {
                 slot_entity = reg.create();
                 auto& slot = reg.emplace<ActiveTouchSlot>(slot_entity);
                 slot.id = touch_id;
-                slot.started_in_button_zone = button_zone;
+                if (button_zone) {
+                    reg.emplace<ActiveButtonZoneTouch>(slot_entity);
+                } else {
+                    reg.emplace<ActiveSwipeZoneTouch>(slot_entity);
+                }
                 slot.start_x = slot.curr_x = tp.x;
                 slot.start_y = slot.curr_y = tp.y;
                 slot.duration = 0.0f;
@@ -382,12 +450,9 @@ void input_system(entt::registry& reg, float raw_dt) {
         {
             entt::entity to_destroy[InputState::MaxTrackedTouches];
             std::size_t destroy_count = 0;
-            for (auto [entity, slot] : reg.view<ActiveTouchSlot>().each()) {
-                release_touch_slot(slot, input, latest_swipe, had_swipe_zone_release);
-                if (destroy_count < InputState::MaxTrackedTouches) {
-                    to_destroy[destroy_count++] = entity;
-                }
-            }
+            drain_all_button_touch_slots(reg, input, to_destroy, destroy_count);
+            drain_all_swipe_touch_slots(reg, input, latest_swipe, had_swipe_zone_release,
+                                        to_destroy, destroy_count);
             for (std::size_t i = 0; i < destroy_count; ++i) {
                 if (reg.valid(to_destroy[i])) reg.destroy(to_destroy[i]);
             }

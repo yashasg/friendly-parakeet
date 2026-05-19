@@ -28,10 +28,10 @@
 // allocation guard at the create site in input_system. The `id` field
 // is the raylib touch id used to match this row against the live
 // `GetTouchPointId(i)` table each frame — it is a real attribute of an
-// active touch, not a sentinel.
+// active touch, not a sentinel. Zone membership lives in exactly one of
+// `ActiveButtonZoneTouch` / `ActiveSwipeZoneTouch`.
 struct ActiveTouchSlot {
     int   id;
-    bool  started_in_button_zone;
     float start_x, start_y;
     float curr_x,  curr_y;
     float duration;
