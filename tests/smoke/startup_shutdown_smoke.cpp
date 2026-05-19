@@ -44,8 +44,9 @@ int main(int argc, char** argv) {
 
     SetTraceLogLevel(LOG_WARNING);
     const char* smoke_mode = std::getenv("SHAPESHIFTER_STARTUP_SHUTDOWN_SMOKE");
-    if (smoke_mode && smoke_mode[0] != '\0' &&
-        !(smoke_mode[0] == '0' && smoke_mode[1] == '\0')) {
+    const bool smoke_mode_enabled = smoke_mode && smoke_mode[0] != '\0' &&
+                                    !(smoke_mode[0] == '0' && smoke_mode[1] == '\0');
+    if (smoke_mode_enabled) {
 #if defined(__APPLE__) || defined(_WIN32)
         std::fprintf(stderr, "SKIPPED: hosted runner has no reliable OpenGL window context\n");
         return 77;
@@ -59,6 +60,12 @@ int main(int argc, char** argv) {
     for (int cycle = 0; cycle < cycles; ++cycle) {
         game_loop_init(reg, false, SKILL_PRO, "medium");
         if (!IsWindowReady()) {
+#if defined(__linux__)
+            if (smoke_mode_enabled) {
+                std::fprintf(stderr, "FAILED: hidden OpenGL window context is unavailable\n");
+                return 1;
+            }
+#endif
             std::fprintf(stderr, "SKIPPED: OpenGL window context is unavailable\n");
             return 77;
         }
