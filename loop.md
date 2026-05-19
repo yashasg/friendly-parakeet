@@ -27,7 +27,7 @@ description: "My squad work loop"
 
 3) **Fabian drift check** (file `ecs_refactor` issues with file:line + principle #; do NOT fix this cycle)
 - Canon: `.squad/decisions.md` § "DoD source-text grounding (Fabian)" Principles 0–4; cross-refs in #1203 / #1204.
-- Checks: folder layout (only `components/ entities/ systems/ tags/ util/` under `app/`), existential processing (no `switch` on discriminator, no `virtual`/`override`/`dynamic_cast` — P0), components-as-data vs entities-as-factories, no inheritance (`: public ` outside raylib/EnTT wrappers), tags single-header (`app/tags/tags.h` only — P2), enum allowlist (`make check-enum-allowlist` from #1204 — P1), cyclomatic ratchet (`switch`/`if` branches in `app/` trend down only vs `.squad/decisions.md` § "Drift baselines").
+- Checks: folder layout (only `components/ entities/ systems/ tags/ util/` under `app/`), existential processing (no `switch` on discriminator, no `virtual`/`override`/`dynamic_cast` — P0), components-as-data vs entities-as-factories, no inheritance (`: public ` outside raylib/EnTT wrappers), tags single-header (`app/tags/tags.h` only — P2), enum allowlist (`ctest --test-dir build -R check_enum_allowlist` or `python3 tools/check_enum_allowlist.py` from #1204 — P1), cyclomatic ratchet (`switch`/`if` branches in `app/` trend down only; mechanism captured in #1204, no checked-in baseline numbers — see `.squad/decisions.md:3355`).
 - Cluster file-level hits into one issue. Comment on existing issue instead of duplicating.
 
 4) **Parallel pass (only if no actionable issues)**
