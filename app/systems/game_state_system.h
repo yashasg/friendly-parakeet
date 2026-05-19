@@ -6,8 +6,12 @@
 
 // Tracks the last lane reported by the wasm smoke marker so the system can
 // emit transitions without re-reporting on every frame. Only consumed under
-// SHAPESHIFTER_WASM_SMOKE_MARKERS, but the type is initialized
-// unconditionally so registry-context contracts stay consistent.
-struct WasmSmokeLaneMarkerState {
-    int last_lane = -1;
+// SHAPESHIFTER_WASM_SMOKE_MARKERS.
+//
+// Per Fabian Principle 3 (.squad/decisions.md § 9 — NULL columns), the
+// "no lane reported yet" state is encoded as row ABSENCE in `reg.ctx()`, not
+// a sentinel `last_lane = -1`. Presence of the row IS the precondition for
+// reading `lane`; the row is erased on phase exit / missing player to reset.
+struct WasmSmokeLastLane {
+    int lane;
 };

@@ -16,19 +16,6 @@
 #include <string>
 #endif
 
-#if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
-namespace {
-
-WasmSmokeLaneMarkerState& wasm_smoke_lane_marker_state(entt::registry& reg) {
-    if (auto* state = reg.ctx().find<WasmSmokeLaneMarkerState>()) {
-        return *state;
-    }
-    return reg.ctx().emplace<WasmSmokeLaneMarkerState>();
-}
-
-}  // namespace
-#endif
-
 void game_state_system(entt::registry& reg, float dt) {
     auto& gs = reg.ctx().get<GameState>();
 
@@ -131,7 +118,7 @@ void game_state_system(entt::registry& reg, float dt) {
         clear_next_phase_tags(reg);
 #if defined(__EMSCRIPTEN__) && defined(SHAPESHIFTER_WASM_SMOKE_MARKERS)
         if (!reg.ctx().contains<GamePhasePlayingTag>()) {
-            wasm_smoke_lane_marker_state(reg).last_lane = -1;
+            reg.ctx().erase<WasmSmokeLastLane>();
         }
 #endif
         return;
@@ -155,19 +142,20 @@ void game_state_system(entt::registry& reg, float dt) {
     // Update browser tab title with current lane when in Playing phase, so
     // WASM smoke tests can observe player state via document.title polling.
     // Title is rewritten only on lane change; absence of player or non-Playing
-    // phase resets the cached lane to -1 so the next entry rewrites the title.
+    // phase erases the `WasmSmokeLastLane` row so the next entry rewrites the
+    // title (row absence == "no lane reported yet", per Fabian Principle 3).
     {
-        auto& marker = wasm_smoke_lane_marker_state(reg);
         auto player_view = reg.view<PlayerTag, Lane>();
         const bool playing = reg.ctx().contains<GamePhasePlayingTag>();
         const bool has_player = player_view.begin() != player_view.end();
         if (!playing || !has_player) {
-            marker.last_lane = -1;
+            reg.ctx().erase<WasmSmokeLastLane>();
         } else {
             const auto player_entity = *player_view.begin();
             const int lane = static_cast<int>(player_view.get<Lane>(player_entity).current);
-            if (lane != marker.last_lane) {
-                marker.last_lane = lane;
+            const auto* prev = reg.ctx().find<WasmSmokeLastLane>();
+            if (prev == nullptr || prev->lane != lane) {
+                reg.ctx().insert_or_assign(WasmSmokeLastLane{lane});
                 const std::string title = std::string("SHAPESHIFTER [Playing][Lane:")
                     + std::to_string(lane) + "]";
                 EM_ASM(
