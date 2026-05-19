@@ -10,7 +10,9 @@
 #include <rlgl.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <span>
 
 namespace {
 
@@ -24,6 +26,39 @@ Color floor_lane_color(int lane, uint8_t alpha) {
     c.a = alpha;
     return c;
 }
+
+// Per-lane outline edges expressed as unit offsets from the shape centre
+// (multiplied by `floor_params.half` at draw time). Lane 0 (ring) has no
+// outline rows here — the ring is drawn in its own block below.
+struct OutlineEdge {
+    float from_dx;
+    float from_dz;
+    float to_dx;
+    float to_dz;
+};
+
+constexpr OutlineEdge kSquareOutlineEdges[] = {
+    {-1.0f, -1.0f, +1.0f, -1.0f},
+    {+1.0f, -1.0f, +1.0f, +1.0f},
+    {+1.0f, +1.0f, -1.0f, +1.0f},
+    {-1.0f, +1.0f, -1.0f, -1.0f},
+};
+
+constexpr OutlineEdge kTriangleOutlineEdges[] = {
+    { 0.0f, -1.0f, +1.0f, +1.0f},
+    {+1.0f, +1.0f, -1.0f, +1.0f},
+    {-1.0f, +1.0f,  0.0f, -1.0f},
+};
+
+constexpr std::array<std::span<const OutlineEdge>, constants::LANE_COUNT>
+    kLaneOutlineEdges = {
+        std::span<const OutlineEdge>{},
+        std::span<const OutlineEdge>{kSquareOutlineEdges},
+        std::span<const OutlineEdge>{kTriangleOutlineEdges},
+};
+
+static_assert(kLaneOutlineEdges.size() == constants::LANE_COUNT,
+              "Lane outline table must match lane count");
 
 }  // namespace
 
@@ -61,6 +96,7 @@ void floor_render_system(const entt::registry& reg) {
         for (int lane = 0; lane < constants::LANE_COUNT; ++lane) {
             const float cx = constants::LANE_X[lane];
             const Color c = floor_lane_color(lane, floor_params.alpha);
+            const auto edges = kLaneOutlineEdges[static_cast<size_t>(lane)];
 
             for (int j = 0; j < constants::FLOOR_SHAPE_COUNT; ++j) {
                 const float cz = constants::FLOOR_Y_START
@@ -72,27 +108,11 @@ void floor_render_system(const entt::registry& reg) {
                                {cx, y, next_cz - floor_params.half}, c);
                 }
 
-                if (lane == 1) {
-                    const float l = cx - floor_params.half;
-                    const float r = cx + floor_params.half;
-                    const float t = cz - floor_params.half;
-                    const float b = cz + floor_params.half;
-                    DrawLine3D({l, y, t}, {r, y, t}, c);
-                    DrawLine3D({r, y, t}, {r, y, b}, c);
-                    DrawLine3D({r, y, b}, {l, y, b}, c);
-                    DrawLine3D({l, y, b}, {l, y, t}, c);
-                }
-
-                if (lane == 2) {
-                    const float apex_x = cx;
-                    const float apex_z = cz - floor_params.half;
-                    const float bl_x = cx - floor_params.half;
-                    const float bl_z = cz + floor_params.half;
-                    const float br_x = cx + floor_params.half;
-                    const float br_z = cz + floor_params.half;
-                    DrawLine3D({apex_x, y, apex_z}, {br_x, y, br_z}, c);
-                    DrawLine3D({br_x, y, br_z}, {bl_x, y, bl_z}, c);
-                    DrawLine3D({bl_x, y, bl_z}, {apex_x, y, apex_z}, c);
+                for (const auto& edge : edges) {
+                    DrawLine3D({cx + edge.from_dx * floor_params.half, y,
+                                cz + edge.from_dz * floor_params.half},
+                               {cx + edge.to_dx   * floor_params.half, y,
+                                cz + edge.to_dz   * floor_params.half}, c);
                 }
             }
         }
