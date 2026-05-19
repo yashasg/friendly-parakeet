@@ -4,28 +4,9 @@
 #include "tags/tags.h"
 #include <filesystem>
 #include <fstream>
-#include <sstream>
-#include <string>
 #include "temp_paths.h"
 
 using Catch::Matchers::WithinAbs;
-
-namespace {
-
-std::filesystem::path persistence_policy_source_path() {
-    return std::filesystem::path{SHAPESHIFTER_SOURCE_DIR} / "app/systems/persistence_policy_system.cpp";
-}
-
-std::string load_persistence_policy_source() {
-    std::ifstream file(persistence_policy_source_path());
-    if (!file.is_open()) return {};
-
-    std::ostringstream buffer;
-    buffer << file.rdbuf();
-    return buffer.str();
-}
-
-}  // namespace
 
 TEST_CASE("Settings: audio_offset_seconds() converts milliseconds correctly", "[settings]") {
     SettingsState state;
@@ -354,34 +335,32 @@ TEST_CASE("Persistence sync seams skip paths outside the web persistence root", 
 
 TEST_CASE("Web persistence initialization failures remain retryable",
           "[settings][persistence][issue-970]") {
-    const std::string source = load_persistence_policy_source();
-    INFO("Expected persistence_policy.cpp at " << persistence_policy_source_path().string());
-    REQUIRE_FALSE(source.empty());
+    struct RetryContext {
+        int calls{0};
+        int failures_before_success{1};
+    } context;
 
-    const auto function_begin = source.find("Result ensure_web_persistence_ready()");
-    REQUIRE(function_begin != std::string::npos);
-    const auto function_end = source.find("bool path_uses_web_persistence", function_begin);
-    REQUIRE(function_end != std::string::npos);
-    const std::string function_source =
-        source.substr(function_begin, function_end - function_begin);
+    auto bootstrap = [](void* raw_context) -> persistence::Result {
+        auto& ctx = *static_cast<RetryContext*>(raw_context);
+        ++ctx.calls;
+        if (ctx.calls <= ctx.failures_before_success) {
+            return {persistence::Status::FileReadFailed,
+                    std::make_error_code(std::errc::io_error)};
+        }
+        return {};
+    };
 
-    CHECK(function_source.find("static bool initialized = false;") != std::string::npos);
-    CHECK(function_source.find("static Result") == std::string::npos);
+    persistence::WebPersistenceInitState state;
+    CHECK_FALSE(persistence::ensure_web_persistence_ready(state, bootstrap, &context).ok());
+    CHECK_FALSE(state.initialized);
+    CHECK(context.calls == 1);
 
-    const auto mount_failure = function_source.find("if (mount_status != 0)");
-    const auto sync_result = function_source.find("const auto init_result");
-    const auto success_guard = function_source.find("if (init_result.ok())");
-    REQUIRE(mount_failure != std::string::npos);
-    REQUIRE(sync_result != std::string::npos);
-    REQUIRE(success_guard != std::string::npos);
-    CHECK(mount_failure < sync_result);
+    CHECK(persistence::ensure_web_persistence_ready(state, bootstrap, &context).ok());
+    CHECK(state.initialized);
+    CHECK(context.calls == 2);
 
-    const auto initialized_assignment =
-        function_source.find("initialized = true", success_guard);
-    REQUIRE(initialized_assignment != std::string::npos);
-    CHECK(success_guard < initialized_assignment);
-    CHECK(function_source.find("initialized = true", initialized_assignment + 1)
-        == std::string::npos);
+    CHECK(persistence::ensure_web_persistence_ready(state, bootstrap, &context).ok());
+    CHECK(context.calls == 2);
 }
 
 TEST_CASE("Settings persistence helper: file path resolution reports failure without CWD fallback", "[settings]") {
