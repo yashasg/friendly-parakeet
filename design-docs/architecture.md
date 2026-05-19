@@ -335,8 +335,7 @@ struct Obstacle {
 // (issue #1554), child-ownership is a row table: each child entity carries
 // `MeshChild { parent }`, and "the children of obstacle X" is
 // `view<MeshChild>` filtered by `parent == X`. `MAX` survives only as the
-// hard cap enforced by `require_child_capacity` and as the worst-case
-// fan-out used to size `MeshChildCleanupScratch`.
+// hard cap enforced by `require_child_capacity`.
 struct ObstacleChildren {
     static constexpr int MAX = 8;
 };

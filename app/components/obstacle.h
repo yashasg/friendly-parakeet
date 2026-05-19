@@ -43,9 +43,7 @@ struct Obstacle {
 // row, and "the children of obstacle X" is now `view<MeshChild>` filtered by
 // `parent == X`. The `MAX` cap survives as a hard limit enforced by the
 // obstacle mesh factory (`require_child_capacity` in
-// app/entities/obstacle_render_entity.cpp) and as a worst-case fan-out
-// estimate for `MeshChildCleanupScratch` (see
-// app/systems/runtime_system_scratch.cpp).
+// app/entities/obstacle_render_entity.cpp).
 struct ObstacleChildren {
     static constexpr int MAX = 8;
 };

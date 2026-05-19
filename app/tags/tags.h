@@ -109,6 +109,21 @@ struct MissTag {};
 // ── Particles ────────────────────────────────────────────────
 struct ParticleTag {};
 
+// Per-frame "this entity expired this frame, destroy it" markers (issue
+// #1628 / .squad/decisions.md § 9 Principle 3 — "No array columns").
+// `popup_display_system`, `particle_system`, `obstacle_despawn_system`,
+// and `camera_system` each previously kept a `std::vector<entt::entity>`
+// scratch buffer of entities to destroy at the end of the system tick.
+// Per Fabian Principle 3, the entities are already entities — the row
+// table membership IS the foreign key. The expired marker for each
+// system is a zero-column tag emplaced during the gather pass and
+// consumed by `reg.destroy(view.begin(), view.end())` at the end of
+// the tick.
+struct PopupExpiredTag         {};
+struct ParticleExpiredTag      {};
+struct PendingObstacleDespawnTag {};
+struct StaleMeshChildTag       {};
+
 // ── HUD / Energy bar ─────────────────────────────────────────
 struct EnergyBarTag {};
 

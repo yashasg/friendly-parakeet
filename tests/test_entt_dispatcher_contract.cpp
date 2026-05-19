@@ -11,9 +11,6 @@
 #include "components/game_state.h"
 #include "systems/input_events.h"
 #include "systems/scoring_system.h"
-#include "systems/obstacle_despawn_system.h"
-#include "systems/popup_display_system.h"
-#include "systems/particle_system.h"
 #include "test_helpers.h"
 
 struct GoCounter {
@@ -199,9 +196,6 @@ TEST_CASE("runtime scratch queues are explicit registry context state",
     // contents now live as per-frame row entities tagged
     // `PendingEnergyEffectTag` (no ctx residency to assert).
     CHECK(reg.ctx().contains<ScorePopupRequestQueue>());
-    CHECK(reg.ctx().contains<ObstacleDespawnScratch>());
-    CHECK(reg.ctx().contains<PopupDisplayScratch>());
-    CHECK(reg.ctx().contains<ParticleSystemScratch>());
 }
 
 TEST_CASE("R7: Go*Event delivered in GameOver phase — player_input handler no-ops due to phase guard",

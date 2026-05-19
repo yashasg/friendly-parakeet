@@ -1,9 +1,6 @@
 #include "all_systems.h"
 #include "camera_system.h"
 #include "game_state_system.h"
-#include "obstacle_despawn_system.h"
-#include "particle_system.h"
-#include "popup_display_system.h"
 #include "scoring_system.h"
 #include "gameplay_intents.h"
 #include "../components/rendering.h"
@@ -20,10 +17,6 @@ constexpr std::size_t kMinimumGameplayScratchCapacity = 8;
 void runtime_system_scratch_init(entt::registry& reg) {
     reg.ctx().insert_or_assign(ScoringSystemScratch{});
     reg.ctx().insert_or_assign(ScorePopupRequestQueue{});
-    reg.ctx().insert_or_assign(ObstacleDespawnScratch{});
-    reg.ctx().insert_or_assign(PopupDisplayScratch{});
-    reg.ctx().insert_or_assign(ParticleSystemScratch{});
-    reg.ctx().insert_or_assign(MeshChildCleanupScratch{});
     // WasmSmokeLastLane uses row presence as the "lane reported" predicate
     // (Fabian Principle 3 — no sentinel NULL columns). Erase any stale row
     // carried over from a prior session so the next title update rewrites
@@ -52,9 +45,4 @@ void runtime_system_scratch_reserve(entt::registry& reg, std::size_t beat_capaci
     popup_queue.ok.reserve(capacity);
     popup_queue.bad.reserve(capacity);
     popup_queue.untimed.reserve(capacity);
-    reg.ctx().get<ObstacleDespawnScratch>().to_destroy.reserve(capacity);
-    reg.ctx().get<PopupDisplayScratch>().expired.reserve(capacity);
-    reg.ctx().get<ParticleSystemScratch>().expired.reserve(capacity);
-    reg.ctx().get<MeshChildCleanupScratch>().stale_children.reserve(
-        capacity * static_cast<std::size_t>(ObstacleChildren::MAX));
 }

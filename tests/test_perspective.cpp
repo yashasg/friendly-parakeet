@@ -11,6 +11,7 @@
 #include "components/camera_resources.h"
 #include "systems/runtime_systems.h"
 #include "systems/all_systems.h"
+#include "tags/tags.h"
 #include <raylib.h>
 #include <raymath.h>
 #include <cmath>
@@ -174,12 +175,9 @@ TEST_CASE("game_camera_system rejects invalid MeshChild shape index", "[camera3d
     CHECK_FALSE(reg.all_of<ModelTransform>(child));
 }
 
-// #1089 — MeshChildCleanupScratch::capacity_exceeded_count must stay at zero
-// when a dense stale-parent cleanup pass fits inside the reserved
-// stale_children buffer. runtime_system_scratch_reserve sizes the buffer at
-// `beat_capacity * ObstacleChildren::MAX`, mirroring the worst-case slab
-// fan-out per beat.
-TEST_CASE("game_camera_system: dense stale-parent cleanup stays within reserved capacity",
+// #1089 / #1628 — StaleMeshChildTag row table drains to zero each frame; the
+// row table absorbs an arbitrary stale-parent burst (no fixed reserved buffer).
+TEST_CASE("game_camera_system: dense stale-parent cleanup drains stale tag rows",
           "[camera3d][mesh_child][issue1089]") {
     entt::registry reg;
     reg.ctx().emplace<ShapeMeshConfig>();
@@ -187,10 +185,6 @@ TEST_CASE("game_camera_system: dense stale-parent cleanup stays within reserved 
     runtime_system_scratch_init(reg);
     constexpr int beat_capacity = 4;
     runtime_system_scratch_reserve(reg, beat_capacity);
-
-    auto& scratch = reg.ctx().get<MeshChildCleanupScratch>();
-    const auto stale_capacity = scratch.stale_children.capacity();
-    REQUIRE(stale_capacity >= static_cast<std::size_t>(beat_capacity * ObstacleChildren::MAX));
 
     constexpr int dense_count = beat_capacity * ObstacleChildren::MAX;
     for (int i = 0; i < dense_count; ++i) {
@@ -209,6 +203,6 @@ TEST_CASE("game_camera_system: dense stale-parent cleanup stays within reserved 
 
     game_camera_system(reg, 0.0f);
 
-    CHECK(scratch.stale_children.capacity() == stale_capacity);
-    CHECK(scratch.capacity_exceeded_count == 0u);
+    CHECK(reg.view<StaleMeshChildTag>().size() == 0);
+    CHECK(reg.view<MeshChild>().size() == 0);
 }

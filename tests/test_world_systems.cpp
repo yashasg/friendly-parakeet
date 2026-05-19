@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
-#include "systems/obstacle_despawn_system.h"
 #include "test_helpers.h"
+#include "tags/tags.h"
 
 // ── motion_system ────────────────────────────────────────────
 //
@@ -458,16 +458,13 @@ TEST_CASE("cleanup: destroys multiple obstacles past DESTROY_Y in one pass", "[c
         CHECK_FALSE(reg.valid(obs[i]));
 }
 
-// #1089 — ObstacleDespawnScratch::capacity_exceeded_count must stay at zero
-// when a dense pass fits inside the reserved to_destroy buffer.
-TEST_CASE("cleanup: dense despawn burst stays within reserved capacity",
+// #1089 / #1628 — PendingObstacleDespawnTag row table drains to zero each
+// frame; row-table membership absorbs any burst (no fixed reserved buffer).
+TEST_CASE("cleanup: dense despawn burst drains pending despawn tag rows",
           "[cleanup][issue1089]") {
     auto reg = make_registry();
     constexpr int dense_count = 6;
     runtime_system_scratch_reserve(reg, dense_count);
-
-    auto& scratch = reg.ctx().get<ObstacleDespawnScratch>();
-    const auto destroy_capacity = scratch.to_destroy.capacity();
 
     for (int i = 0; i < dense_count; ++i) {
         auto obs = reg.create();
@@ -478,8 +475,8 @@ TEST_CASE("cleanup: dense despawn burst stays within reserved capacity",
 
     obstacle_despawn_system(reg, 0.016f);
 
-    CHECK(scratch.to_destroy.capacity() == destroy_capacity);
-    CHECK(scratch.capacity_exceeded_count == 0u);
+    CHECK(reg.view<PendingObstacleDespawnTag>().size() == 0);
+    CHECK(reg.view<ObstacleTag>().size() == 0);
 }
 
 // #242 / #280 — cleanup must not emplace MissTag or ScoredTag; that is miss_detection_system's job.
