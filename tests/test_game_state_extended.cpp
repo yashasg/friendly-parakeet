@@ -234,16 +234,23 @@ TEST_CASE("wasm smoke lane marker state is registry-owned and reset with runtime
     auto first = make_registry();
     auto second = make_registry();
 
-    auto& first_marker = first.ctx().get<WasmSmokeLaneMarkerState>();
-    auto& second_marker = second.ctx().get<WasmSmokeLaneMarkerState>();
-    first_marker.last_lane = 2;
+    // Row absence is the "no lane reported yet" state (Fabian Principle 3 —
+    // no sentinel NULL column). make_registry() must leave both fresh.
+    CHECK_FALSE(first.ctx().contains<WasmSmokeLastLane>());
+    CHECK_FALSE(second.ctx().contains<WasmSmokeLastLane>());
 
-    CHECK(second_marker.last_lane == -1);
+    first.ctx().insert_or_assign(WasmSmokeLastLane{2});
+
+    // Registries are independent: writing to `first` must not leak into `second`.
+    CHECK(first.ctx().contains<WasmSmokeLastLane>());
+    CHECK(first.ctx().get<WasmSmokeLastLane>().lane == 2);
+    CHECK_FALSE(second.ctx().contains<WasmSmokeLastLane>());
 
     runtime_system_scratch_init(first);
 
-    CHECK(first.ctx().get<WasmSmokeLaneMarkerState>().last_lane == -1);
-    CHECK(second.ctx().get<WasmSmokeLaneMarkerState>().last_lane == -1);
+    // Init erases any stale row so the next title update rewrites unconditionally.
+    CHECK_FALSE(first.ctx().contains<WasmSmokeLastLane>());
+    CHECK_FALSE(second.ctx().contains<WasmSmokeLastLane>());
 }
 
 TEST_CASE("game_state: transition clears in-flight pointer capture", "[gamestate][input]") {

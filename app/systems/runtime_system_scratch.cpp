@@ -25,7 +25,11 @@ void runtime_system_scratch_init(entt::registry& reg) {
     reg.ctx().insert_or_assign(PopupDisplayScratch{});
     reg.ctx().insert_or_assign(ParticleSystemScratch{});
     reg.ctx().insert_or_assign(MeshChildCleanupScratch{});
-    reg.ctx().insert_or_assign(WasmSmokeLaneMarkerState{});
+    // WasmSmokeLastLane uses row presence as the "lane reported" predicate
+    // (Fabian Principle 3 — no sentinel NULL columns). Erase any stale row
+    // carried over from a prior session so the next title update rewrites
+    // unconditionally.
+    reg.ctx().erase<WasmSmokeLastLane>();
 
     runtime_system_scratch_reserve(reg, 0);
 }
