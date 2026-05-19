@@ -17,9 +17,9 @@ struct Obstacle {
 // eradicated in issue #1202/#1204; the obstacle's required shape lives as
 // one of `RequiredShapeCircleTag` / `RequiredShapeSquareTag` /
 // `RequiredShapeTriangleTag` / `RequiredShapeHexagonTag` on the obstacle
-// entity. Use `set_required_shape_tag()` from `app/util/shape_tag.h` to
-// emplace it, and `current_required_shape()` / `has_required_shape_tag()`
-// to read it back.
+// entity. Use `set_required_shape_tag()` from the non-tag helper
+// `app/util/shape_tag.h` to emplace it, and `current_required_shape()` /
+// `has_required_shape_tag()` to read it back.
 
 // The former `ShapeGateLane { int8_t lane }` and `RequiredLane { int8_t lane }`
 // single-field wrappers were deleted per issue #1198 (companion to the

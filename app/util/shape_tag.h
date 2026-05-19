@@ -7,12 +7,16 @@
 #include <array>
 #include <entt/entt.hpp>
 
-// Per-shape tag table dispatch (issue #1202/#1204). Replaces the former
-// Shape-typed on-entity fields (`PlayerShape::current`,
+// Non-tag helper for per-shape tag table dispatch (issue #1202/#1204).
+// Replaces the former Shape-typed on-entity fields (`PlayerShape::current`,
 // `ShapeWindow::target_shape`, `RequiredShape::shape`) with per-shape tag
 // presence. Same lookup-table mechanic as `kShapeFlatDrawFns` in PR #1259
 // — function-pointer-per-row, indexed by `shape_index(shape)`, no `switch`
 // on a discriminator.
+//
+// `app/tags/tags.h` remains the only tag declaration header. This helper lives
+// in `app/util/` because it declares no tags and depends on the non-tag `Shape`
+// type from `app/components/player.h`.
 //
 // Each table has the same shape: four rows, one per former `Shape` value.
 // `set_*_shape_tag` writes the table (removes all four tags, emplaces the

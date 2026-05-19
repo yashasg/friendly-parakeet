@@ -3284,6 +3284,10 @@ Verbatim user input:
 - Tag types are empty marker structs (zero-size, used as `registry.view<...>()` filters or `excludes`).
 - All tag declarations co-locate in `app/tags/tags.h`. Adding a new tag = adding one line to that header.
 - No `app/tags/player_tag.h`, `app/tags/scored_tag.h`, etc. The folder houses one file.
+- Pure helpers that operate on tags but are not tag declarations stay in `app/util/`.
+  Example: `app/util/shape_tag.h` is a dispatch helper for Shape-indexed
+  `emplace/remove/has` table operations; it is exempt because it declares no
+  tags and depends on the non-tag `Shape` type from `app/components/player.h`.
 
 Single-file convention keeps tag inventory discoverable in one place and avoids file-explosion. Tags are conceptually a flat catalog, not a per-domain partition.
 

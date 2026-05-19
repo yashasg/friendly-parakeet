@@ -28,8 +28,9 @@ struct WindowGraded {};
 // discriminator, no `if (x == Shape::Bar)` branches.
 //
 // Maintenance invariant: exactly one `Shape*Tag` is present on any player
-// entity. Use `set_player_shape_tag()` in `app/util/shape_tag.h` to keep
-// the invariant; it removes all four tags before emplacing the matching one.
+// entity. Use the non-tag dispatch helper `set_player_shape_tag()` in
+// `app/util/shape_tag.h` to keep the invariant; it removes all four tags before
+// emplacing the matching one.
 struct ShapeCircleTag   {};
 struct ShapeSquareTag   {};
 struct ShapeTriangleTag {};
@@ -66,8 +67,8 @@ struct ObstacleTag {};
 // #1202/#1204). The whole `RequiredShape` struct was a single-column table;
 // per Fabian's relational-database mechanic the column collapses into the
 // tag set itself. Each ShapeGate / SplitPath obstacle carries exactly one
-// `RequiredShape*Tag`; obstacle factories emplace it via
-// `set_required_shape_tag()` in `app/util/shape_tag.h`.
+// `RequiredShape*Tag`; obstacle factories emplace it via the non-tag dispatch
+// helper `set_required_shape_tag()` in `app/util/shape_tag.h`.
 struct RequiredShapeCircleTag   {};
 struct RequiredShapeSquareTag   {};
 struct RequiredShapeTriangleTag {};
