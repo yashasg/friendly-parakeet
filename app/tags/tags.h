@@ -115,6 +115,22 @@ struct EnergyBarTag {};
 // ── Test player (deterministic AI) ───────────────────────────
 struct TestPlayerPlannedTag {};
 
+// ── Music playback (per-tag ctx tables) ──────────────────────
+// Per Fabian's existential processing (issue #1618 / .squad/decisions.md
+// § 9 Principle 3), the former `MusicContext::started` and `paused`
+// parallel-bool NULL-column gates over the `Music stream` payload are
+// eradicated. The four-state playback machine — *(absent / loaded-stopped
+// / loaded-playing / loaded-paused)* — is now expressed as:
+//   - presence of the `MusicContext` ctx singleton IS "stream loaded"
+//   - presence of `MusicPlayingTag` IS "PlayMusicStream() in flight"
+//   - presence of `MusicPausedTag` IS "PauseMusicStream() in flight"
+//     (only meaningful while `MusicPlayingTag` is also present)
+// `song_playback_system` reads tag presence; transitions are
+// `emplace<...>` / `erase<...>` on the ctx. Mirrors the precedent set
+// by the `GamePhase*Tag` family and PR #1617's `SFXBank` eradication.
+struct MusicPlayingTag {};
+struct MusicPausedTag  {};
+
 // ── Render-pass membership; one per entity ───────────────────
 struct TagWorldPass   {};  // drawn in BeginMode3D (3D world geometry)
 struct TagEffectsPass {};  // particles, post-process overlays

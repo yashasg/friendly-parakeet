@@ -12,11 +12,16 @@ void song_playback_system(entt::registry& reg, float dt) {
     auto* song  = ctx.find<SongState>();
     auto* map   = find_beat_map(reg);
     auto* music = ctx.find<MusicContext>();
-    const bool music_loaded = music && music->loaded;
+    // Per Fabian Principle 3 / issue #1618: presence of the `MusicContext`
+    // ctx singleton IS "stream loaded" (eradicated the parallel-bool
+    // `loaded` NULL-column gate). The `started`/`paused` bools are likewise
+    // eradicated — `MusicPlayingTag` / `MusicPausedTag` ctx tags carry the
+    // playback machine state.
+    const bool music_loaded = (music != nullptr);
 
     // Must pump the stream buffer every frame to prevent audio underruns,
     // even when the game is paused.
-    if (music_loaded && music->started) {
+    if (music_loaded && ctx.contains<MusicPlayingTag>()) {
         UpdateMusicStream(music->stream);
     }
 
@@ -26,8 +31,8 @@ void song_playback_system(entt::registry& reg, float dt) {
         if (music_loaded) {
             StopMusicStream(music->stream);
             PlayMusicStream(music->stream);
-            music->started = true;
-            music->paused = false;
+            if (!ctx.contains<MusicPlayingTag>()) ctx.emplace<MusicPlayingTag>();
+            ctx.erase<MusicPausedTag>();
         }
     }
 
@@ -43,25 +48,25 @@ void song_playback_system(entt::registry& reg, float dt) {
     const bool song_complete_phase = ctx.contains<GamePhaseSongCompleteTag>();
 
     if (music_loaded && playing_phase && song && song->playing) {
-        if (!music->started) {
+        if (!ctx.contains<MusicPlayingTag>()) {
             PlayMusicStream(music->stream);
-            music->started = true;
-            music->paused = false;
-        } else if (music->paused) {
+            ctx.emplace<MusicPlayingTag>();
+            ctx.erase<MusicPausedTag>();
+        } else if (ctx.contains<MusicPausedTag>()) {
             ResumeMusicStream(music->stream);
-            music->paused = false;
+            ctx.erase<MusicPausedTag>();
         }
-    } else if (music_loaded && paused_phase && music->started) {
-        if (!music->paused) {
+    } else if (music_loaded && paused_phase && ctx.contains<MusicPlayingTag>()) {
+        if (!ctx.contains<MusicPausedTag>()) {
             PauseMusicStream(music->stream);
-            music->paused = true;
+            ctx.emplace<MusicPausedTag>();
         }
     } else if (music_loaded &&
                (game_over_phase || song_complete_phase) &&
-               music->started) {
+               ctx.contains<MusicPlayingTag>()) {
         StopMusicStream(music->stream);
-        music->started = false;
-        music->paused = false;
+        ctx.erase<MusicPlayingTag>();
+        ctx.erase<MusicPausedTag>();
     }
 
     // ── Song time / beat advancement (Playing phase only) ─────
@@ -78,7 +83,7 @@ void song_playback_system(entt::registry& reg, float dt) {
 
     // Authoritative clock from audio stream; fall back to dt accumulation
     // when running in silent/test mode (no music loaded).
-    if (music_loaded && music->started) {
+    if (music_loaded && ctx.contains<MusicPlayingTag>()) {
         song->song_time = GetMusicTimePlayed(music->stream);
     } else {
         song->song_time += dt;
@@ -118,10 +123,10 @@ void song_playback_system(entt::registry& reg, float dt) {
     if (song->song_time >= song->duration_sec) {
         song->finished = true;
         song->playing  = false;
-        if (music_loaded && music->started) {
+        if (music_loaded && ctx.contains<MusicPlayingTag>()) {
             StopMusicStream(music->stream);
-            music->started = false;
-            music->paused = false;
+            ctx.erase<MusicPlayingTag>();
+            ctx.erase<MusicPausedTag>();
         }
     }
 }
