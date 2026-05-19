@@ -286,6 +286,21 @@ TEST_CASE("parse: unshipped obstacle kinds are rejected", "[parse][kind][issue87
     CHECK(map.onset_marker_beats.empty());
 }
 
+TEST_CASE("parse: legacy duration metadata is ignored", "[parse][metadata][issue1665]") {
+    BeatMap map;
+    std::vector<BeatMapError> errors;
+    std::string json = R"({
+        "bpm": 120, "offset": 0.0, "lead_beats": 4, "duration": 8.0,
+        "beats": [
+            { "beat": 4, "kind": "shape_gate", "shape": "circle", "lane": 1 }
+        ]
+    })";
+
+    REQUIRE(parse_beat_map(json, map, errors));
+    CHECK(errors.empty());
+    CHECK(map.duration == 180.0f);
+}
+
 TEST_CASE("parse: wrong metadata types report BeatMapError instead of throwing", "[parse][metadata][types][regression]") {
     BeatMap map;
     std::vector<BeatMapError> errors;

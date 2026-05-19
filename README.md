@@ -133,10 +133,15 @@ it identifies historical migration plans and the current authoritative runtime d
 
 ```
 compute_screen_transform -> input_system -> ui_update_system ->
-test_player_system -> fixed timestep loop -> game_camera_system ->
-ui_camera_system -> game_render_system -> ui_render_system ->
-audio_system -> haptic_system
+title_start_tap_system -> test_player_system -> fixed timestep loop ->
+screen_lifecycle_system -> per-screen bind systems ->
+approach_ring_envelope_system -> game_camera_system -> ui_camera_system ->
+game_render_system -> ui_render_system -> audio_system -> haptic_system
 ```
+
+`app/game_loop.cpp` and `app/systems/fixed_tick_runner.cpp` are
+authoritative when implementation details change; this summary intentionally
+stays descriptive rather than listing every generated screen binder by name.
 
 Each fixed timestep runs `tick_fixed_systems`:
 

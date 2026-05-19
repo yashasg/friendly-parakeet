@@ -159,7 +159,7 @@ TEST_CASE("Play session: high score key uses loaded fallback difficulty",
         "bpm": 120,
         "offset": 0,
         "lead_beats": 4,
-        "duration": 8,
+        "duration_sec": 8,
         "difficulties": {
             "medium": {
                 "beats": [
