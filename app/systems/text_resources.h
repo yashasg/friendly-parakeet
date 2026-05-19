@@ -13,11 +13,15 @@
 // (consolidated)". UI/domain enums (FontSize) remain in
 // `app/components/text.h`.
 
+// Presence of the `TextContext` ctx singleton IS "text fonts are loaded"
+// (Fabian Principle 3, issue #1619 — eradicated the parallel-bool `loaded`
+// NULL column gate over the three Font payloads, mirroring #1616 / PR #1617's
+// eradication of `SFXBank::loaded`). The loader emplaces only on success;
+// readers query `reg.ctx().find<TextContext>() != nullptr`.
 struct TextContext {
     Font font_small{};
     Font font_medium{};
     Font font_large{};
-    bool loaded = false;
 
     TextContext() = default;
     TextContext(const TextContext&) = delete;
@@ -42,7 +46,6 @@ inline void TextContext::release() {
     font_large = {};
     font_medium = {};
     font_small = {};
-    loaded = false;
 }
 
 inline TextContext::~TextContext() { release(); }
@@ -50,13 +53,11 @@ inline TextContext::~TextContext() { release(); }
 inline TextContext::TextContext(TextContext&& other) noexcept
     : font_small{other.font_small},
       font_medium{other.font_medium},
-      font_large{other.font_large},
-      loaded{other.loaded}
+      font_large{other.font_large}
 {
     other.font_small = {};
     other.font_medium = {};
     other.font_large = {};
-    other.loaded = false;
 }
 
 inline TextContext& TextContext::operator=(TextContext&& other) noexcept {
@@ -65,11 +66,9 @@ inline TextContext& TextContext::operator=(TextContext&& other) noexcept {
         font_small = other.font_small;
         font_medium = other.font_medium;
         font_large = other.font_large;
-        loaded = other.loaded;
         other.font_small = {};
         other.font_medium = {};
         other.font_large = {};
-        other.loaded = false;
     }
     return *this;
 }

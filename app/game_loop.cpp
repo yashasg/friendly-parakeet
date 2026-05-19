@@ -53,12 +53,13 @@ T& reset_ctx_singleton(entt::registry& reg, Args&&... args) {
     return reg.ctx().emplace<T>(std::forward<Args>(args)...);
 }
 
-bool load_text_fonts(TextContext& ctx, const char* font_path) {
+bool try_load_text_fonts(entt::registry& reg, const char* font_path) {
     if (!FileExists(font_path)) {
         TraceLog(LOG_WARNING, "Font file not found: %s", font_path);
         return false;
     }
 
+    TextContext ctx;
     ctx.font_small  = LoadFontEx(font_path, 16, nullptr, 0);
     ctx.font_medium = LoadFontEx(font_path, 28, nullptr, 0);
     ctx.font_large  = LoadFontEx(font_path, 48, nullptr, 0);
@@ -67,13 +68,8 @@ bool load_text_fonts(TextContext& ctx, const char* font_path) {
         ctx.font_medium.baseSize == 0 ||
         ctx.font_large.baseSize == 0) {
         TraceLog(LOG_WARNING, "Failed to load font: %s", font_path);
-        if (ctx.font_large.baseSize > 0)  UnloadFont(ctx.font_large);
-        if (ctx.font_medium.baseSize > 0) UnloadFont(ctx.font_medium);
-        if (ctx.font_small.baseSize > 0)  UnloadFont(ctx.font_small);
-        ctx.font_large = {};
-        ctx.font_medium = {};
-        ctx.font_small = {};
-        ctx.loaded = false;
+        // ctx destructor unloads any partial-load fonts via TextContext::release()
+        // (IsFontValid()-gated UnloadFont per face).
         return false;
     }
 
@@ -81,7 +77,8 @@ bool load_text_fonts(TextContext& ctx, const char* font_path) {
     SetTextureFilter(ctx.font_medium.texture, TEXTURE_FILTER_BILINEAR);
     SetTextureFilter(ctx.font_large.texture, TEXTURE_FILTER_BILINEAR);
 
-    ctx.loaded = true;
+    reg.ctx().erase<TextContext>();
+    reg.ctx().emplace<TextContext>(std::move(ctx));
     return true;
 }
 
@@ -164,11 +161,12 @@ bool game_loop_init(entt::registry& reg,
     TraceLog(LOG_INFO, "SHAPESHIFTER v%s", SHAPESHIFTER_VERSION);
 
     // Text rendering — fall back through bundled, repo-relative, and OS
-    // system font paths in order; the first one `load_text_fonts` accepts
-    // wins. `load_text_fonts` itself remains the anon-ns helper because
-    // its cleanup-on-partial-load logic warrants the abstraction.
+    // system font paths in order; the first one `try_load_text_fonts` accepts
+    // wins and emplaces the `TextContext` ctx singleton. Presence of the
+    // singleton IS "fonts loaded" (Fabian Principle 3, issue #1619), so all
+    // failure paths simply leave the singleton absent and consumers query
+    // `reg.ctx().find<TextContext>() != nullptr`.
     {
-        auto& text_ctx = reset_ctx_singleton<TextContext>(reg);
         std::string exe_font = util::join_app_dir(
             GetApplicationDirectory(), "content/fonts/LiberationMono-Regular.ttf");
         const char* font_paths[] = {
@@ -177,9 +175,10 @@ bool game_loop_init(entt::registry& reg,
             "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
             "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
         };
+        reg.ctx().erase<TextContext>();
         bool loaded = false;
         for (const char* path : font_paths) {
-            if (load_text_fonts(text_ctx, path)) {
+            if (try_load_text_fonts(reg, path)) {
                 TraceLog(LOG_INFO, "Loaded font: %s", path);
                 loaded = true;
                 break;
