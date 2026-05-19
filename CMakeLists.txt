@@ -714,7 +714,7 @@ if(NOT EMSCRIPTEN AND NOT SHAPESHIFTER_IOS)
         message(STATUS "beatmap_editor_node_tests disabled: node executable not found")
         message(STATUS "service_worker_cache_policy_node_tests disabled: node executable not found")
     endif()
-else()
+elseif(EMSCRIPTEN)
     # Run the Emscripten Catch2 binary under Node. NODERAWFS lets tests read
     # repository/build content files directly instead of preloading game assets.
     set(_wasm_test_runner ${CMAKE_CROSSCOMPILING_EMULATOR})
@@ -728,5 +728,7 @@ else()
         # source-managed UI layout assets resolve the same relative paths.
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
+else()
+    message(STATUS "CTest registration for shapeshifter_tests disabled for iOS builds")
 endif()
 endif()
