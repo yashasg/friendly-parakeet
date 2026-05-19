@@ -111,16 +111,18 @@
 ## Medium-confidence / design-gated candidates
 
 ### 5) Queue unification via `entt::dispatcher` for scoring side-effects
-- **File/path:**  
-  - `app/components/gameplay_intents.h`  
-  - `app/systems/scoring_system.cpp`  
-  - `app/systems/energy_system.cpp`  
-  - `app/systems/popup_feedback_system.cpp`
-- **Current pattern:** custom ctx vector queues (`PendingEnergyEffects`, `ScorePopupRequestQueue`) drained by downstream systems.
-- **EnTT replacement/API:** `dispatcher.enqueue<EnergyEffectEvent>()` / `enqueue<ScorePopupRequest>()` + explicit drain boundary with `update<T>()`.
-- **Touched dependencies:** scoring → energy/popup flow, fixed tick ownership, test fixtures depending on legacy fields.
-- **Migration risks:** medium; event ordering semantics are gameplay-visible and must remain deterministic.
-- **Proposed order:** **after** HC 1-4 and only with characterization tests.
+- **Status: superseded by Principle 3 eradication (#1626 / #1627).** `PendingEnergyEffects.events` was eradicated as a `PendingEnergyEffectTag` per-frame row table (#1627) and `ScorePopupRequestQueue`'s five `std::vector<X>` per-tier columns were eradicated as `PopupRequestTier*Tag` + `PopupRequest` row tables (#1626). The "custom ctx vector queues drained by downstream systems" pattern this recommendation targeted no longer exists; consumers now walk per-frame row tables (see `app/systems/gameplay_intents.h:8-45` and the per-tier popup tags in `app/tags/tags.h:130-189`). Dispatcher unification is moot here because there is no longer a vector-shaped queue to unify.
+- **Original recommendation (kept for history):**
+  - **File/path:**  
+    - `app/components/gameplay_intents.h`  
+    - `app/systems/scoring_system.cpp`  
+    - `app/systems/energy_system.cpp`  
+    - `app/systems/popup_feedback_system.cpp`
+  - **Current pattern:** custom ctx vector queues (`PendingEnergyEffects`, `ScorePopupRequestQueue`) drained by downstream systems.
+  - **EnTT replacement/API:** `dispatcher.enqueue<EnergyEffectEvent>()` / `enqueue<ScorePopupRequest>()` + explicit drain boundary with `update<T>()`.
+  - **Touched dependencies:** scoring → energy/popup flow, fixed tick ownership, test fixtures depending on legacy fields.
+  - **Migration risks:** medium; event ordering semantics are gameplay-visible and must remain deterministic.
+  - **Proposed order:** **after** HC 1-4 and only with characterization tests.
 
 ### 6) Replace `any_of<BarObstacleTag>` branch with structural split for miss path
 - **File/path:** `app/systems/scoring_system.cpp`
@@ -739,7 +741,7 @@ Updated `tests/test_popup_display_system.cpp` with two new regression tests:
 **Current pattern:** `find + emplace` for required session singletons.
 
 **Files/functions touched:**
-- `app/session/test_player_session.cpp` (`test_player_init`)
+- `app/systems/test_player_session.cpp` (`test_player_init`)
 - `app/game_loop.cpp` (ensure all required ctx types exist before call)
 
 **Likely net LOC delta:**
@@ -1755,7 +1757,7 @@ After these nine steps, every remaining `ctx<T>` slot in the codebase is provabl
 **Date:** 2026-05-08T21:45:45-07:00
 **By:** Keyser (Lead Architect)
 **Requested by:** yashasg
-**Status:** Decision (read-only audit; no code changes in this branch)
+**Status:** Completed — the four "forbidden as feature-layer folders" were collapsed into `components/` / `systems/` / `util/` per the table below: `app/rendering/` → `app/components/` (#1224), `app/audio/` → `app/components/` + `app/util/` (#1217), `app/session/` → `app/systems/` (#1218), `app/input/` → `app/systems/` + `app/util/` + `all_systems.h` (#1216). The decision header, rewire targets table, and implementation order below are preserved as the historical decision record. None of the four forbidden folders exist in `app/` today (`ls app/` shows only `components/`, `entities/`, `systems/`, `tags/`, `util/`, plus the top-level scaffolding at `app/` root).
 
 ## Decision
 
@@ -1805,6 +1807,8 @@ folders are sanctioned:
 - `app/systems/all_systems.h` — add new system declarations; remove `input_routing.h` if folded.
 
 ## Implementation order (keep builds green)
+
+**Status: completed.** Steps 1-4 landed as the per-folder collapse PRs: #1224 (step 1, rendering, header-only), #1217 (step 2, audio components + util split), #1218 (step 3, session → systems), #1216 (step 4, input → systems / util / `all_systems.h`). Steps 5-6 (CMake glob cleanup + per-step build/test gate) landed within those PRs. The numbered list below is kept as the historical decision record:
 
 1. **Rendering (smallest, header-only).** Move `camera_resources.h` → `components/`. Update 3 includes (`camera_system.{h,cpp}`, `floor_render_system.cpp`, `game_render_system.cpp`) + `tests/test_gpu_resource_lifecycle.cpp`. Delete `app/rendering/`.
 2. **Audio components.** Move `audio_types.h` + `music_context.h` → `components/audio.h` (single header). Mass-update includes. `sfx_bank.{h,cpp}` → `util/`. Delete `app/audio/` + its CMake glob.
