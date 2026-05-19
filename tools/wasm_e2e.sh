@@ -29,7 +29,7 @@ Build the WASM target first (requires emscripten and vcpkg):
       -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=\$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake \\
       -DVCPKG_TARGET_TRIPLET=wasm32-emscripten \\
       -DSHAPESHIFTER_WASM_SMOKE_MARKERS=ON
-  cmake --build $BUILD_DIR -- -j\$(nproc)
+  cmake --build $BUILD_DIR --parallel
 EOF
     exit 1
 fi

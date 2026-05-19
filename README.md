@@ -61,7 +61,7 @@ emcmake cmake -B build-web -S . \
     -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake \
     -DVCPKG_TARGET_TRIPLET=wasm32-emscripten \
     -DSHAPESHIFTER_WASM_SMOKE_MARKERS=ON
-cmake --build build-web -- -j$(nproc)
+cmake --build build-web --parallel
 ```
 
 Then run the smoke test:
