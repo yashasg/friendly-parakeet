@@ -28,12 +28,12 @@
 
 #include "components/scoring.h"   // ScorePopup, PopupDisplay
 #include "components/rendering.h" // ScreenPosition, Color (via raylib)
-#include "systems/popup_display_system.h"
 #include "components/text.h"      // FontSize
 #include "tags/tags.h"            // TimingPerfectTag / Good / Ok / Bad
 #include "components/transform.h" // WorldPosition, Vector2
 #include "entities/settings.h"    // SettingsState (reduce_motion)
 #include "systems/all_systems.h"  // popup_display_system declaration
+#include "systems/scoring_system.h" // ScoringSystemScratch (init sentinel)
 #include "entities/popup_entity.h"
 #include "constants.h"
 
@@ -49,7 +49,7 @@ void seed_popup_common(entt::registry& reg,
                        int32_t        value,
                        float          remaining,
                        float          max_time) {
-    if (!reg.ctx().contains<PopupDisplayScratch>()) {
+    if (!reg.ctx().contains<ScoringSystemScratch>()) {
         runtime_system_scratch_init(reg);
     }
     ScorePopup sp{};
@@ -484,17 +484,14 @@ TEST_CASE("popup_display_system: reduce_motion=false leaves drift untouched (#53
     CHECK(vel.y == -80.0f);
 }
 
-// #1089 — PopupDisplayScratch::capacity_exceeded_count must stay at zero when
-// a dense expiry pass fits inside the reserved expired buffer.
-TEST_CASE("popup_display_system: dense expiry burst stays within reserved capacity",
+// #1089 / #1628 — PopupExpiredTag row count drains to zero each frame; the row
+// table absorbs an arbitrary burst (no fixed reserved buffer to overflow).
+TEST_CASE("popup_display_system: dense expiry burst drains expired tag rows",
           "[popup_display][issue1089]") {
     entt::registry reg;
     runtime_system_scratch_init(reg);
     constexpr int dense_count = 6;
     runtime_system_scratch_reserve(reg, dense_count);
-
-    auto& scratch = reg.ctx().get<PopupDisplayScratch>();
-    const auto expired_capacity = scratch.expired.capacity();
 
     for (int i = 0; i < dense_count; ++i) {
         // Tiny remaining lifetime so the next tick expires every popup.
@@ -503,6 +500,7 @@ TEST_CASE("popup_display_system: dense expiry burst stays within reserved capaci
 
     popup_display_system(reg, 0.016f);
 
-    CHECK(scratch.expired.capacity() == expired_capacity);
-    CHECK(scratch.capacity_exceeded_count == 0u);
+    // After the drain pass every PopupExpiredTag row (and its entity) is gone.
+    CHECK(reg.view<PopupExpiredTag>().size() == 0);
+    CHECK(reg.view<ScorePopup>().size() == 0);
 }

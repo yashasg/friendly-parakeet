@@ -1,30 +1,22 @@
 #include "all_systems.h"
-#include "particle_system.h"
 #include "../components/particle.h"
 #include "../components/transform.h"
 #include "../components/rendering.h"
 #include "../constants.h"
 #include "../entities/settings.h"
+#include "../tags/tags.h"
 
 void particle_system(entt::registry& reg, float dt) {
-    auto& scratch = reg.ctx().get<ParticleSystemScratch>();
-    auto& expired = scratch.expired;
-    expired.clear();
-
     auto view = reg.view<ParticleTag, ParticleData>();
     for (auto [entity, pdata] : view.each()) {
         pdata.remaining -= dt;
         if (pdata.remaining <= 0.0f) {
-            if (expired.size() >= expired.capacity()) {
-                ++scratch.capacity_exceeded_count;
-            }
-            expired.push_back(entity);
+            reg.emplace<ParticleExpiredTag>(entity);
         }
     }
 
-    for (auto entity : expired) {
-        reg.destroy(entity);
-    }
+    auto expired_view = reg.view<ParticleExpiredTag>();
+    reg.destroy(expired_view.begin(), expired_view.end());
 
     // Reduce-motion (#534): clamp decorative particle velocity (and so
     // gravity accumulation) without removing the particles themselves.

@@ -212,23 +212,14 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
 
 
     // 1. MeshChild transforms (multi-slab obstacles, ghost shapes)
-    // 1. MeshChild transforms (multi-slab obstacles, ghost shapes)
     //    Existential processing: one transform per kind tag (issue #1202/#1204).
-    //    Stale children are batched across both tag views and destroyed once.
+    //    Stale children are tagged across both kind-tag views and destroyed once.
     {
-        auto* scratch = reg.ctx().find<MeshChildCleanupScratch>();
-        if (!scratch) scratch = &reg.ctx().emplace<MeshChildCleanupScratch>();
-        auto& stale_children = scratch->stale_children;
-        stale_children.clear();
-
         auto record_stale_or_compute_z = [&](entt::entity entity, const MeshChild& mc,
                                              float& out_z) -> bool {
             auto* parent_wt = reg.try_get<WorldPosition>(mc.parent);
             if (!parent_wt) {
-                if (stale_children.size() >= stale_children.capacity()) {
-                    ++scratch->capacity_exceeded_count;
-                }
-                stale_children.push_back(entity);
+                reg.emplace<StaleMeshChildTag>(entity);
                 return false;
             }
             out_z = parent_wt->position.y + mc.z_offset;
@@ -266,11 +257,8 @@ void game_camera_system(entt::registry& reg, [[maybe_unused]] float dt) {
                                  mc.tint};
         }
 
-        for (auto entity : stale_children) {
-            if (reg.valid(entity)) {
-                reg.destroy(entity);
-            }
-        }
+        auto stale_view = reg.view<StaleMeshChildTag>();
+        reg.destroy(stale_view.begin(), stale_view.end());
     }
 
     // 3. Player shape transform

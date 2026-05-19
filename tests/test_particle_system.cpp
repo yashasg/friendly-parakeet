@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include "systems/particle_system.h"
 #include "test_helpers.h"
 #include "constants.h"
+#include "tags/tags.h"
 
 // Helper: create a particle entity with all required components
 static entt::entity make_particle(entt::registry& reg, float size, float life_remaining, float life_max,
@@ -141,16 +141,13 @@ TEST_CASE("particle: reduce_motion=false preserves gravity behavior (#534)",
                Catch::Matchers::WithinAbs(constants::PARTICLE_GRAVITY * 0.1f, 0.01f));
 }
 
-// #1089 — ParticleSystemScratch::capacity_exceeded_count must stay at zero
-// when a dense expiry pass fits inside the reserved expired buffer.
-TEST_CASE("particle: dense expiry burst stays within reserved capacity",
+// #1089 / #1628 — ParticleExpiredTag row count drains to zero each frame; the
+// row table absorbs an arbitrary burst (no fixed reserved buffer to overflow).
+TEST_CASE("particle: dense expiry burst drains expired tag rows",
           "[particle][issue1089]") {
     auto reg = make_registry();
     constexpr int dense_count = 6;
     runtime_system_scratch_reserve(reg, dense_count);
-
-    auto& scratch = reg.ctx().get<ParticleSystemScratch>();
-    const auto expired_capacity = scratch.expired.capacity();
 
     for (int i = 0; i < dense_count; ++i) {
         // Tiny remaining lifetime so the next tick expires every particle.
@@ -159,6 +156,6 @@ TEST_CASE("particle: dense expiry burst stays within reserved capacity",
 
     particle_system(reg, 0.016f);
 
-    CHECK(scratch.expired.capacity() == expired_capacity);
-    CHECK(scratch.capacity_exceeded_count == 0u);
+    CHECK(reg.view<ParticleExpiredTag>().size() == 0);
+    CHECK(reg.view<ParticleTag>().size() == 0);
 }
