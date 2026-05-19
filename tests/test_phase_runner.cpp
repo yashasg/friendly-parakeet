@@ -215,15 +215,15 @@ TEST_CASE("tick_fixed_systems: fatal final drain wins after song finishes",
     auto& pending = reg.ctx().get<PendingEnergyEffects>();
 
     song.song_time = song.duration_sec;
-    song.playing = true;
-    song.finished = false;
+    reg.ctx().emplace<SongPlayingTag>();
+    reg.ctx().erase<SongFinishedTag>();
     energy.energy = constants::ENERGY_DRAIN_MISS;
     pending.events.push_back({-constants::ENERGY_DRAIN_MISS, true});
 
     tick_fixed_systems(reg, 0.016f);
 
-    CHECK(song.finished);
-    CHECK_FALSE(song.playing);
+    CHECK(reg.ctx().contains<SongFinishedTag>());
+    CHECK_FALSE(reg.ctx().contains<SongPlayingTag>());
     REQUIRE(energy.energy == 0.0f);
     REQUIRE(reg.ctx().contains<NextPhaseGameOverTag>());
     CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);

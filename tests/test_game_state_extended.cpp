@@ -11,9 +11,8 @@
 TEST_CASE("game_state: song complete when song finished and no obstacles", "[gamestate]") {
     auto reg = make_rhythm_registry();
     set_test_phase<GamePhasePlayingTag>(reg);
-    auto& song = reg.ctx().get<SongState>();
-    song.finished = true;
-    song.playing = false;
+    reg.ctx().emplace<SongFinishedTag>();
+    reg.ctx().erase<SongPlayingTag>();
     // No obstacle entities → should trigger SongComplete
 
     game_state_system(reg, 0.016f);
@@ -25,9 +24,8 @@ TEST_CASE("game_state: energy depletion beats song complete after playback finis
           "[gamestate][issue755]") {
     auto reg = make_rhythm_registry();
     set_test_phase<GamePhasePlayingTag>(reg);
-    auto& song = reg.ctx().get<SongState>();
-    song.finished = true;
-    song.playing = false;
+    reg.ctx().emplace<SongFinishedTag>();
+    reg.ctx().erase<SongPlayingTag>();
     reg.ctx().get<EnergyState>().energy = 0.0f;
     REQUIRE(reg.ctx().find<EnergyDepletedDeath>() == nullptr);
 
@@ -40,9 +38,8 @@ TEST_CASE("game_state: energy depletion beats song complete after playback finis
 TEST_CASE("game_state: song complete waits for obstacles to clear", "[gamestate]") {
     auto reg = make_rhythm_registry();
     set_test_phase<GamePhasePlayingTag>(reg);
-    auto& song = reg.ctx().get<SongState>();
-    song.finished = true;
-    song.playing = false;
+    reg.ctx().emplace<SongFinishedTag>();
+    reg.ctx().erase<SongPlayingTag>();
 
     // Create an unscored obstacle
     auto obs = reg.create();
@@ -57,9 +54,8 @@ TEST_CASE("game_state: song complete waits for obstacles to clear", "[gamestate]
 TEST_CASE("game_state: song complete proceeds when scored obstacle is destroyed", "[gamestate]") {
     auto reg = make_rhythm_registry();
     set_test_phase<GamePhasePlayingTag>(reg);
-    auto& song = reg.ctx().get<SongState>();
-    song.finished = true;
-    song.playing = false;
+    reg.ctx().emplace<SongFinishedTag>();
+    reg.ctx().erase<SongPlayingTag>();
 
     // Obstacle scored and destroyed (scoring_system + obstacle_despawn_system both ran) → SongComplete
     auto obs = reg.create();
@@ -75,9 +71,8 @@ TEST_CASE("game_state: song complete proceeds when scored obstacle is destroyed"
 TEST_CASE("game_state: song complete waits for scored obstacle to be destroyed", "[gamestate]") {
     auto reg = make_rhythm_registry();
     set_test_phase<GamePhasePlayingTag>(reg);
-    auto& song = reg.ctx().get<SongState>();
-    song.finished = true;
-    song.playing = false;
+    reg.ctx().emplace<SongFinishedTag>();
+    reg.ctx().erase<SongPlayingTag>();
 
     // Obstacle scored but still alive (obstacle_despawn_system has not yet destroyed it)
     auto obs = reg.create();

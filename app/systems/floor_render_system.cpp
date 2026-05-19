@@ -129,8 +129,8 @@ void draw_floor_rings(const FloorParams& fp) {
     rlEnd();
 }
 
-void draw_floor_beat_lines(const SongState* song, const BeatMap* map, float audio_offset_sec) {
-    if (!song || !song->playing || song->scroll_speed <= 0.0f) {
+void draw_floor_beat_lines(const SongState* song, bool song_playing, const BeatMap* map, float audio_offset_sec) {
+    if (!song || !song_playing || song->scroll_speed <= 0.0f) {
         return;
     }
 
@@ -190,8 +190,9 @@ void floor_render_system(const entt::registry& reg) {
     const auto* map = find_beat_map(reg);
     const auto* settings = find_settings_state(reg);
     const float audio_offset_sec = settings ? settings::audio_offset_seconds(*settings) : 0.0f;
+    const bool song_playing = reg.ctx().contains<SongPlayingTag>();
 
     draw_floor_lines(floor_params);
-    draw_floor_beat_lines(song, map, audio_offset_sec);
+    draw_floor_beat_lines(song, song_playing, map, audio_offset_sec);
     draw_floor_rings(floor_params);
 }

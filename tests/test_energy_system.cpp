@@ -24,7 +24,7 @@ TEST_CASE("energy: no action when energy is positive", "[energy]") {
     energy_system(reg, 0.016f);
 
     CHECK_FALSE(is_phase_transition_pending(reg));
-    CHECK(reg.ctx().get<SongState>().playing);
+    CHECK(reg.ctx().contains<SongPlayingTag>());
 }
 
 TEST_CASE("energy: pending miss drain is applied by energy_system", "[energy]") {
@@ -120,7 +120,7 @@ TEST_CASE("energy: no action when SongState not present", "[energy]") {
 
 TEST_CASE("energy: depleted energy requests game over when song is not playing", "[energy][issue961]") {
     auto reg = make_rhythm_registry();
-    reg.ctx().get<SongState>().playing = false;
+    reg.ctx().erase<SongPlayingTag>();
     auto& energy = reg.ctx().get<EnergyState>();
     energy.energy = 0.0f;
 
@@ -136,7 +136,8 @@ TEST_CASE("energy: no action when EnergyState not present", "[energy]") {
     
     bare_reg.ctx().emplace<GameState>(GameState{ 0.0f });
     auto& song = bare_reg.ctx().emplace<SongState>();
-    song.playing = true;
+    bare_reg.ctx().emplace<SongPlayingTag>();
+    (void)song;
 
     energy_system(bare_reg, 0.016f);
 
@@ -151,7 +152,7 @@ TEST_CASE("energy: small positive energy does not trigger game over", "[energy]"
     game_state_system(reg, 0.016f);
 
     CHECK_FALSE(is_phase_transition_pending(reg));
-    CHECK(reg.ctx().get<SongState>().playing);
+    CHECK(reg.ctx().contains<SongPlayingTag>());
 }
 
 TEST_CASE("energy: display smooths toward energy value", "[energy]") {
@@ -184,9 +185,8 @@ TEST_CASE("energy: enter_game_over owns song stop", "[energy][gamestate]") {
 
     game_state_system(reg, 0.016f);
 
-    auto& song = reg.ctx().get<SongState>();
-    CHECK(song.finished);
-    CHECK_FALSE(song.playing);
+    CHECK(reg.ctx().contains<SongFinishedTag>());
+    CHECK_FALSE(reg.ctx().contains<SongPlayingTag>());
 }
 
 TEST_CASE("energy: flash timer clamps to zero", "[energy]") {

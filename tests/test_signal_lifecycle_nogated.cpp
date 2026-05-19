@@ -21,8 +21,9 @@ TEST_CASE("game_state: finished song waits for obstacle drain before SongComplet
     clear_next_phase_tags(reg);
 
     auto& song = reg.ctx().get<SongState>();
-    song.playing = true;
-    song.finished = true;
+    reg.ctx().emplace<SongPlayingTag>();
+    reg.ctx().emplace<SongFinishedTag>();
+    (void)song;
 
     auto& energy = reg.ctx().get<EnergyState>();
     energy.energy = 1.0f;

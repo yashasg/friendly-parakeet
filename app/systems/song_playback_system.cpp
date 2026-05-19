@@ -17,7 +17,14 @@ void song_playback_system(entt::registry& reg, float dt) {
     // `loaded` NULL-column gate). The `started`/`paused` bools are likewise
     // eradicated — `MusicPlayingTag` / `MusicPausedTag` ctx tags carry the
     // playback machine state.
-    const bool music_loaded = (music != nullptr);
+    // Per Fabian Principle 3 / issue #1624: the former
+    // `SongState::playing` / `finished` / `restart_music` parallel-bool
+    // gates are likewise eradicated — `SongPlayingTag` / `SongFinishedTag`
+    // / `RestartMusicRequestTag` ctx tags carry the song-lifecycle
+    // machine state.
+    const bool music_loaded   = (music != nullptr);
+    const bool song_playing   = ctx.contains<SongPlayingTag>();
+    const bool song_finished  = ctx.contains<SongFinishedTag>();
 
     // Must pump the stream buffer every frame to prevent audio underruns,
     // even when the game is paused.
@@ -26,8 +33,8 @@ void song_playback_system(entt::registry& reg, float dt) {
     }
 
     // ── Music restart request (from enter_playing) ────────────
-    if (song && song->restart_music) {
-        song->restart_music = false;
+    if (ctx.contains<RestartMusicRequestTag>()) {
+        ctx.erase<RestartMusicRequestTag>();
         if (music_loaded) {
             StopMusicStream(music->stream);
             PlayMusicStream(music->stream);
@@ -47,7 +54,7 @@ void song_playback_system(entt::registry& reg, float dt) {
     const bool game_over_phase     = ctx.contains<GamePhaseGameOverTag>();
     const bool song_complete_phase = ctx.contains<GamePhaseSongCompleteTag>();
 
-    if (music_loaded && playing_phase && song && song->playing) {
+    if (music_loaded && playing_phase && song_playing) {
         if (!ctx.contains<MusicPlayingTag>()) {
             PlayMusicStream(music->stream);
             ctx.emplace<MusicPlayingTag>();
@@ -73,13 +80,13 @@ void song_playback_system(entt::registry& reg, float dt) {
     if (!playing_phase) return;
     if (!song) return;
 
-    if (song->finished) {
+    if (song_finished) {
         // Keep song_time advancing after playback ends so remaining spawned
         // obstacles can continue scrolling to resolution/despawn.
         song->song_time += dt;
         return;
     }
-    if (!song->playing) return;
+    if (!song_playing) return;
 
     // Authoritative clock from audio stream; fall back to dt accumulation
     // when running in silent/test mode (no music loaded).
@@ -121,8 +128,8 @@ void song_playback_system(entt::registry& reg, float dt) {
 
     // Song end detection
     if (song->song_time >= song->duration_sec) {
-        song->finished = true;
-        song->playing  = false;
+        ctx.emplace<SongFinishedTag>();
+        ctx.erase<SongPlayingTag>();
         if (music_loaded && ctx.contains<MusicPlayingTag>()) {
             StopMusicStream(music->stream);
             ctx.erase<MusicPlayingTag>();

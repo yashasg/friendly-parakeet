@@ -346,8 +346,6 @@ TEST_CASE("init_song_state: resets playback state", "[init_song]") {
 
     SongState state;
     state.song_time = 50.0f;
-    state.playing = true;
-    state.finished = true;
     state.next_shape_gate_circle_idx = 5;
     state.next_split_path_circle_idx = 7;
     state.next_onset_marker_idx = 3;
@@ -358,8 +356,12 @@ TEST_CASE("init_song_state: resets playback state", "[init_song]") {
     // BeatCursor lives in `reg.ctx()` (issue #1545); init_song_state operates
     // on the plain `SongState` value alone and intentionally does not touch
     // the cursor — `setup_play_session` owns the per-session cursor reset.
-    CHECK_FALSE(state.playing);
-    CHECK_FALSE(state.finished);
+    //
+    // The former `playing` / `finished` field resets likewise migrated to
+    // ctx tag erases on the `setup_play_session` side (issue #1624 /
+    // Fabian Principle 3 / `SongPlayingTag` + `SongFinishedTag`); see
+    // `tests/test_setup_play_session.cpp` (if any) for coverage of that
+    // path. `init_song_state` no longer touches playback state.
     CHECK(state.next_shape_gate_circle_idx == 0);
     CHECK(state.next_split_path_circle_idx == 0);
     CHECK(state.next_onset_marker_idx == 0);

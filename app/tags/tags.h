@@ -131,6 +131,28 @@ struct TestPlayerPlannedTag {};
 struct MusicPlayingTag {};
 struct MusicPausedTag  {};
 
+// ── Song lifecycle (per-tag ctx tables) ──────────────────────
+// Per Fabian's existential processing (issue #1624 / .squad/decisions.md
+// § 9 Principle 3), the former `SongState::playing`,
+// `SongState::finished`, and `SongState::restart_music` parallel-bool
+// NULL-column gates over the song-lifecycle state machine are eradicated.
+// The 4-state machine — *(absent / playing / finished / restart-pending)* —
+// is now expressed as:
+//   - presence of `SongPlayingTag`         IS "song is currently playing"
+//   - presence of `SongFinishedTag`        IS "song has finished"
+//     (mutex with `SongPlayingTag`; emplace one and erase the other at
+//      the two terminal flip sites — natural song end and terminal
+//      GameOver entry)
+//   - presence of `RestartMusicRequestTag` IS "music restart pending"
+//     (one-shot; `song_playback_system` erases on consumption — same
+//      shape as `SettingsDirtyTag` / `MusicPlayingTag`)
+// State transitions are `ctx.emplace<...>` / `ctx.erase<...>`
+// (Principle 4). Mirrors the `MusicPlayingTag` / `MusicPausedTag`
+// precedent set by PR #1623.
+struct SongPlayingTag         {};
+struct SongFinishedTag        {};
+struct RestartMusicRequestTag {};
+
 // ── Render-pass membership; one per entity ───────────────────
 struct TagWorldPass   {};  // drawn in BeginMode3D (3D world geometry)
 struct TagEffectsPass {};  // particles, post-process overlays

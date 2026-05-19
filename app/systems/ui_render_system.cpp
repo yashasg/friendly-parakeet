@@ -468,7 +468,7 @@ void render_ui_entities(entt::registry& reg) {
         const auto* settings = find_settings_state(reg);
         const bool reduce_motion = (settings != nullptr) && settings->reduce_motion;
         const auto* song = reg.ctx().find<SongState>();
-        const float pulse_time = (song != nullptr && song->playing)
+        const float pulse_time = (song != nullptr && reg.ctx().contains<SongPlayingTag>())
                                  ? song->song_time
                                  : static_cast<float>(GetTime());
         const float pulse = reduce_motion

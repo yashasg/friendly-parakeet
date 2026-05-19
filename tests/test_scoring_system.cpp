@@ -451,9 +451,8 @@ TEST_CASE("scoring: missed obstacle drains energy without setting terminal death
 
 TEST_CASE("scoring: passive accrual stops once song playback has finished", "[scoring][issue445]") {
     auto reg = make_registry();
-    auto& song = reg.ctx().get<SongState>();
-    song.finished = true;
-    song.playing = false;
+    reg.ctx().emplace<SongFinishedTag>();
+    reg.ctx().erase<SongPlayingTag>();
 
     auto& score = reg.ctx().get<ScoreState>();
     score.score = 500;
@@ -465,9 +464,8 @@ TEST_CASE("scoring: passive accrual stops once song playback has finished", "[sc
 
 TEST_CASE("scoring: obstacle/timing points still apply after playback has finished", "[scoring][issue445]") {
     auto reg = make_registry();
-    auto& song = reg.ctx().get<SongState>();
-    song.finished = true;
-    song.playing = false;
+    reg.ctx().emplace<SongFinishedTag>();
+    reg.ctx().erase<SongPlayingTag>();
 
     auto& score = reg.ctx().get<ScoreState>();
     score.score = 0;

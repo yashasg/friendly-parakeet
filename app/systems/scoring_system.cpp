@@ -234,10 +234,13 @@ void process_ungraded_hit_pass(entt::registry& reg,
 
 void scoring_system(entt::registry& reg, float dt) {
     auto& score   = reg.ctx().get<ScoreState>();
-    auto* song    = reg.ctx().find<SongState>();
 
     // Passive score accrual (PTS_PER_SECOND) only while song playback is active.
-    const bool allow_passive_score = (song == nullptr) || !song->finished;
+    // Per Fabian Principle 3 / issue #1624: absence of `SongFinishedTag`
+    // IS "song has not finished yet" — covers both the "no song / pre-play"
+    // case (which used the former `song == nullptr` proxy) and the
+    // "song actively playing" case in a single tag check.
+    const bool allow_passive_score = !reg.ctx().contains<SongFinishedTag>();
     if (allow_passive_score) {
         const float passive_score = score.passive_score_remainder +
             dt * static_cast<float>(constants::PTS_PER_SECOND);

@@ -179,7 +179,7 @@ void game_state_system(entt::registry& reg, float dt) {
             return;
         }
 
-        if (song && song->finished) {
+        if (song && reg.ctx().contains<SongFinishedTag>()) {
             // Wait until all obstacle entities have been destroyed.
             if (reg.view<ObstacleTag>().empty()) {
                 request_phase_transition<NextPhaseSongCompleteTag>(reg);

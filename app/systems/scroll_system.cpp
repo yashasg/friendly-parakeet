@@ -9,11 +9,12 @@
 
 void scroll_system(entt::registry& reg, [[maybe_unused]] float dt) {
     auto* song = reg.ctx().find<SongState>();
+    const auto& ctx = reg.ctx();
 
     // Rhythm obstacles: position derived from song_time, not accumulated dt.
     // This prevents floating-point drift from desynchronizing collisions
     // with the beat grid. (See: "never use anything other than song position")
-    if (song && (song->playing || song->finished)) {
+    if (song && (ctx.contains<SongPlayingTag>() || ctx.contains<SongFinishedTag>())) {
         if (!std::isfinite(song->scroll_speed) || song->scroll_speed <= 0.0f) {
             TraceLog(LOG_WARNING, "scroll_system skipped: invalid scroll_speed %.3f", song->scroll_speed);
             return;

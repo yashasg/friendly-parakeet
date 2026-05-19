@@ -324,8 +324,8 @@ TEST_CASE("game_state: paused resume preserves active play session state", "[gam
 
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 12.5f;
-    song.playing = true;
-    song.restart_music = false;
+    reg.ctx().emplace<SongPlayingTag>();
+    reg.ctx().erase<RestartMusicRequestTag>();
 
     auto btn = make_menu_confirm_button(reg);
     press_button(reg, btn);
@@ -340,8 +340,8 @@ TEST_CASE("game_state: paused resume preserves active play session state", "[gam
     CHECK(energy.energy == 0.42f);
     CHECK(energy.display == 0.37f);
     CHECK(song.song_time == 12.5f);
-    CHECK(song.playing);
-    CHECK_FALSE(song.restart_music);
+    CHECK(reg.ctx().contains<SongPlayingTag>());
+    CHECK_FALSE(reg.ctx().contains<RestartMusicRequestTag>());
 
     int player_count = 0;
     for (auto e : reg.view<PlayerTag>()) {

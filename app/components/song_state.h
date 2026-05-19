@@ -35,12 +35,15 @@ struct SongState {
     // `BeatCursor` ctx-singleton row table below (Fabian Principle 3 /
     // issue #1545): membership IS "at least one beat has been crossed",
     // and `last_crossed` is always meaningful while the row exists.
+    //
+    // The former `playing` / `finished` / `restart_music` parallel-bool
+    // gates likewise migrated to per-tag ctx tables (Fabian Principle 3 /
+    // issue #1624):
+    //   - presence of `SongPlayingTag`         IS "song is currently playing"
+    //   - presence of `SongFinishedTag`        IS "song has finished"
+    //   - presence of `RestartMusicRequestTag` IS "music restart pending"
+    // See `app/tags/tags.h` for the doc comments.
     float  song_time     = 0.0f;   // mutated every frame by song_playback_system
-    bool   playing       = false;  // set true by setup_play_session; cleared by
-                                   //   song_playback_system or terminal GameOver entry
-    bool   finished      = false;  // set true by song_playback_system or terminal GameOver entry
-    bool   restart_music = false;  // set true by setup_play_session; consumed/cleared
-                                   //   on the next tick by song_playback_system
 
     // ── Beat-schedule cursors (per-(kind, shape, timing-source), reset at session init) ──
     // Replaces the former `next_spawn_idx` single cursor (issue #1202/#1204).

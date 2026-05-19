@@ -27,7 +27,7 @@ TEST_CASE("energy_bar_system: beat bounce expands visible level when motion is e
     auto reg = make_registry();
     create_energy_bar_entity(reg);
     auto& song = reg.ctx().get<SongState>();
-    song.playing = true;
+    reg.ctx().emplace<SongPlayingTag>();
     song.song_time = 0.10f;
     song.beat_period = 0.50f;
     auto& energy = reg.ctx().get<EnergyState>();
@@ -49,7 +49,7 @@ TEST_CASE("energy_bar_system: reduce_motion suppresses decorative bounce and fla
     create_energy_bar_entity(reg);
     settings_state(reg).reduce_motion = true;
     auto& song = reg.ctx().get<SongState>();
-    song.playing = true;
+    reg.ctx().emplace<SongPlayingTag>();
     song.song_time = 0.10f;
     song.beat_period = 0.50f;
     auto& energy = reg.ctx().get<EnergyState>();
@@ -71,7 +71,7 @@ TEST_CASE("energy_bar_system: reduce_motion pins critical pulse to a stable midp
     create_energy_bar_entity(reg);
     settings_state(reg).reduce_motion = true;
     auto& song = reg.ctx().get<SongState>();
-    song.playing = true;
+    reg.ctx().emplace<SongPlayingTag>();
     song.song_time = 99.7f;
     auto& energy = reg.ctx().get<EnergyState>();
     energy.display = 0.0f;
@@ -104,7 +104,7 @@ TEST_CASE("energy_bar_system: invalid segment counts keep visual levels finite",
     auto& layout = reg.get<EnergyBarLayout>(entity);
     auto& energy = reg.ctx().get<EnergyState>();
     auto& song = reg.ctx().get<SongState>();
-    song.playing = true;
+    reg.ctx().emplace<SongPlayingTag>();
     song.song_time = 0.0f;
     song.beat_period = 0.5f;
     energy.display = 0.25f;

@@ -59,7 +59,9 @@ void collision_system(entt::registry& reg, [[maybe_unused]] float dt) {
     (void)p_shape;
 
     auto& song = reg.ctx().get<SongState>();
-    const bool rhythm_mode = song.playing || song.finished;
+    const auto& ctx = reg.ctx();
+    const bool rhythm_mode =
+        ctx.contains<SongPlayingTag>() || ctx.contains<SongFinishedTag>();
 
     // Frame-constant precomputes — both values are invariant across all obstacle
     // loops since player transform and vertical state don't change mid-frame.

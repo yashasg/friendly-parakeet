@@ -179,6 +179,9 @@ void setup_play_session(entt::registry& reg) {
         erase_ctx_if_exists<CurrentSongHighScore>(reg);
         erase_ctx_if_exists<SongState>(reg);
         erase_ctx_if_exists<BeatCursor>(reg);
+        erase_ctx_if_exists<SongPlayingTag>(reg);
+        erase_ctx_if_exists<SongFinishedTag>(reg);
+        erase_ctx_if_exists<RestartMusicRequestTag>(reg);
         erase_ctx_if_exists<EnergyState>(reg);
         erase_ctx_if_exists<SongResults>(reg);
         erase_ctx_if_exists<EnergyDepletedDeath>(reg);
@@ -223,14 +226,23 @@ void setup_play_session(entt::registry& reg) {
     // membership IS "at least one beat has been crossed", so erase any
     // carry-over from a prior session before the new session begins.
     erase_ctx_if_exists<BeatCursor>(reg);
+    // Reset the song-lifecycle ctx tags (Fabian Principle 3 / issue
+    // #1624): presence of `SongPlayingTag` IS "song is currently
+    // playing"; presence of `SongFinishedTag` IS "song has finished".
+    // Erase both up-front to give the new session a clean slate, then
+    // emplace the playing-state tag below. Mirrors the `MusicContext`
+    // ctx erase pattern (#1623).
+    erase_ctx_if_exists<SongPlayingTag>(reg);
+    erase_ctx_if_exists<SongFinishedTag>(reg);
+    erase_ctx_if_exists<RestartMusicRequestTag>(reg);
     if (!beat_map_empty(beatmap)) {
         init_song_state(song, beatmap);
     } else {
         song.bpm = 120.0f;
         song_state_compute_derived(song);
     }
-    song.playing = true;
-    song.restart_music = true;
+    reg.ctx().emplace<SongPlayingTag>();
+    reg.ctx().emplace<RestartMusicRequestTag>();
 
     // Load music — presence of `MusicContext` ctx singleton IS "stream
     // loaded" (Fabian Principle 3, issue #1618). We erase any prior

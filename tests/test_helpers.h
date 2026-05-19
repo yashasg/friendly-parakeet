@@ -304,7 +304,7 @@ inline entt::registry make_rhythm_registry() {
     song.offset = 0.0f;
     song.lead_beats = 4;
     song.duration_sec = 60.0f;
-    song.playing = true;
+    reg.ctx().emplace<SongPlayingTag>();
     song_state_compute_derived(song);
     reg.ctx().get<EnergyState>() = EnergyState{};
     reg.ctx().get<SongResults>() = SongResults{};

@@ -198,7 +198,7 @@ TEST_CASE("make_rhythm_registry: SongState is configured", "[helpers]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     CHECK(song.bpm == 120.0f);
-    CHECK(song.playing);
+    CHECK(reg.ctx().contains<SongPlayingTag>());
     CHECK(song.beat_period > 0.0f);
     CHECK(song.scroll_speed > 0.0f);
 }
