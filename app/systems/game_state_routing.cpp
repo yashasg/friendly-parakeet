@@ -3,6 +3,7 @@
 #include "game_phase_transition.h"
 #include "input.h"
 #include "input_events.h"
+#include "phase_input.h"
 #include "audio_events.h"
 #include "haptics.h"
 #include "../entities/settings.h"
@@ -50,9 +51,8 @@ namespace {
 // produced the same resume request. Per-direction handlers below
 // preserve that semantics with no Direction enum involvement.
 void resume_from_pause_if_eligible(entt::registry& reg) {
-    auto& gs = reg.ctx().get<GameState>();
     if (!reg.ctx().contains<GamePhasePausedTag>()) return;
-    if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
+    if (!phase_input_unlocked(reg)) return;
     // Deferred per #482 — let game_state_system perform the resume swap.
     request_phase_transition<NextPhasePlayingTag>(reg);
 }
@@ -80,7 +80,7 @@ void game_state_handle_confirm(entt::registry& reg, const MenuConfirmEvent&) {
     }
 
     if (ctx.contains<GamePhaseTutorialTag>()) {
-        if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
+        if (!phase_input_unlocked(gs)) return;
         if (auto* settings_state = find_settings_state(reg)) {
             settings::mark_ftue_complete(*settings_state);
             settings::mark_dirty_and_save(reg, *settings_state);
@@ -90,7 +90,7 @@ void game_state_handle_confirm(entt::registry& reg, const MenuConfirmEvent&) {
     }
 
     if (ctx.contains<GamePhasePausedTag>()) {
-        if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
+        if (!phase_input_unlocked(gs)) return;
         // Deferred per #482 — see game_state_handle_go above.
         request_phase_transition<NextPhasePlayingTag>(reg);
         return;

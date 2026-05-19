@@ -2,6 +2,7 @@
 #include "test_player.h"
 #include "../components/game_state.h"
 #include "input_events.h"
+#include "phase_input.h"
 #include "../components/player.h"
 #include "../components/transform.h"
 #include "../components/obstacle.h"
@@ -211,7 +212,7 @@ void test_player_system(entt::registry& reg, float dt) {
     }
 
     // Auto-confirm on LevelSelect (level/difficulty already set in main.cpp)
-    if (level_select_phase && gs.phase_timer > constants::UI_ENTRY_DEBOUNCE) {
+    if (level_select_phase && phase_input_unlocked(gs)) {
         disp.enqueue<MenuConfirmEvent>({});
         return;
     }
