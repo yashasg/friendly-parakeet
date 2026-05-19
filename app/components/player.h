@@ -40,8 +40,8 @@ constexpr std::string_view to_string(Shape shape) noexcept {
 // Hot render data — read by game_camera_system, player_movement_system every frame.
 // The player's current shape identity lives as one of `ShapeCircleTag` /
 // `ShapeSquareTag` / `ShapeTriangleTag` / `ShapeHexagonTag` on the player
-// entity (issue #1202/#1204); see `app/util/shape_tag.h` for the helper
-// dispatch and the rationale for the per-tag table mechanic.
+// entity (issue #1202/#1204); see the non-tag helper `app/util/shape_tag.h`
+// for dispatch and the rationale for the per-tag table mechanic.
 struct PlayerShape {
     float morph_t  = 1.0f;
 };
