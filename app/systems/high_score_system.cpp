@@ -1,6 +1,7 @@
 #include "high_score_system.h"
 #include "persistence_policy_system.h"
 #include <nlohmann/json.hpp>
+#include <algorithm>
 #include <fstream>
 #include <filesystem>
 #include <cstdint>
@@ -29,26 +30,23 @@ persistence::Result get_high_scores_file_path(
 }
 
 int32_t make_key_str(char* buf, int32_t cap, const char* song_id, const char* difficulty) {
-    if (buf == nullptr || cap <= 0) {
-        return -1;
-    }
-    const int32_t written =
-        std::snprintf(buf, static_cast<std::size_t>(cap), "%s|%s", song_id, difficulty);
-    if (written < 0 || written >= cap) {
+    const bool valid_target = buf != nullptr && cap > 0;
+    const int32_t written = valid_target
+        ? std::snprintf(buf, static_cast<std::size_t>(cap), "%s|%s", song_id, difficulty)
+        : -1;
+    const bool fits = written >= 0 && written < cap;
+    if (valid_target && !fits) {
         buf[0] = '\0';
-        return -1;
     }
-    return written;
+    return fits ? written : -1;
 }
 
 entt::hashed_string::hash_type make_key_hash(const char* song_id, const char* difficulty) {
     char buf[HighScoreState::KEY_CAP]{};
-    if (make_key_str(buf, HighScoreState::KEY_CAP, song_id, difficulty) < 0) {
-        return 0;
-    }
+    const int32_t key_len = make_key_str(buf, HighScoreState::KEY_CAP, song_id, difficulty);
     // Cast to const char* to select the const_wrapper (runtime) overload of
     // hashed_string::value(), not the consteval array-literal overload.
-    return entt::hashed_string::value(static_cast<const char*>(buf));
+    return key_len >= 0 ? entt::hashed_string::value(static_cast<const char*>(buf)) : 0;
 }
 
 namespace {
@@ -57,27 +55,27 @@ namespace {
 // matching row. The table caps at MAX_ENTRIES (9), so O(N) per lookup is
 // the dense-flat-array equivalent of the prior inline `std::array` scan.
 entt::entity find_entry_by_key(const entt::registry& reg, const char* key) {
-    if (key == nullptr || std::strlen(key) >= HighScoreState::KEY_CAP) {
-        return entt::null;
-    }
+    const bool valid_key = key != nullptr && std::strlen(key) < HighScoreState::KEY_CAP;
+    entt::entity match = entt::null;
     auto view = reg.view<HighScoreEntry>();
     for (auto entity : view) {
         const auto& entry = view.get<HighScoreEntry>(entity);
-        if (std::strncmp(entry.key, key, HighScoreState::KEY_CAP) == 0) {
-            return entity;
-        }
+        match = (valid_key && match == entt::null && std::strncmp(entry.key, key, HighScoreState::KEY_CAP) == 0)
+            ? entity
+            : match;
     }
-    return entt::null;
+    return match;
 }
 
 entt::entity find_entry_by_hash(const entt::registry& reg, entt::hashed_string::hash_type hash) {
+    entt::entity match = entt::null;
     auto view = reg.view<HighScoreEntry>();
     for (auto entity : view) {
-        if (view.get<HighScoreEntry>(entity).key_hash == hash) {
-            return entity;
-        }
+        match = (match == entt::null && view.get<HighScoreEntry>(entity).key_hash == hash)
+            ? entity
+            : match;
     }
-    return entt::null;
+    return match;
 }
 
 bool write_key(HighScoreEntry& entry, const char* key) {
@@ -97,14 +95,12 @@ int32_t entry_count(const entt::registry& reg) {
 
 int32_t get_score(const entt::registry& reg, const char* key) {
     const auto entity = find_entry_by_key(reg, key);
-    if (entity == entt::null) return 0;
-    return reg.get<HighScoreEntry>(entity).score;
+    return entity == entt::null ? 0 : reg.get<HighScoreEntry>(entity).score;
 }
 
 int32_t get_score_by_hash(const entt::registry& reg, entt::hashed_string::hash_type hash) {
     const auto entity = find_entry_by_hash(reg, hash);
-    if (entity == entt::null) return 0;
-    return reg.get<HighScoreEntry>(entity).score;
+    return entity == entt::null ? 0 : reg.get<HighScoreEntry>(entity).score;
 }
 
 bool set_score(entt::registry& reg, const char* key, int32_t score) {
@@ -147,8 +143,7 @@ bool ensure_entry(entt::registry& reg, const char* key) {
 }
 
 int32_t get_current_high_score(const entt::registry& reg, const HighScoreSession& session) {
-    if (session.key_hash == 0) return 0;
-    return get_score_by_hash(reg, session.key_hash);
+    return session.key_hash == 0 ? 0 : get_score_by_hash(reg, session.key_hash);
 }
 
 namespace {
@@ -201,12 +196,10 @@ bool high_score_state_from_json(const nlohmann::json& obj, entt::registry& reg) 
                 raw = value.get<std::int64_t>();
             }
 
-            // Clamp negative scores to 0, cap at max int32
-            if (raw < 0) {
-                raw = 0;
-            } else if (raw > std::numeric_limits<std::int32_t>::max()) {
-                raw = std::numeric_limits<std::int32_t>::max();
-            }
+            raw = std::clamp(
+                raw,
+                std::int64_t{0},
+                static_cast<std::int64_t>(std::numeric_limits<std::int32_t>::max()));
 
             if (static_cast<int32_t>(staged.size()) >= HighScoreState::MAX_ENTRIES) {
                 return false;
@@ -293,10 +286,10 @@ persistence::Result save_high_scores(const entt::registry& reg, const std::files
 }
 
 bool update_if_higher(entt::registry& reg, const HighScoreSession& session, int32_t new_score) {
-    if (session.key_hash == 0) return false;
-    if (new_score < 0) new_score = 0;
-    int32_t stored = get_score_by_hash(reg, session.key_hash);
-    if (new_score > stored) {
+    const bool has_session_key = session.key_hash != 0;
+    new_score = std::max(new_score, 0);
+    const int32_t stored = has_session_key ? get_score_by_hash(reg, session.key_hash) : 0;
+    if (has_session_key && new_score > stored) {
         const auto entity = find_entry_by_hash(reg, session.key_hash);
         if (entity == entt::null) {
             TraceLog(LOG_WARNING, "High score entry hash %u not found; score update skipped",
@@ -305,7 +298,7 @@ bool update_if_higher(entt::registry& reg, const HighScoreSession& session, int3
         }
         reg.get<HighScoreEntry>(entity).score = new_score;
     }
-    return true;
+    return has_session_key;
 }
 
 }  // namespace high_score
