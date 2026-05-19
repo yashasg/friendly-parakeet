@@ -14,10 +14,12 @@
 #include "../constants.h"
 
 #include <raylib.h>
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <random>
 #include <string_view>
+#include <utility>
 
 // Keep pro presses slightly ahead of beat arrival so the press is guaranteed
 // to land before collision resolution in fixed-step ordering.
@@ -213,12 +215,6 @@ void test_player_system(entt::registry& reg, float dt) {
     if (!playing_phase) return;
     if (!song) return;
 
-    // Reset stale state when a new play session starts (after enter_playing
-    // calls reg.clear(), all old entity IDs are invalid).
-    if (song->song_time < 0.01f && state->action_count > 0) {
-        state->action_count = 0;
-    }
-
     const auto& cfg = state->skill;
 
     // ── Find player ──────────────────────────────────────────
@@ -245,10 +241,14 @@ void test_player_system(entt::registry& reg, float dt) {
         p_transition && lane_utils::is_valid(p_transition->target)) {
         effective_lane = p_transition->target;
     }
-    for (int i = 0; i < state->action_count; ++i) {
-        if (lane_utils::is_valid(state->actions[i].target_lane) &&
-            !test_player_lane_done(state->actions[i])) {
-            effective_lane = state->actions[i].target_lane;
+    // Queued actions live on obstacle entities as `TestPlayerAction` rows
+    // (Fabian Principle 3 / issue #1611). Iterate the view to compute the
+    // post-queue effective lane.
+    for (auto [action_entity, queued] : reg.view<TestPlayerAction>().each()) {
+        (void)action_entity;
+        if (lane_utils::is_valid(queued.target_lane) &&
+            !test_player_lane_done(queued)) {
+            effective_lane = queued.target_lane;
         }
     }
 
@@ -288,8 +288,9 @@ void test_player_system(entt::registry& reg, float dt) {
             action.timer = reaction;
         }
 
-        if (state->action_count < TestPlayerState::MAX_ACTIONS) {
-            state->actions[state->action_count++] = action;
+        if (static_cast<int>(reg.view<TestPlayerAction>().size()) < TestPlayerState::MAX_ACTIONS &&
+            !reg.all_of<TestPlayerAction>(entity)) {
+            reg.emplace<TestPlayerAction>(entity, action);
         }
         reg.get_or_emplace<TestPlayerPlannedTag>(entity);
 
@@ -323,8 +324,9 @@ void test_player_system(entt::registry& reg, float dt) {
     }
 
     // ── TICK timers ──────────────────────────────────────────
-    for (int i = 0; i < state->action_count; ++i) {
-        state->actions[i].timer -= dt;
+    for (auto [action_entity, queued] : reg.view<TestPlayerAction>().each()) {
+        (void)action_entity;
+        queued.timer -= dt;
     }
     if (state->swipe_cooldown_timer > 0.0f) {
         state->swipe_cooldown_timer -= dt;
@@ -342,37 +344,34 @@ void test_player_system(entt::registry& reg, float dt) {
     // Lane changes for OTHER obstacles should wait, but lane changes for the
     // SAME obstacle are fine — they're part of clearing it.
     entt::entity pending_shape_obstacle = entt::null;
-    for (int i = 0; i < state->action_count; ++i) {
-        auto& a = state->actions[i];
+    for (auto [action_entity, a] : reg.view<TestPlayerAction>().each()) {
         // Shape press fired but obstacle hasn't been scored yet.
         // scoring_system removes Obstacle component after processing.
         if (a.shape_press != nullptr && test_player_shape_done(a)
-            && reg.valid(a.obstacle) && reg.all_of<Obstacle>(a.obstacle)
-            && !reg.all_of<ScoredTag>(a.obstacle)) {
-            pending_shape_obstacle = a.obstacle;
+            && reg.all_of<Obstacle>(action_entity)
+            && !reg.all_of<ScoredTag>(action_entity)) {
+            pending_shape_obstacle = action_entity;
             break;
         }
     }
 
     bool key_injected = false;
 
-    // Process actions in arrival order (closest obstacle first)
-    // so we don't skip a nearer obstacle to act on a farther one.
-    int exec_order[TestPlayerState::MAX_ACTIONS];
-    for (int i = 0; i < state->action_count; ++i) exec_order[i] = i;
-    for (int i = 0; i < state->action_count - 1; ++i) {
-        for (int j = i + 1; j < state->action_count; ++j) {
-            if (state->actions[exec_order[j]].arrival_time <
-                state->actions[exec_order[i]].arrival_time) {
-                int tmp = exec_order[i];
-                exec_order[i] = exec_order[j];
-                exec_order[j] = tmp;
-            }
-        }
+    // Process actions in arrival order (closest obstacle first) so we don't
+    // skip a nearer obstacle to act on a farther one. With actions stored
+    // per-entity as `TestPlayerAction` rows, gather entity handles into a
+    // small stack buffer (bounded by MAX_ACTIONS) and sort by arrival_time.
+    std::array<std::pair<float, entt::entity>, TestPlayerState::MAX_ACTIONS> exec_buf{};
+    int exec_n = 0;
+    for (auto [action_entity, a] : reg.view<TestPlayerAction>().each()) {
+        if (exec_n >= static_cast<int>(exec_buf.size())) break;
+        exec_buf[static_cast<size_t>(exec_n++)] = {a.arrival_time, action_entity};
     }
+    std::sort(exec_buf.begin(), exec_buf.begin() + exec_n,
+              [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
 
-    for (int ei = 0; ei < state->action_count && !key_injected; ++ei) {
-        auto& action = state->actions[exec_order[ei]];
+    for (int ei = 0; ei < exec_n && !key_injected; ++ei) {
+        auto& action = reg.get<TestPlayerAction>(exec_buf[static_cast<size_t>(ei)].second);
         if (action.timer > 0.0f) continue;
 
         // Get beat number for logging
@@ -534,8 +533,12 @@ void test_player_system(entt::registry& reg, float dt) {
     }
 
     // ── CLEANUP completed actions ────────────────────────────
-    for (int i = state->action_count - 1; i >= 0; --i) {
-        auto& action = state->actions[i];
+    // Collect entities to remove first to avoid mutating storage while
+    // iterating the view; then `reg.remove<TestPlayerAction>(entity)` each.
+    std::array<entt::entity, TestPlayerState::MAX_ACTIONS> to_remove{};
+    int remove_n = 0;
+    for (auto [action_entity, action] : reg.view<TestPlayerAction>().each()) {
+        if (remove_n >= static_cast<int>(to_remove.size())) break;
         const bool shape_done = (action.shape_press == nullptr) ||
                                 test_player_shape_done(action);
         const bool lane_done = !lane_utils::is_valid(action.target_lane) ||
@@ -543,13 +546,16 @@ void test_player_system(entt::registry& reg, float dt) {
         const bool vertical_done = !(action.wants_jump || action.wants_slide) ||
                                    test_player_vertical_done(action);
         const bool done = shape_done && lane_done && vertical_done;
-        // Entity no longer an active obstacle (scored + processed by scoring_system,
-        // or destroyed by obstacle_despawn_system)
-        bool expired = !reg.valid(action.obstacle) ||
-                       !reg.all_of<Obstacle>(action.obstacle);
+        // Entity no longer an active obstacle (scored + processed by
+        // scoring_system, or destroyed by obstacle_despawn_system). Iteration
+        // only yields valid entities, so the `reg.valid()` half of the
+        // legacy expired check is redundant.
+        const bool expired = !reg.all_of<Obstacle>(action_entity);
         if (done || expired) {
-            state->actions[i] = state->actions[state->action_count - 1];
-            --state->action_count;
+            to_remove[static_cast<size_t>(remove_n++)] = action_entity;
         }
+    }
+    for (int i = 0; i < remove_n; ++i) {
+        reg.remove<TestPlayerAction>(to_remove[static_cast<size_t>(i)]);
     }
 }
