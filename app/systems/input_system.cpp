@@ -88,15 +88,6 @@ GoEnqueueFn raylib_gesture_swipe_direction() {
     return classify_swipe(drag.x, drag.y, GetGestureHoldDuration());
 }
 
-bool touch_id_is_current(int touch_id, int touch_point_count) {
-    for (int touch_index = 0; touch_index < touch_point_count; ++touch_index) {
-        if (GetTouchPointId(touch_index) == touch_id) {
-            return true;
-        }
-    }
-    return false;
-}
-
 bool has_active_touch_in_zone(const InputState& input, bool button_zone) {
     for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
         const auto& slot = input.touch_slots[i];
@@ -271,7 +262,17 @@ void input_system(entt::registry& reg, float raw_dt) {
 
         for (int i = 0; i < InputState::MaxTrackedTouches; ++i) {
             auto& slot = input.touch_slots[i];
-            if (slot.active && !touch_id_is_current(slot.id, touch_point_count)) {
+            if (!slot.active) {
+                continue;
+            }
+            bool current = false;
+            for (int touch_index = 0; touch_index < touch_point_count; ++touch_index) {
+                if (GetTouchPointId(touch_index) == slot.id) {
+                    current = true;
+                    break;
+                }
+            }
+            if (!current) {
                 release_touch_slot(slot,
                                    input,
                                    latest_swipe,
