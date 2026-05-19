@@ -214,11 +214,11 @@ void setup_play_session(entt::registry& reg) {
         char key_buf[HighScoreState::KEY_CAP]{};
         const int32_t key_len = high_score::make_key_str(
             key_buf, HighScoreState::KEY_CAP, stem.c_str(), beatmap.difficulty.c_str());
-        if (auto* session = reg.ctx().find<HighScoreSession>()) {
-            session->key_hash = key_len >= 0
+        assign_or_emplace_ctx(
+            reg,
+            HighScoreSession{key_len >= 0
                 ? entt::hashed_string::value(static_cast<const char*>(key_buf))
-                : 0;
-        }
+                : 0});
         if (key_len >= 0) {
             high_score::ensure_entry(reg, key_buf);
         } else {
@@ -256,7 +256,7 @@ void setup_play_session(entt::registry& reg) {
     // loaded" (Fabian Principle 3, issue #1618). We erase any prior
     // singleton + playback tags up-front, then emplace on a successful
     // `LoadMusicStream`. `IsAudioDeviceReady()` is the proper "audio
-    // available" gate (replaces the former `if (music)` proxy which
+    // available" gate (replaces the former music-handle proxy which
     // depended on game_loop_init pre-emplacing an empty MusicContext).
     reg.ctx().erase<MusicContext>();
     reg.ctx().erase<MusicPlayingTag>();
