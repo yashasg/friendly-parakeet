@@ -1,6 +1,5 @@
 #include "ui_update_system.h"
 
-#include "../components/actions.h"
 #include "../components/game_state.h"
 #include "../components/settings.h"
 #include "../components/ui.h"
@@ -23,7 +22,7 @@
 // Marks FTUE complete + persists settings + requests Playing phase.
 // Exposed via `ui_update_system.h` so the FTUE end-to-end test in
 // `tests/test_game_state_extended.cpp` can drive it directly; the
-// `ContinueButton` row of `kActionHandlers` below dispatches to it.
+// `UiActionContinueButtonTag` button path below dispatches to it.
 void tutorial_screen_continue(entt::registry& reg) {
     if (auto* settings_ptr = find_settings_state(reg)) {
         settings::mark_ftue_complete(*settings_ptr);
@@ -32,36 +31,15 @@ void tutorial_screen_continue(entt::registry& reg) {
     request_phase_transition<NextPhasePlayingTag>(reg);
 }
 
-// ── ActionId dispatch table ─────────────────────────────────────────────────
+// ── UI action membership dispatch ───────────────────────────────────────────
 //
-// Per Fabian Principle 1 (and the explicit Keep-set rationale for
-// `ActionId` in `app/.allowed-enums.txt`), the enum value is a perfect-hash
-// index into a per-action function-pointer column. Each row owns the
-// effect of "the user pressed this button". No central switch.
-//
-// Adding a new action: append the enumerator to `ActionId` (alphabetically),
-// then add a row below. Codegen + the table-size assertion below catch
-// mismatches at build time.
+// Button behavior is selected by ECS membership: generated buttons carry a
+// `UiAction*Tag`, and the hit-test path invokes the system whose tag is present.
+// `ActionId` remains only as a codegen validation label for `.rgl` names.
 
 namespace {
 
-using ActionHandler = void (*)(entt::registry&, entt::entity);
-
-// ── Per-action handlers ─────────────────────────────────────────────
-//
-// `noop_action_handler` fills the `ActionId::None` slot so the lookup
-// table is dense (every `ActionId` ordinal maps to a valid handler).
-// Real handlers below own the effect of "the user pressed this button"
-// for each migrated screen.
-
-void noop_action_handler(entt::registry& /*reg*/, entt::entity /*entity*/) {
-    // `ActionId::None` is the sentinel "no action" value used by buttons
-    // whose press is consumed by a screen-specific bind system rather
-    // than the central `kActionHandlers` table (e.g. level-select cards
-    // — see Pass C of `ui_update_system`). Dispatching it is a no-op.
-}
-
-// Paused screen actions (migrated this cycle).
+// Paused screen actions.
 void resume_button_action(entt::registry& reg, entt::entity /*entity*/) {
     request_phase_transition<NextPhasePlayingTag>(reg);
 }
@@ -93,10 +71,10 @@ void restart_button_action(entt::registry& reg, entt::entity /*entity*/) {
 }
 
 // `LevelSelectButton` is emitted only from end screens (Song Complete /
-// Game Over). On the Level Select screen itself, card presses skip the
-// `ActionId` dispatch entirely — see Pass C in `ui_update_system` below,
-// which writes the card's `LevelIndex` into `LevelSelectState` directly
-// (cards carry no `OnPress`, by design — issue #1296).
+// Game Over). On the Level Select screen itself, card presses skip button
+// action dispatch entirely — see Pass C in `ui_update_system` below, which
+// writes the card's `LevelIndex` into `LevelSelectState` directly (cards
+// carry no `UiButtonTag`, by design — issue #1296).
 void level_select_button_action(entt::registry& reg, entt::entity /*entity*/) {
     reg.ctx().insert_or_assign(EndChoiceLevelSelect{});
 }
@@ -130,7 +108,7 @@ void settings_button_action(entt::registry& reg, entt::entity /*entity*/) {
 //
 // AudioOffsetMinus / AudioOffsetPlus step `SettingsState::audio_offset_ms`
 // by `AUDIO_OFFSET_STEP_MS` and clamp to [MIN, MAX]. CloseButton routes
-// back to Title (no other screen currently emits ActionId::CloseButton).
+// back to Title (no other screen currently emits `UiActionCloseButtonTag`).
 // HapticsToggle / ReduceMotionToggle flip their respective bool and
 // persist via `settings::mark_dirty_and_save`. Enabling haptics also
 // warms up the platform backend so the first vibration after enable is
@@ -187,12 +165,10 @@ void reduce_motion_toggle_action(entt::registry& reg, entt::entity /*entity*/) {
 // `game_state_system` LevelSelect block consumes it after the entry
 // debounce and routes to Tutorial (if FTUE incomplete) or Playing.
 //
-// `DifficultyEasy/Medium/Hard` write the button's `DifficultyIndex` into
-// `LevelSelectState::selected_difficulty`. Per Fabian Principle 1 the
-// effect lives in one handler reading from the entity's
-// `DifficultyIndex` rather than three near-identical handlers — the
-// dispatch table still indexes by `ActionId` (#1287 invariant) and each
-// row points at this shared transform.
+// `UiActionDifficultyEasy/Medium/HardTag` buttons write the button's
+// `DifficultyIndex` into `LevelSelectState::selected_difficulty`. Per
+// Fabian Principle 1 the selected difficulty is carried by the entity row,
+// not a behavior discriminator.
 //
 // Both write-paths are gated by the entity's `LevelIndex` matching the
 // currently selected level. Diff buttons for non-active cards exist but
@@ -222,43 +198,33 @@ void pause_button_action(entt::registry& reg, entt::entity /*entity*/) {
     request_phase_transition<NextPhasePausedTag>(reg);
 }
 
-// ── Dispatch table ──────────────────────────────────────────────────
-//
-// Order must match the `ActionId` enumerator order in
-// `app/components/actions.h`. A compile-time check at the bottom verifies
-// the count.
+template <typename ActionTag>
+bool try_run_action(entt::registry& reg,
+                    entt::entity entity,
+                    void (*handler)(entt::registry&, entt::entity)) {
+    if (!reg.all_of<ActionTag>(entity)) return false;
+    handler(reg, entity);
+    return true;
+}
 
-constexpr std::array<ActionHandler, 18> kActionHandlers = {
-    /* None                 */ &noop_action_handler,
-    /* AudioOffsetMinus     */ &audio_offset_minus_action,
-    /* AudioOffsetPlus      */ &audio_offset_plus_action,
-    /* CloseButton          */ &close_button_action,
-    /* ContinueButton       */ &continue_button_action,
-    /* DifficultyEasy       */ &apply_difficulty_action,
-    /* DifficultyHard       */ &apply_difficulty_action,
-    /* DifficultyMedium     */ &apply_difficulty_action,
-    /* ExitButton           */ &exit_button_action,
-    /* HapticsToggle        */ &haptics_toggle_action,
-    /* LevelSelectButton    */ &level_select_button_action,
-    /* MenuButton           */ &menu_button_action,
-    /* PauseButton          */ &pause_button_action,
-    /* ReduceMotionToggle   */ &reduce_motion_toggle_action,
-    /* RestartButton        */ &restart_button_action,
-    /* ResumeButton         */ &resume_button_action,
-    /* SettingsButton       */ &settings_button_action,
-    /* StartButton          */ &start_button_action,
-};
-
-// Bumping ActionId without bumping kActionHandlers (or vice versa) is a
-// build-time error.
-static_assert(kActionHandlers.size() ==
-              static_cast<std::size_t>(ActionId::StartButton) + 1,
-              "kActionHandlers size must match ActionId enumerator count");
-
-void dispatch_action(entt::registry& reg, ActionId action, entt::entity entity) {
-    const auto idx = static_cast<std::size_t>(action);
-    if (idx >= kActionHandlers.size()) return;
-    kActionHandlers[idx](reg, entity);
+void dispatch_pressed_button(entt::registry& reg, entt::entity entity) {
+    if (try_run_action<UiActionAudioOffsetMinusTag>(reg, entity, &audio_offset_minus_action)) return;
+    if (try_run_action<UiActionAudioOffsetPlusTag>(reg, entity, &audio_offset_plus_action)) return;
+    if (try_run_action<UiActionCloseButtonTag>(reg, entity, &close_button_action)) return;
+    if (try_run_action<UiActionContinueButtonTag>(reg, entity, &continue_button_action)) return;
+    if (try_run_action<UiActionDifficultyEasyTag>(reg, entity, &apply_difficulty_action)) return;
+    if (try_run_action<UiActionDifficultyHardTag>(reg, entity, &apply_difficulty_action)) return;
+    if (try_run_action<UiActionDifficultyMediumTag>(reg, entity, &apply_difficulty_action)) return;
+    if (try_run_action<UiActionExitButtonTag>(reg, entity, &exit_button_action)) return;
+    if (try_run_action<UiActionHapticsToggleTag>(reg, entity, &haptics_toggle_action)) return;
+    if (try_run_action<UiActionLevelSelectButtonTag>(reg, entity, &level_select_button_action)) return;
+    if (try_run_action<UiActionMenuButtonTag>(reg, entity, &menu_button_action)) return;
+    if (try_run_action<UiActionPauseButtonTag>(reg, entity, &pause_button_action)) return;
+    if (try_run_action<UiActionReduceMotionToggleTag>(reg, entity, &reduce_motion_toggle_action)) return;
+    if (try_run_action<UiActionRestartButtonTag>(reg, entity, &restart_button_action)) return;
+    if (try_run_action<UiActionResumeButtonTag>(reg, entity, &resume_button_action)) return;
+    if (try_run_action<UiActionSettingsButtonTag>(reg, entity, &settings_button_action)) return;
+    if (try_run_action<UiActionStartButtonTag>(reg, entity, &start_button_action)) return;
 }
 
 // ── Per-active-phase input-delay table ──────────────────────────────────
@@ -391,7 +357,7 @@ void ui_update_system(entt::registry& reg) {
     {
         const auto* lss = reg.ctx().find<LevelSelectState>();
         if (lss != nullptr) {
-            auto diff_view = reg.view<UiPosition, UiBounds, OnPress,
+            auto diff_view = reg.view<UiPosition, UiBounds,
                                       UiButtonTag, DifficultyButtonTag,
                                       LevelIndex>();
             for (auto entity : diff_view) {
@@ -401,8 +367,7 @@ void ui_update_system(entt::registry& reg) {
                 const auto& sz  = diff_view.template get<UiBounds>(entity);
                 const Rectangle rect{pos.x, pos.y, sz.w, sz.h};
                 if (!CheckCollisionPointRec(pointer, rect)) continue;
-                const auto& on_press = diff_view.template get<OnPress>(entity);
-                dispatch_action(reg, on_press.action, entity);
+                dispatch_pressed_button(reg, entity);
                 return;
             }
         }
@@ -417,23 +382,23 @@ void ui_update_system(entt::registry& reg) {
     // excluded so Pass A is the sole handler for that archetype (its
     // active-level filter is the entire selection rule).
     {
-        auto view = reg.view<UiPosition, UiBounds, OnPress, UiButtonTag>(
+        auto view = reg.view<UiPosition, UiBounds, UiButtonTag>(
             entt::exclude<DifficultyButtonTag
 #ifdef PLATFORM_WEB
                           , UiHiddenOnWebTag
 #endif
                           >
         );
-        for (auto [e, pos, sz, on_press] : view.each()) {
+        for (auto [e, pos, sz] : view.each()) {
             const Rectangle rect{pos.x, pos.y, sz.w, sz.h};
             if (!CheckCollisionPointRec(pointer, rect)) continue;
-            dispatch_action(reg, on_press.action, e);
+            dispatch_pressed_button(reg, e);
             return;
         }
     }
 
     // Pass C — Level Select cards (issue #1296). Cards are not buttons in
-    // the existential sense (they carry no `OnPress`); a card click sets
+    // the existential sense (they carry no `UiButtonTag`); a card click sets
     // `LevelSelectState::selected_level` directly. Running last means
     // diff buttons (Pass A) and other buttons (Pass B) get priority,
     // since the card rectangle visually contains the diff button row.

@@ -1,6 +1,5 @@
 #include "level_select_dynamic_spawn_system.h"
 
-#include "../components/actions.h"
 #include "../components/ui.h"
 #include "../tags/tags.h"
 #include "generated/screen_spawners.h"
@@ -25,11 +24,17 @@ constexpr float kDiffBtnGap   = 30.0f;
 constexpr float kDiffStartX   = kCardX + 50.0f;
 constexpr float kDiffYOffset  = 120.0f;
 
-// Per Fabian Principle 1: indexed table, no switch on the discriminator.
-constexpr ActionId kDifficultyAction[content_config::DIFFICULTY_COUNT] = {
-    ActionId::DifficultyEasy,
-    ActionId::DifficultyMedium,
-    ActionId::DifficultyHard,
+using DifficultyActionTagFn = void (*)(entt::registry&, entt::entity);
+
+template <typename ActionTag>
+void emplace_difficulty_action_tag(entt::registry& reg, entt::entity entity) {
+    reg.emplace<ActionTag>(entity);
+}
+
+constexpr DifficultyActionTagFn kDifficultyActionTags[content_config::DIFFICULTY_COUNT] = {
+    &emplace_difficulty_action_tag<UiActionDifficultyEasyTag>,
+    &emplace_difficulty_action_tag<UiActionDifficultyMediumTag>,
+    &emplace_difficulty_action_tag<UiActionDifficultyHardTag>,
 };
 
 float card_y_for(int level_index) {
@@ -62,8 +67,8 @@ void level_select_dynamic_spawn(entt::registry& reg) {
     // Difficulty buttons — one per (level, difficulty) pair. Position is
     // baked at spawn time; the render path filters to the active level
     // via `LevelIndex == LevelSelectState::selected_level`. Each button
-    // carries the matching `ActionId::Difficulty*` so the dispatch table
-    // already knows what to do.
+    // carries a matching `UiActionDifficulty*Tag` so press behavior is
+    // selected by ECS membership.
     for (int li = 0; li < content_config::LEVEL_COUNT; ++li) {
         const float diff_y = card_y_for(li) + kDiffYOffset;
         for (int di = 0; di < content_config::DIFFICULTY_COUNT; ++di) {
@@ -79,7 +84,7 @@ void level_select_dynamic_spawn(entt::registry& reg) {
             reg.emplace<UiBounds>(e, kDiffBtnW, kDiffBtnH);
             auto& label = reg.emplace<UiLabel>(e);
             ui_label_set(label, content_config::DIFFICULTY_NAMES[di]);
-            reg.emplace<OnPress>(e, kDifficultyAction[di]);
+            kDifficultyActionTags[di](reg, e);
         }
     }
 }

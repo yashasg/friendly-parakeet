@@ -4,7 +4,6 @@
 // per-screen tag + per-kind tag + atomic UI components.
 // Regenerate via `cmake --build` (codegen runs on .rgl change).
 
-#include "components/actions.h"
 #include "components/ui.h"
 #include "tags/tags.h"
 
@@ -107,7 +106,7 @@ void spawn_gameplay_screen(entt::registry& reg) {
         reg.emplace<UiBounds>(e, 80.0f, 50.0f);
         auto& label = reg.emplace<UiLabel>(e);
         ui_label_set(label, "||");
-        reg.emplace<OnPress>(e, ActionId::PauseButton);
+        reg.emplace<UiActionPauseButtonTag>(e);
     }
     {
         // ChainSlot (label)

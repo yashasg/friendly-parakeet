@@ -405,6 +405,29 @@ struct UiShapeIconHexagonTag  {};
 // NAME_EXTRA_TAGS web-hidden list (`tools/rguilayout/codegen.py`).
 struct UiHiddenOnWebTag {};
 
+// ── UI action membership (per-action tag tables) ─────────────────────
+// Button behavior is selected by entity membership in one of these action
+// tables, not by dispatching an ActionId ordinal. Codegen attaches the tag
+// whose suffix matches each `.rgl` button control name; dynamic level-select
+// difficulty buttons attach their matching difficulty action tag at spawn.
+struct UiActionAudioOffsetMinusTag {};
+struct UiActionAudioOffsetPlusTag {};
+struct UiActionCloseButtonTag {};
+struct UiActionContinueButtonTag {};
+struct UiActionDifficultyEasyTag {};
+struct UiActionDifficultyHardTag {};
+struct UiActionDifficultyMediumTag {};
+struct UiActionExitButtonTag {};
+struct UiActionHapticsToggleTag {};
+struct UiActionLevelSelectButtonTag {};
+struct UiActionMenuButtonTag {};
+struct UiActionPauseButtonTag {};
+struct UiActionReduceMotionToggleTag {};
+struct UiActionRestartButtonTag {};
+struct UiActionResumeButtonTag {};
+struct UiActionSettingsButtonTag {};
+struct UiActionStartButtonTag {};
+
 // ── UI toggle kind (per-kind specialization of UiButtonTag) ──────────
 // Per Fabian's existential processing, "is this button a two-state
 // toggle?" is presence of this tag rather than a `UiButtonKind` enum
@@ -425,12 +448,11 @@ struct UiToggleOffTag {};
 // `content_config::LEVELS` and `content_config::DIFFICULTY_COUNT` — no
 // hard-coded counts in the `.rgl`). Each card carries `LevelCardTag` +
 // `LevelIndex`; each difficulty button carries `DifficultyButtonTag` +
-// `LevelIndex` (owning card) + `DifficultyIndex` (which difficulty row).
-// Both kinds also carry `UiButtonTag` + `OnPress` so the existing
-// `ui_update_system` hit-test path dispatches presses; the render path
-// excludes them from the generic GuiButton pass via `entt::exclude` and
-// runs dedicated per-tag passes that paint the rounded-rect card visual
-// and the active-state emphasis (thick border + selection bar, #469).
+// `LevelIndex` (owning card) + `DifficultyIndex` (which difficulty row) +
+// a `UiActionDifficulty*Tag` matching its row. The render path excludes
+// them from the generic GuiButton pass via `entt::exclude` and runs
+// dedicated per-tag passes that paint the rounded-rect card visual and
+// the active-state emphasis (thick border + selection bar, #469).
 // Despawn falls out for free — all entities also carry
 // `LevelSelectScreenTag` so the codegen-emitted `despawn_level_select_screen`
 // destroys them.

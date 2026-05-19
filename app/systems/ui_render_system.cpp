@@ -1,7 +1,7 @@
 #include "all_systems.h"
 #include "camera_system.h"
 #include "settings_system.h"
-#include "../components/actions.h"
+
 #include "../components/energy_bar.h"
 #include "../components/player.h"
 #include "../components/rendering.h"
@@ -46,7 +46,7 @@ namespace {
 //
 // Migration boundary: a button press dispatch lives in
 // `app/systems/ui_update_system.cpp` — that system hit-tests against
-// `view<UiPosition, UiBounds, OnPress, UiButtonTag>()`. The GuiButton call
+// `view<UiPosition, UiBounds, UiButtonTag>()`. The GuiButton call
 // here renders only; its return value is ignored.
 
 constexpr int kEntityLabelTextSize  = 24;

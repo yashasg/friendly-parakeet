@@ -27,7 +27,7 @@ Each `.rgl` row becomes one ECS entity carrying:
 | `UiPosition { x, y }`     | `app/components/ui.h` |
 | `UiBounds   { w, h }`     | `app/components/ui.h` |
 | `UiLabel    { text[64] }` | `app/components/ui.h` |
-| `OnPress    { action }`   | `app/components/ui.h` — buttons only |
+| `UiAction*Tag`            | `app/tags/tags.h` — buttons only |
 
 For each `.rgl <screen>.rgl` the codegen emits:
 
@@ -42,7 +42,8 @@ void despawn_<screen>_screen(entt::registry& reg);   // destroys all entities wi
    (or by hand — the format is plain text, see `USAGE.md`).
 2. If the edit introduces a new button control whose name is not already in
    `app/components/actions.h::ActionId`, add the new enumerator (sorted
-   alphabetically; the codegen will print a clear error otherwise).
+   alphabetically; the codegen will print a clear error otherwise). Also add
+   the matching `UiAction<Name>Tag` to `app/tags/tags.h`.
 3. If you add a new screen file, register its stem in
    `tools/rguilayout/codegen.py::SCREEN_TAGS` AND add the matching per-screen
    tag struct to `app/tags/tags.h` AND add the new file to the
@@ -69,7 +70,7 @@ It is idempotent — running twice on unchanged inputs produces zero file writes
 | Code | Meaning  | Maps to        |
 |------|----------|----------------|
 | 4    | Label    | `UiLabelTag`    |
-| 5    | Button   | `UiButtonTag` + `OnPress<ActionId::<name>>` |
+| 5    | Button   | `UiButtonTag` + `UiAction<Name>Tag` |
 | 24   | DummyRec | `UiDummyRecTag` (visual placeholder / icon slot) |
 
 Add new entries to `RGL_TYPES` in `codegen.py` to extend the table.
@@ -86,8 +87,8 @@ end-to-end by ECS:
   entity views directly (`UiLabelTag` / `UiButtonTag` / `UiDummyRecTag`); no
   `GamePhase` switch.
 - `app/systems/ui_update_system.cpp` — hit-tests `UiButtonTag` entities
-  against the pointer-release event and dispatches `OnPress::action` through
-  the per-`ActionId` function-pointer table (`kActionHandlers`).
+  against the pointer-release event and selects behavior by `UiAction*Tag`
+  membership.
 
 The single `RAYGUI_IMPLEMENTATION` translation unit lives at
 `app/util/raygui_impl.cpp`; the codegen output lives under
