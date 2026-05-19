@@ -70,6 +70,7 @@ void spawn_settings_screen(entt::registry& reg) {
         reg.emplace<SettingsScreenTag>(e);
         reg.emplace<UiButtonTag>(e);
         reg.emplace<UiToggleTag>(e);
+        reg.emplace<UiToggleOnTag>(e);
         reg.emplace<UiPosition>(e, 152.0f, 720.0f);
         reg.emplace<UiBounds>(e, 416.0f, 100.0f);
         auto& label = reg.emplace<UiLabel>(e);
@@ -92,6 +93,7 @@ void spawn_settings_screen(entt::registry& reg) {
         reg.emplace<SettingsScreenTag>(e);
         reg.emplace<UiButtonTag>(e);
         reg.emplace<UiToggleTag>(e);
+        reg.emplace<UiToggleOnTag>(e);
         reg.emplace<UiPosition>(e, 152.0f, 880.0f);
         reg.emplace<UiBounds>(e, 416.0f, 100.0f);
         auto& label = reg.emplace<UiLabel>(e);

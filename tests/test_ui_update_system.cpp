@@ -1128,7 +1128,7 @@ TEST_CASE("settings_screen_bind_system: writes formatted audio offset text",
     }
 }
 
-TEST_CASE("settings_screen_bind_system: writes toggle labels and UiToggleState",
+TEST_CASE("settings_screen_bind_system: writes toggle labels and state tags",
           "[ui][settings_screen_bind_system][issue1295]") {
     entt::registry reg = make_registry();
     prime_settings_entry(reg);
@@ -1137,22 +1137,22 @@ TEST_CASE("settings_screen_bind_system: writes toggle labels and UiToggleState",
     settings_state(reg).reduce_motion = false;
     settings_screen_bind_system(reg);
 
-    auto view = reg.view<SettingsScreenTag, UiToggleTag, UiPosition, UiLabel,
-                         UiToggleState>();
+    auto view = reg.view<SettingsScreenTag, UiToggleTag, UiPosition, UiLabel>();
     int haptics_match = 0;
     int motion_match = 0;
     for (auto entity : view) {
         const auto& pos = view.get<UiPosition>(entity);
         const auto& label = view.get<UiLabel>(entity);
-        const auto& state = view.get<UiToggleState>(entity);
         if (pos.x == 152.0f && pos.y == 720.0f) {
             CHECK(std::string(label.text.data()) == "[X] HAPTICS: ON");
-            CHECK(state.on);
+            CHECK(reg.all_of<UiToggleOnTag>(entity));
+            CHECK_FALSE(reg.all_of<UiToggleOffTag>(entity));
             ++haptics_match;
         } else if (pos.x == 152.0f && pos.y == 880.0f) {
             // motion_on = !reduce_motion → true → label shows MOTION: ON
             CHECK(std::string(label.text.data()) == "[X] MOTION: ON");
-            CHECK(state.on);
+            CHECK(reg.all_of<UiToggleOnTag>(entity));
+            CHECK_FALSE(reg.all_of<UiToggleOffTag>(entity));
             ++motion_match;
         }
     }
@@ -1166,13 +1166,14 @@ TEST_CASE("settings_screen_bind_system: writes toggle labels and UiToggleState",
     for (auto entity : view) {
         const auto& pos = view.get<UiPosition>(entity);
         const auto& label = view.get<UiLabel>(entity);
-        const auto& state = view.get<UiToggleState>(entity);
         if (pos.x == 152.0f && pos.y == 720.0f) {
             CHECK(std::string(label.text.data()) == "[ ] HAPTICS: OFF");
-            CHECK_FALSE(state.on);
+            CHECK(reg.all_of<UiToggleOffTag>(entity));
+            CHECK_FALSE(reg.all_of<UiToggleOnTag>(entity));
         } else if (pos.x == 152.0f && pos.y == 880.0f) {
             CHECK(std::string(label.text.data()) == "[ ] MOTION: OFF");
-            CHECK_FALSE(state.on);
+            CHECK(reg.all_of<UiToggleOffTag>(entity));
+            CHECK_FALSE(reg.all_of<UiToggleOnTag>(entity));
         }
     }
 }

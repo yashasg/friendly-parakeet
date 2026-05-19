@@ -15,7 +15,8 @@
 
 namespace {
 struct TestPlayerSessionSignals {
-    bool wired = false;
+    entt::connection obstacle_spawn;
+    entt::connection scored;
 };
 }
 
@@ -93,9 +94,12 @@ void test_player_init(entt::registry& reg, SkillConfig skill,
     if (!signals) {
         signals = &reg.ctx().emplace<TestPlayerSessionSignals>();
     }
-    if (!signals->wired) {
-        reg.on_construct<ObstacleTag>().connect<&session_log_on_obstacle_spawn>();
-        reg.on_construct<ScoredTag>().connect<&session_log_on_scored>();
-        signals->wired = true;
+    if (!signals->obstacle_spawn || !signals->scored) {
+        signals->obstacle_spawn.release();
+        signals->scored.release();
+        signals->obstacle_spawn =
+            reg.on_construct<ObstacleTag>().connect<&session_log_on_obstacle_spawn>();
+        signals->scored =
+            reg.on_construct<ScoredTag>().connect<&session_log_on_scored>();
     }
 }

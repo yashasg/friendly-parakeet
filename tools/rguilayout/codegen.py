@@ -76,12 +76,13 @@ NAME_EXTRA_TAGS: Dict[str, Tuple[str, ...]] = {
     # PLATFORM_WEB; `title_start_tap_system` keeps treating their bounds
     # as a dead-zone (defense-in-depth).
     "ExitButton":    ("UiHiddenOnWebTag",),
-    # Settings screen toggle buttons (#1295). `UiToggleTag` selects the
-    # two-cue ON/OFF render row in `ui_render_system`; the sibling
-    # `UiToggleState` is written each frame by `settings_screen_bind_system`
-    # from `SettingsState`.
-    "HapticsToggle":      ("UiToggleTag",),
-    "ReduceMotionToggle": ("UiToggleTag",),
+    # Settings screen toggle buttons (#1295). `UiToggleTag` selects toggle
+    # controls; the state itself is existential (`UiToggleOnTag` /
+    # `UiToggleOffTag`) and is updated each frame by
+    # `settings_screen_bind_system` from `SettingsState`. Both defaults are
+    # ON to match `SettingsState{haptics_enabled=true, reduce_motion=false}`.
+    "HapticsToggle":      ("UiToggleTag", "UiToggleOnTag"),
+    "ReduceMotionToggle": ("UiToggleTag", "UiToggleOnTag"),
     # Gameplay HUD lane buttons (#1297). Each shape button carries the
     # per-shape icon tag (drives the flat 2D icon row inside the lane
     # button render pass) plus `LaneButtonTag` which distinguishes them

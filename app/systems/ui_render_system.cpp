@@ -84,6 +84,30 @@ constexpr Color kLevelCardBorderUnsel  {  60,  60,  80, 255 };
 constexpr Color kDiffActiveBorderColor { 120, 180, 255, 255 };
 constexpr Color kDiffActiveBarColor    {  80, 120, 200, 255 };
 
+template<typename ToggleStateTag>
+void render_toggle_buttons(entt::registry& reg, Color border, Color base,
+                           Color text) {
+    GuiSetStyle(BUTTON, BORDER_COLOR_NORMAL,  ColorToInt(border));
+    GuiSetStyle(BUTTON, BORDER_COLOR_FOCUSED, ColorToInt(border));
+    GuiSetStyle(BUTTON, BASE_COLOR_NORMAL,    ColorToInt(base));
+    GuiSetStyle(BUTTON, BASE_COLOR_FOCUSED,   ColorToInt(base));
+    GuiSetStyle(BUTTON, TEXT_COLOR_NORMAL,    ColorToInt(text));
+    GuiSetStyle(BUTTON, TEXT_COLOR_FOCUSED,   ColorToInt(text));
+
+    auto view = reg.view<UiPosition, UiBounds, UiLabel, UiButtonTag,
+                         UiToggleTag, ToggleStateTag>(
+#ifdef PLATFORM_WEB
+        entt::exclude<UiHiddenOnWebTag>
+#endif
+    );
+    for (auto entity : view) {
+        const auto& pos = view.template get<UiPosition>(entity);
+        const auto& sz  = view.template get<UiBounds>(entity);
+        const auto& lbl = view.template get<UiLabel>(entity);
+        (void)GuiButton(Rectangle{pos.x, pos.y, sz.w, sz.h}, lbl.text.data());
+    }
+}
+
 void render_ui_entities(entt::registry& reg) {
     const int saved_text_size       = GuiGetStyle(DEFAULT, TEXT_SIZE);
     const int saved_label_alignment = GuiGetStyle(LABEL, TEXT_ALIGNMENT);
@@ -213,32 +237,10 @@ void render_ui_entities(entt::registry& reg) {
         constexpr Color kToggleOffBase   {  36,  36,  36, 255 };
         constexpr Color kToggleTextColor { 230, 230, 230, 255 };
 
-        auto toggle_view = reg.view<UiPosition, UiBounds, UiLabel,
-                                    UiButtonTag, UiToggleTag>(
-#ifdef PLATFORM_WEB
-            entt::exclude<UiHiddenOnWebTag>
-#endif
-        );
-        for (auto entity : toggle_view) {
-            const auto& pos = toggle_view.template get<UiPosition>(entity);
-            const auto& sz  = toggle_view.template get<UiBounds>(entity);
-            const auto& lbl = toggle_view.template get<UiLabel>(entity);
-            // `UiToggleState` is written each frame by the per-screen bind
-            // system; if missing (frame 0 race before the bind runs) treat
-            // as OFF — safe default, harmless visual flicker.
-            const auto* state = reg.try_get<UiToggleState>(entity);
-            const bool on = (state != nullptr) && state->on;
-
-            const Color border = on ? kToggleOnBorder : kToggleOffBorder;
-            const Color base   = on ? kToggleOnBase   : kToggleOffBase;
-            GuiSetStyle(BUTTON, BORDER_COLOR_NORMAL,  ColorToInt(border));
-            GuiSetStyle(BUTTON, BORDER_COLOR_FOCUSED, ColorToInt(border));
-            GuiSetStyle(BUTTON, BASE_COLOR_NORMAL,    ColorToInt(base));
-            GuiSetStyle(BUTTON, BASE_COLOR_FOCUSED,   ColorToInt(base));
-            GuiSetStyle(BUTTON, TEXT_COLOR_NORMAL,    ColorToInt(kToggleTextColor));
-            GuiSetStyle(BUTTON, TEXT_COLOR_FOCUSED,   ColorToInt(kToggleTextColor));
-            (void)GuiButton(Rectangle{pos.x, pos.y, sz.w, sz.h}, lbl.text.data());
-        }
+        render_toggle_buttons<UiToggleOnTag>(
+            reg, kToggleOnBorder, kToggleOnBase, kToggleTextColor);
+        render_toggle_buttons<UiToggleOffTag>(
+            reg, kToggleOffBorder, kToggleOffBase, kToggleTextColor);
 
         for (std::size_t i = 0; i < kToggleStylePropCount; ++i) {
             GuiSetStyle(BUTTON, kToggleStyleProps[i], saved_button_style[i]);
