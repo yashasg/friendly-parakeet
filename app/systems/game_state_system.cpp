@@ -3,6 +3,7 @@
 #include "game_state_system.h"
 #include "input_system_private.h"
 #include "play_session.h"
+#include "phase_input.h"
 #include "../components/game_state.h"
 #include "input.h"
 #include "../components/obstacle.h"
@@ -126,7 +127,7 @@ void game_state_system(entt::registry& reg, float dt) {
 
     // LevelSelect input handling
     if (reg.ctx().contains<GamePhaseLevelSelectTag>() &&
-        gs.phase_timer > constants::UI_ENTRY_DEBOUNCE) {
+        phase_input_unlocked(gs)) {
         if (reg.ctx().find<LevelSelectConfirmedTag>()) {
             reg.ctx().erase<LevelSelectConfirmedTag>();
             const auto* settings_ptr = find_settings_state(reg);

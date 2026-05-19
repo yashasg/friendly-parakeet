@@ -11,6 +11,7 @@
 #include "haptics_backend.h"
 #include "input.h"
 #include "input_events.h"
+#include "phase_input.h"
 #include "settings_system.h"
 
 #include <array>
@@ -336,7 +337,7 @@ void ui_update_system(entt::registry& reg) {
     for (const auto& row : kPhaseDebounceRows) {
         if (row.phase_active(reg)) { debounce_sec = row.seconds; break; }
     }
-    if (gs.phase_timer <= debounce_sec) return;
+    if (!phase_input_unlocked(gs, debounce_sec)) return;
 
     // ── Pass D — Gameplay HUD lane buttons (issue #1297) ─────────────
     //

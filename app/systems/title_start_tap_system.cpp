@@ -6,6 +6,7 @@
 #include "../tags/tags.h"
 #include "game_phase_transition.h"
 #include "input.h"
+#include "phase_input.h"
 
 #include <raylib.h>  // CheckCollisionPointRec, Rectangle, Vector2
 
@@ -16,7 +17,7 @@ void title_start_tap_system(entt::registry& reg) {
     if (!(input.click || input.touch_up)) return;
 
     const auto& gs = reg.ctx().get<GameState>();
-    if (gs.phase_timer <= constants::UI_ENTRY_DEBOUNCE) return;
+    if (!phase_input_unlocked(gs)) return;
 
     const Vector2 pointer{input.end_x, input.end_y};
 

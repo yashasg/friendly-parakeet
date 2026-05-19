@@ -4,6 +4,7 @@
 #include "components/audio.h"
 #include "systems/audio_events.h"
 #include "systems/game_phase_transition.h"
+#include "systems/phase_input.h"
 #include "entities/obstacle_entity.h"
 #include "entities/obstacle_render_entity.h"
 
@@ -120,6 +121,15 @@ TEST_CASE("components: GameState defaults to title", "[components]") {
     CHECK(gs.phase_timer == 0.0f);
     CHECK(reg.ctx().contains<GamePhaseTitleTag>());
     CHECK_FALSE(is_phase_transition_pending(reg));
+}
+
+TEST_CASE("systems: phase_input_unlocked uses strict debounce boundary", "[systems][input]") {
+    GameState gs;
+    gs.phase_timer = constants::UI_ENTRY_DEBOUNCE;
+    CHECK_FALSE(phase_input_unlocked(gs));
+
+    gs.phase_timer = constants::UI_ENTRY_DEBOUNCE + 0.001f;
+    CHECK(phase_input_unlocked(gs));
 }
 
 TEST_CASE("ecs: make_registry creates all singletons", "[ecs]") {
