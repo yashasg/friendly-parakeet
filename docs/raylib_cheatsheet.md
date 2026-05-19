@@ -1015,7 +1015,6 @@ Quaternion QuaternionFromEuler(float pitch, float yaw, float roll)          // G
 Vector3 QuaternionToEuler(Quaternion q)                                     // Get the Euler angles equivalent to quaternion (roll, pitch, yaw) NOTE: Angles are returned in a Vector3 struct in radians
 Quaternion QuaternionTransform(Quaternion q, Matrix mat)                    // Transform a quaternion given a transformation matrix
 int QuaternionEquals(Quaternion p, Quaternion q)                            // Check whether two given quaternions are almost equal
-Matrix MatrixCompose(Vector3 translation, Quaternion rotation, Vector3 scale) // Compose a transformation matrix from rotational, translational and scaling components TODO: This function is not following raymath conventions defined in header: NOT self-contained
-void MatrixDecompose(Matrix mat, Vector3 *translation, Quaternion *rotation, Vector3 *scale) // Decompose a transformation matrix into its rotational, translational and scaling components and remove shear TODO: This function is not following raymath conventions defined in header: NOT self-contained
+Matrix MatrixCompose(Vector3 translation, Quaternion rotation, Vector3 scale) // Compose a transformation matrix from rotational, translational and scaling components
+void MatrixDecompose(Matrix mat, Vector3 *translation, Quaternion *rotation, Vector3 *scale) // Decompose a transformation matrix into its rotational, translational and scaling components and remove shear
 ```
-
