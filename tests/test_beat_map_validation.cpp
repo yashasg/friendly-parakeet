@@ -4,6 +4,7 @@
 #include <fstream>
 #include <limits>
 #include "test_helpers.h"
+#include "temp_paths.h"
 #include "entities/beat_map.h"
 #include "util/rhythm_math.h"
 
@@ -11,17 +12,15 @@ namespace {
 
 struct TempBeatMapFile {
     explicit TempBeatMapFile(const char* name, const std::string& json)
-        : path(std::filesystem::temp_directory_path() / name) {
+        : scoped_path(test_paths::unique_temp_path(name)),
+          path(scoped_path.path) {
         std::filesystem::remove(path);
         std::ofstream out(path);
         REQUIRE(out.good());
         out << json;
     }
 
-    ~TempBeatMapFile() {
-        std::filesystem::remove(path);
-    }
-
+    test_paths::ScopedPath scoped_path;
     std::filesystem::path path;
 };
 
@@ -490,7 +489,9 @@ TEST_CASE("load_validation_constants: default paths load shipped defaults", "[va
 }
 
 TEST_CASE("load_validation_constants: explicit app_dir takes precedence over CWD fallback", "[validate][constants]") {
-    const std::filesystem::path root = "test_validation_constants_app_dir";
+    test_paths::ScopedPath scoped_root{
+        test_paths::unique_relative_path("test_validation_constants_app_dir")};
+    const std::filesystem::path& root = scoped_root.path;
     std::filesystem::remove_all(root);
     std::filesystem::create_directories(root / "content");
     {
@@ -508,7 +509,6 @@ TEST_CASE("load_validation_constants: explicit app_dir takes precedence over CWD
     CHECK(vc.lead_beats_max == 8);
     CHECK(vc.min_shape_change_gap == 4);
 
-    std::filesystem::remove_all(root);
 }
 
 TEST_CASE("load_validation_constants: bad app_dir falls back to CWD path", "[validate][constants]") {

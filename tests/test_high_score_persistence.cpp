@@ -9,11 +9,12 @@
 #include "components/high_score.h"
 #include "util/level_content_config.h"
 #include "systems/high_score_system.h"
+#include "temp_paths.h"
 
 namespace {
 
 std::filesystem::path temp_high_score_path(const char* name) {
-    return std::filesystem::temp_directory_path() / name;
+    return test_paths::unique_temp_path(name);
 }
 
 void remove_path(const std::filesystem::path& path) {
@@ -154,7 +155,9 @@ TEST_CASE("High score persistence: round-trips score map", "[high_score]") {
 }
 
 TEST_CASE("High score persistence: supports current-directory files", "[high_score]") {
-    const auto file = std::filesystem::path("high_scores_current_dir_tmp.json");
+    test_paths::ScopedPath scoped_file{
+        test_paths::unique_relative_path("high_scores_current_dir_tmp.json")};
+    const auto& file = scoped_file.path;
     remove_path(file);
 
     entt::registry original;
@@ -166,7 +169,6 @@ TEST_CASE("High score persistence: supports current-directory files", "[high_sco
     REQUIRE(high_score::load_high_scores(loaded, file).ok());
     CHECK(high_score::get_score(loaded, "song_001|easy") == 2000);
 
-    remove_path(file);
 }
 
 TEST_CASE("High score persistence: missing file returns false and preserves state", "[high_score]") {
@@ -302,7 +304,9 @@ TEST_CASE("High score persistence: load does not touch session key", "[high_scor
 }
 
 TEST_CASE("High score persistence: save reports unwritable parent path", "[high_score]") {
-    const auto root = std::filesystem::path("test_high_score_unwritable_parent");
+    test_paths::ScopedPath scoped_root{
+        test_paths::unique_relative_path("test_high_score_unwritable_parent")};
+    const auto& root = scoped_root.path;
     const auto not_a_dir = root / "not_a_directory";
     const auto file = not_a_dir / "high_scores.json";
 
@@ -319,12 +323,13 @@ TEST_CASE("High score persistence: save reports unwritable parent path", "[high_
     const auto result = high_score::save_high_scores(reg, file);
     CHECK(result.status == persistence::Status::DirectoryCreateFailed);
 
-    remove_path(root);
 }
 
 TEST_CASE("High score persistence: save creates nested parent directories",
           "[high_score][persistence][issue-1025]") {
-    const auto root = std::filesystem::path("test_high_score_nested_parent");
+    test_paths::ScopedPath scoped_root{
+        test_paths::unique_relative_path("test_high_score_nested_parent")};
+    const auto& root = scoped_root.path;
     const auto file = root / "missing" / "parent" / "high_scores.json";
     remove_path(root);
 
@@ -337,11 +342,12 @@ TEST_CASE("High score persistence: save creates nested parent directories",
     REQUIRE(high_score::load_high_scores(loaded, file).ok());
     CHECK(high_score::get_score(loaded, "song_001|easy") == 1000);
 
-    remove_path(root);
 }
 
 TEST_CASE("High score helper: file path resolution reports failure without CWD fallback", "[high_score]") {
-    const auto root = std::filesystem::path("test_high_score_path_resolution_failure");
+    test_paths::ScopedPath scoped_root{
+        test_paths::unique_relative_path("test_high_score_path_resolution_failure")};
+    const auto& root = scoped_root.path;
     const auto blocked_root = root / "blocked_root";
     remove_path(root);
     std::filesystem::create_directories(root);
@@ -351,10 +357,10 @@ TEST_CASE("High score helper: file path resolution reports failure without CWD f
         out << "file blocks directory creation";
     }
 
-    std::filesystem::path file_path = "seed_should_clear.json";
+    std::filesystem::path file_path =
+        test_paths::unique_relative_path("seed_should_clear.json");
     const auto result = high_score::get_high_scores_file_path(file_path, blocked_root);
     CHECK(result.status == persistence::Status::DirectoryCreateFailed);
     CHECK(file_path.empty());
 
-    remove_path(root);
 }
