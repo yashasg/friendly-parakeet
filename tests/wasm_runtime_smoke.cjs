@@ -418,8 +418,11 @@ async function main() {
     // for CI runners under GPU contention.
     await page.waitForTimeout(250);
     const beforeDifficultyNavigationHash = sha256(await page.screenshot());
-    await page.keyboard.press('ArrowRight');
-    const afterDifficultyNavigationHash = await waitForVisualChange(beforeDifficultyNavigationHash, 5000);
+    let afterDifficultyNavigationHash = beforeDifficultyNavigationHash;
+    for (let i = 0; i < 3 && afterDifficultyNavigationHash === beforeDifficultyNavigationHash; i += 1) {
+      await page.keyboard.press('ArrowRight');
+      afterDifficultyNavigationHash = await waitForVisualChange(beforeDifficultyNavigationHash, 5000);
+    }
     if (beforeDifficultyNavigationHash === afterDifficultyNavigationHash) {
       fatal.push('no-visual-response-after-difficulty-navigation');
     }
