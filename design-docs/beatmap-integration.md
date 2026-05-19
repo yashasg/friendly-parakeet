@@ -222,7 +222,7 @@ creates the standard runtime obstacle archetypes via the kind-specific
   │  ✅ song_playback_system       (advances SongState.song_time)   │
   │  ✅ tick_playing_systems       (gated on GamePhasePlayingTag) │
   │  ✅ obstacle_despawn_system    (destroy off-camera obstacles)   │
-  │  ✅ popup_feedback_system      (drain ScorePopupRequestQueue)   │
+  │  ✅ popup_feedback_system      (drain PopupRequestTier*Tag rows)│
   │  ✅ popup_display_system       (ScorePopup timer → fade/cull)   │
   │  ✅ energy_system              (drain PendingEnergyEffectTag rows)│
   │  ✅ energy_bar_system          (HUD bar visual update)          │

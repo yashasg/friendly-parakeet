@@ -170,6 +170,29 @@ struct PendingMissResolveTag        {};
 struct PendingHitResolveTag         {};
 struct PendingNonScorableCleanupTag {};
 
+// ── Pending score-popup request (per-frame row table) ────────
+// Per Fabian's existential processing (issue #1626 / .squad/decisions.md
+// § 9 Principle 3 — "No array columns"), the former `ScorePopupRequestQueue`
+// `std::vector<TimedPopupRequest>` per-tier columns + `untimed` column +
+// `capacity_exceeded_count` parallel counter are eradicated. Each popup
+// request is its own entity carrying one of the per-tier tags below plus
+// a `PopupRequest` row component (x, y, points).
+//
+// `scoring_system` creates one request entity per scored obstacle during
+// the hit-pass drain (4 graded tiers + 1 ungraded). `popup_feedback_system`
+// walks one view per tier — `view<PopupRequest, PopupRequestTier*Tag>()` —
+// invokes the matching `spawn_score_popup_*` per row, and `reg.destroy()`s
+// the request rows at end-of-pass. The per-tier identity is the tag, not
+// a discriminator field — one transform per former enum value, no `switch`.
+//
+// Mirrors the per-tag row-table mechanic the squad already applies to
+// timing tiers, render passes, screen tags, etc. (#1202 / #1204).
+struct PopupRequestTierPerfectTag {};
+struct PopupRequestTierGoodTag    {};
+struct PopupRequestTierOkTag      {};
+struct PopupRequestTierBadTag     {};
+struct PopupRequestTierUntimedTag {};
+
 // ── Test player (deterministic AI) ───────────────────────────
 struct TestPlayerPlannedTag {};
 

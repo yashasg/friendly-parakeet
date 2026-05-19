@@ -9,7 +9,8 @@ void tick_fixed_systems(entt::registry& reg, float dt) {
     tick_playing_systems(reg, dt);
     // Keep obstacle lifecycle systems contiguous while pools are warm.
     obstacle_despawn_system(reg, dt);
-    // Score feedback runs after scoring populates ScorePopupRequestQueue.
+    // Score feedback runs after scoring emplaces PopupRequest row entities
+    // (issue #1626 — per-tier row tables replaced the old ScorePopupRequestQueue).
     popup_feedback_system(reg, dt);
     popup_display_system(reg, dt);
     energy_system(reg, dt);

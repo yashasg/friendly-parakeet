@@ -30,7 +30,7 @@ void enqueue_energy_effect(entt::registry& reg, float delta, bool flash = false)
 
 // Per-tier traits — Fabian per-value table: each specialization carries the
 // row of constants the scoring transform reads for that tier (energy delta,
-// results counter member-pointer, particle color, popup-queue member-pointer).
+// results counter member-pointer, particle color, popup-request tier tag).
 // One specialization per former TimingTier value; the prior 4-way switches
 // are replaced by template selection over the tier tag.
 template <typename TierTag>
@@ -43,8 +43,7 @@ struct tier_score_traits<TimingPerfectTag> {
     static constexpr bool  energy_flash        = false;
     static constexpr Color particle_color{255, 230, 90, 240};
     static constexpr int   SongResults::* results_counter = &SongResults::perfect_count;
-    static constexpr std::vector<TimedPopupRequest> ScorePopupRequestQueue::* queue =
-        &ScorePopupRequestQueue::perfect;
+    using PopupRequestTag = PopupRequestTierPerfectTag;
 };
 
 template <>
@@ -54,8 +53,7 @@ struct tier_score_traits<TimingGoodTag> {
     static constexpr bool  energy_flash        = false;
     static constexpr Color particle_color{120, 255, 160, 230};
     static constexpr int   SongResults::* results_counter = &SongResults::good_count;
-    static constexpr std::vector<TimedPopupRequest> ScorePopupRequestQueue::* queue =
-        &ScorePopupRequestQueue::good;
+    using PopupRequestTag = PopupRequestTierGoodTag;
 };
 
 template <>
@@ -65,8 +63,7 @@ struct tier_score_traits<TimingOkTag> {
     static constexpr bool  energy_flash        = false;
     static constexpr Color particle_color{100, 180, 255, 220};
     static constexpr int   SongResults::* results_counter = &SongResults::ok_count;
-    static constexpr std::vector<TimedPopupRequest> ScorePopupRequestQueue::* queue =
-        &ScorePopupRequestQueue::ok;
+    using PopupRequestTag = PopupRequestTierOkTag;
 };
 
 template <>
@@ -76,8 +73,7 @@ struct tier_score_traits<TimingBadTag> {
     static constexpr bool  energy_flash        = true;
     static constexpr Color particle_color{255, 100, 100, 220};
     static constexpr int   SongResults::* results_counter = &SongResults::bad_count;
-    static constexpr std::vector<TimedPopupRequest> ScorePopupRequestQueue::* queue =
-        &ScorePopupRequestQueue::bad;
+    using PopupRequestTag = PopupRequestTierBadTag;
 };
 
 constexpr Color kUntimedParticleColor{220, 220, 255, 220};
@@ -129,8 +125,7 @@ float chain_multiplier_for_count(int32_t chain_count) {
 template <typename TierTag>
 void process_tier_hit_pass(entt::registry& reg,
                            ScoreState& score,
-                           SongResults* results,
-                           ScorePopupRequestQueue& popup_queue) {
+                           SongResults* results) {
     {
         auto gather = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldPosition, TimingGrade, TierTag>(
             entt::exclude<MissTag, NonScorableTag>);
@@ -167,8 +162,7 @@ void process_tier_hit_pass(entt::registry& reg,
 
         score.score += points;
 
-        auto& queue = popup_queue.*Traits::queue;
-        queue.push_back({wp.position.x, wp.position.y, points});
+        enqueue_popup_request<typename Traits::PopupRequestTag>(reg, wp.position.x, wp.position.y, points);
         spawn_score_particles(reg, wp.position, Traits::particle_color);
 
         reg.get_or_emplace<ResolvedObstacleTag>(e);
@@ -182,8 +176,7 @@ void process_tier_hit_pass(entt::registry& reg,
 
 void process_ungraded_hit_pass(entt::registry& reg,
                                ScoreState& score,
-                               SongResults* results,
-                               ScorePopupRequestQueue& popup_queue) {
+                               SongResults* results) {
     {
         auto gather = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldPosition>(
             entt::exclude<MissTag, NonScorableTag, TimingGrade>);
@@ -215,7 +208,7 @@ void process_ungraded_hit_pass(entt::registry& reg,
 
         score.score += points;
 
-        popup_queue.untimed.push_back({wp.position.x, wp.position.y, points});
+        enqueue_popup_request<PopupRequestTierUntimedTag>(reg, wp.position.x, wp.position.y, points);
         spawn_score_particles(reg, wp.position, kUntimedParticleColor);
 
         reg.get_or_emplace<ResolvedObstacleTag>(e);
@@ -246,7 +239,6 @@ void scoring_system(entt::registry& reg, float dt) {
     }
 
     auto* results = reg.ctx().find<SongResults>();   // #309: hoisted above loop
-    auto& popup_queue = reg.ctx().get<ScorePopupRequestQueue>();
 
     // Miss pass: single owner of ENERGY_DRAIN_MISS and miss_count.
     // Gather → drain via `PendingMissResolveTag` row table (issue #1629):
@@ -289,11 +281,11 @@ void scoring_system(entt::registry& reg, float dt) {
     // Hit pass: one transform per former TimingTier value plus one ungraded
     // transform (#1202/#1204). Per-tier constants live in tier_score_traits;
     // no `switch` on a discriminator anywhere in the hit pipeline.
-    process_tier_hit_pass<TimingPerfectTag>(reg, score, results, popup_queue);
-    process_tier_hit_pass<TimingGoodTag>   (reg, score, results, popup_queue);
-    process_tier_hit_pass<TimingOkTag>     (reg, score, results, popup_queue);
-    process_tier_hit_pass<TimingBadTag>    (reg, score, results, popup_queue);
-    process_ungraded_hit_pass              (reg, score, results, popup_queue);
+    process_tier_hit_pass<TimingPerfectTag>(reg, score, results);
+    process_tier_hit_pass<TimingGoodTag>   (reg, score, results);
+    process_tier_hit_pass<TimingOkTag>     (reg, score, results);
+    process_tier_hit_pass<TimingBadTag>    (reg, score, results);
+    process_ungraded_hit_pass              (reg, score, results);
 
     // ── NonScorable cleanup ───────────────────────────────────────────────────
     // Entities excluded from the hit pass via NonScorableTag still need their

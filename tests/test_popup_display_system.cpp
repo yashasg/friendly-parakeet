@@ -33,7 +33,6 @@
 #include "components/transform.h" // WorldPosition, Vector2
 #include "entities/settings.h"    // SettingsState (reduce_motion)
 #include "systems/all_systems.h"  // popup_display_system declaration
-#include "systems/gameplay_intents.h" // ScorePopupRequestQueue (init sentinel)
 #include "entities/popup_entity.h"
 #include "constants.h"
 
@@ -49,9 +48,10 @@ void seed_popup_common(entt::registry& reg,
                        int32_t        value,
                        float          remaining,
                        float          max_time) {
-    if (!reg.ctx().contains<ScorePopupRequestQueue>()) {
-        runtime_system_scratch_init(reg);
-    }
+    // Idempotent / lightweight after issue #1626 (ScorePopupRequestQueue
+    // eradicated into per-tier row tables); always call so popup_display
+    // tests don't depend on a now-defunct ctx sentinel.
+    runtime_system_scratch_init(reg);
     ScorePopup sp{};
     sp.value     = value;
     sp.remaining = remaining;

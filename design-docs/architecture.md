@@ -720,7 +720,8 @@ SongState          160     per-frame  song_playback/beat_scheduler
 EnergyState         12     per-frame  energy_system (write), ui_render (read)
 PendingEnergyEffectTag var per-frame  scoring_system (emplace rows), energy_system (drain rows)
 ScoreState          12     per-frame  scoring_system (write), render (read)
-ScorePopupRequestQueue var per-frame  scoring_system (push), popup_feedback_system (drain)
+ScorePopupRequestQueue: REMOVED — replaced by `PopupRequest` + `PopupRequestTier*Tag` row tables (issue #1626, Fabian Principle 3).
+PopupRequestTier*Tag    var   per-frame  scoring_system (emplace rows via `enqueue_popup_request<>`), popup_feedback_system (drain rows)
 PlaySfxEvent        var    per-frame  dispatcher events drained by audio_system
 TestPlayerState     var    session    test_player_system (read/write), test_player_session (init), game_loop (reset)
 ─────────────────────────────────────────────────────────────

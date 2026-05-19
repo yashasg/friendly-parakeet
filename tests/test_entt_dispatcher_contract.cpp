@@ -186,18 +186,25 @@ TEST_CASE("wire_input_dispatcher prewarms semantic event queues without pending 
     CHECK(dispatcher.size<MenuSelectDiffEvent>()     == 0);
 }
 
-TEST_CASE("runtime scratch queues are explicit registry context state",
+TEST_CASE("runtime scratch row tables are empty after init (no ctx residency)",
           "[ecs][scratch]") {
     auto reg = make_registry();
 
-    // ScoringSystemScratch (miss_buf / hit_buf) ctx singleton was eradicated
-    // by issue #1629 — its contents now live as per-frame row entities
-    // tagged `PendingMissResolveTag` / `PendingHitResolveTag` /
-    // `PendingNonScorableCleanupTag` (no ctx residency to assert).
-    // PendingEnergyEffects ctx singleton was eradicated by issue #1627 — its
-    // contents now live as per-frame row entities tagged
-    // `PendingEnergyEffectTag` (no ctx residency to assert).
-    CHECK(reg.ctx().contains<ScorePopupRequestQueue>());
+    // All former scratch-pad ctx singletons have been migrated to per-frame
+    // row tables (Fabian Principle 3 / .squad/decisions.md § 9):
+    //   - ScoringSystemScratch (miss_buf / hit_buf) → PendingMissResolveTag /
+    //     PendingHitResolveTag / PendingNonScorableCleanupTag (issue #1629)
+    //   - PendingEnergyEffects.events → PendingEnergyEffectTag (issue #1627)
+    //   - ScorePopupRequestQueue.{perfect,good,ok,bad,untimed} →
+    //     PopupRequestTier*Tag + PopupRequest row component (issue #1626)
+    // None of these have ctx residency anymore — they are entity-table rows.
+    // The dispatcher remains the canonical synchronous event surface.
+    CHECK(reg.ctx().contains<entt::dispatcher>());
+    CHECK(reg.view<PendingMissResolveTag>().size()       == 0u);
+    CHECK(reg.view<PendingHitResolveTag>().size()        == 0u);
+    CHECK(reg.view<PendingNonScorableCleanupTag>().size()== 0u);
+    CHECK(reg.view<PendingEnergyEffectTag>().size()      == 0u);
+    CHECK(reg.view<PopupRequest>().size()                == 0u);
 }
 
 TEST_CASE("R7: Go*Event delivered in GameOver phase — player_input handler no-ops due to phase guard",
