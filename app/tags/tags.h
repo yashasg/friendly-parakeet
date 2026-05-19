@@ -469,3 +469,16 @@ struct ChainBgPulseTag {};
 // the per-frame check is a view filter, not a `try_get` + bool branch —
 // the per-frame existence is the visibility data (Principle 4).
 struct ApproachRingVisibleTag {};
+
+// ── Input source mutex (ctx tags; issues #1202 / #1204 / #1645) ──
+// Per-source ctx tags replacing the former `InputSource` enum. The
+// former 3-state mutex (`None`/`Mouse`/`Touch`) on
+// `InputState::active_source` becomes:
+//   • presence of `InputSourceMouse` ctx table  ⇔ Mouse owns the gesture
+//   • presence of `InputSourceTouch` ctx table  ⇔ Touch owns the gesture
+//   • absence of both                            ⇔ None
+// The mutex (at most one tag present) is enforced inline at the two set
+// sites in input_system (insert one tag + erase the sibling) and via
+// the shared `clear_input_source` helper which drops both tags.
+struct InputSourceMouse {};
+struct InputSourceTouch {};
