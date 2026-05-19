@@ -909,8 +909,9 @@ the request via `is_phase_transition_pending(reg)`, clears stale pointer
 state, and then enters the requested phase. `enter_phase<PhaseTag>(reg)`
 swaps the active `GamePhase*Tag` and resets `GameState::phase_timer`.
 
-`Tutorial` is a defined phase tag with a screen, but current shipped screens do
-not route into it. Its continue action transitions to `Playing`.
+`Tutorial` is a defined phase tag with a screen. Level Select routes into it
+when FTUE is incomplete; its continue action marks FTUE complete, persists
+settings, and transitions to `Playing`.
 
 ### Transition Summary
 
@@ -918,16 +919,17 @@ not route into it. Its continue action transitions to `Playing`.
 |------|----|-----------------|-------|
 | Title | LevelSelect | Title screen body/start action | Defers through `request_phase_transition<NextPhaseLevelSelectTag>`. |
 | Title | Settings | Title screen gear action | Settings exits back to Title. |
-| LevelSelect | Playing | `LevelSelectState::confirmed` | `setup_play_session` loads the selected level/difficulty. |
+| LevelSelect | Tutorial | `LevelSelectConfirmedTag` when FTUE is incomplete | First-time route before gameplay. |
+| LevelSelect | Playing | `LevelSelectConfirmedTag` when FTUE is complete | `setup_play_session` loads the selected level/difficulty. |
 | Playing | Paused | HUD pause, keyboard pause, or app background | Gameplay entities remain intact. |
 | Paused | Playing | Resume action | Resumes without rebuilding the play session. |
-| Paused | Title | Quit action | Leaves the run and returns to menu UI. |
+| Paused | Title | Main-menu action | Leaves the run and returns to menu UI. |
 | Playing | GameOver | Energy reaches zero | `game_state_enter_terminal_phase` captures results/cause. |
 | Playing | SongComplete | Song finished and obstacles cleared | Uses the same terminal result path as GameOver. |
 | GameOver/SongComplete | Playing | Restart action | Starts a fresh play session. |
-| GameOver/SongComplete | LevelSelect | Level-select action | Clears `LevelSelectState::confirmed` on entry. |
+| GameOver/SongComplete | LevelSelect | Level-select action | Clears `LevelSelectConfirmedTag` on entry. |
 | GameOver/SongComplete | Title | Main-menu action | Returns to the title screen. |
-| Tutorial | Playing | Tutorial continue action | Phase exists, but no shipped controller currently routes into Tutorial. |
+| Tutorial | Playing | Tutorial continue action | Marks FTUE complete and starts gameplay. |
 
 ### Terminal Phases
 

@@ -92,11 +92,11 @@
                      │          │                ┌─────┴───────┐   │
                      │   ┌──────┴────────┐       │   PAUSED    │   │
                      │   │               │       │  (overlay)  │   │
-                     │   │ on energy=0   │ song  │             │   │
-                     │   │               │ ends  │ [RESUME]    │   │
-                     │   ▼               ▼       │ [RESTART]───┼───┤
-                     │ ┌──────────┐ ┌──────────┐ │ [QUIT] ─────┼───┘
-                     │ │ GAMEOVER │ │   SONG   │ └─────────────┘
+                     │   │ on energy=0   │ song  │ [RESUME]    │   │
+                     │   │               │ ends  │ [MAIN MENU]─┼───┤
+                     │   ▼               ▼       └─────────────┘   │
+                     │ ┌──────────┐ ┌──────────┐                   │
+                     │ │ GAMEOVER │ │   SONG   │
                      │ │  SCREEN  │ │ COMPLETE │
                      │ │          │ │  SCREEN  │
                       │ │ ● score  │ │          │
@@ -199,7 +199,8 @@ After tapping "start" on the title screen, the player is taken to the
 **LevelSelect** screen (active `GamePhaseLevelSelectTag`). This screen
 presents a list of available songs and difficulty options. The layout
 is defined in `content/ui/screens/level_select.rgl`. Confirming a
-selection transitions to `GamePhasePlayingTag`.
+selection transitions to `GamePhaseTutorialTag` when FTUE is incomplete;
+otherwise it transitions directly to `GamePhasePlayingTag`.
 
 ---
 
@@ -428,27 +429,23 @@ Not shipped (intentionally absent from this wireframe):
   ║           ║  PAUSED  ║              ║  ← y = 0.30H
   ║                                      ║
   ║                                      ║
-  ║        ╔══════════════════╗          ║  ← y = 0.42H
-  ║        ║   ▸ RESUME       ║          ║     button: 0.50W × 0.08H
+  ║          TAP RESUME TO CONTINUE      ║
+  ║        ╔══════════════════╗          ║
+  ║        ║     RESUME       ║          ║     button: 400×100 px in .rgl
   ║        ╚══════════════════╝          ║
   ║                                      ║
-  ║        ┌──────────────────┐          ║  ← y = 0.54H
-  ║        │   ↺ RESTART      │          ║     button: 0.50W × 0.08H
-  ║        └──────────────────┘          ║
+  ║          OR RETURN TO MAIN MENU      ║
   ║                                      ║
-  ║        ┌──────────────────┐          ║  ← y = 0.66H
-  ║        │   ✕ QUIT         │          ║     button: 0.50W × 0.08H
+  ║        ┌──────────────────┐          ║
+  ║        │   MAIN MENU      │          ║     button: 400×100 px in .rgl
   ║        └──────────────────┘          ║
   ║                                      ║
   ║                                      ║
   ║                                      ║
   ╚══════════════════════════════════════╝
 
-  RESUME button = bright/highlighted (double-bordered)
-  RESTART, QUIT = dim/secondary (single-bordered)
-
   Trigger: tap ⏸ icon at top-center during gameplay
-  Resume also triggers on: tap anywhere outside buttons
+  Actions: RESUME returns to the paused run; MAIN MENU returns to Title.
 ```
 
 ---
@@ -1740,11 +1737,10 @@ Every player action triggers a multi-sensory response.
   t=0.05s  • Dark overlay fades in from 0% → 60% opacity
   t=0.10s  • "PAUSED" text fades in (from above, 0.15s)
   t=0.15s  • Resume button slides in from left (0.10s)
-  t=0.18s  • Restart button slides in from left (0.10s)
-  t=0.21s  • Quit button slides in from left (0.10s)
+  t=0.18s  • Main Menu button slides in from left (0.10s)
   t=0.25s  • All elements visible, input enabled
 
-  EXIT (tap RESUME or tap outside):
+  EXIT (tap RESUME):
   ══════════════════════════════════
 
   DURATION: 0.15 seconds (faster exit than enter!)
@@ -1765,9 +1761,9 @@ Every player action triggers a multi-sensory response.
   ║ SPD ██████ ×1.8   ║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║
   ║                   ║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ║▓▓  ║ PAUSED ║  ▓▓║
   ║ ─────┬─────┬────  ║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║
-  ║      │     │      ║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ║▓▓ [▸ RESUME]   ▓▓║
-  ║      │  ●  │      ║  ║▓▓▓(dimming)▓▓▓▓▓▓║  ║▓▓ [↺ RESTART]  ▓▓║
-  ║      │     │      ║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ║▓▓ [✕ QUIT]     ▓▓║
+  ║      │     │      ║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ║▓▓ [ RESUME ]   ▓▓║
+  ║      │  ●  │      ║  ║▓▓▓(dimming)▓▓▓▓▓▓║  ║▓▓              ▓▓║
+  ║      │     │      ║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ║▓▓ [MAIN MENU]  ▓▓║
   ║ ─────┴─────┴────  ║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║
   ║ ENERGY █████░░░░  ║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║
   ║ [ ● ] [ ■ ] [ ▲ ] ║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║  ║▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓║
