@@ -261,12 +261,13 @@ The level designer uses song structure (intro/verse/chorus/bridge) to control de
 
 ## CI/CD
 
-Builds on every push to main across 3 platforms:
+Builds on every push to main across 4 targets:
 
 | Platform | Compiler | Notes |
 |----------|----------|-------|
-| Linux | Clang 20 | Native + WebAssembly |
+| Linux | Clang 20 | Native |
 | macOS | Clang 20 (Homebrew LLVM) | Native |
 | Windows | Clang 20 (pre-installed) | Native |
+| WebAssembly | Emscripten 5.0.3 | Browser build + PR preview |
 
-WebAssembly builds auto-deploy to GitHub Pages on merge to main, and the beatmap/level editor is published at `https://yashasg.github.io/friendly-parakeet/level-editor/`.
+WebAssembly also runs on pull requests to `main`, `dev`, `preview`, and `insider`. WebAssembly builds auto-deploy to GitHub Pages on merge to main, and the beatmap/level editor is published at `https://yashasg.github.io/friendly-parakeet/level-editor/`.
