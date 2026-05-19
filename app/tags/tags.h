@@ -409,10 +409,13 @@ struct UiHiddenOnWebTag {};
 // toggle?" is presence of this tag rather than a `UiButtonKind` enum
 // field. Toggle buttons (#1295) render with green ON / grey OFF colors
 // + an `[X] / [ ]` icon prefix per the two-cue A11Y requirement (#390);
-// `ui_render_system` reads the sibling `UiToggleState` component to pick
-// the row. Codegen attaches this tag to `.rgl` button controls whose
-// name is in the NAME_EXTRA_TAGS toggle list (`tools/rguilayout/codegen.py`).
+// `settings_screen_bind_system` moves each toggle between `UiToggleOnTag`
+// and `UiToggleOffTag`, and `ui_render_system` draws one filtered view per
+// state. Codegen attaches this tag to `.rgl` button controls whose name is
+// in the NAME_EXTRA_TAGS toggle list (`tools/rguilayout/codegen.py`).
 struct UiToggleTag {};
+struct UiToggleOnTag {};
+struct UiToggleOffTag {};
 
 // ── Level Select dynamic UI archetypes (issue #1296) ─────────────────
 // Per Fabian's existential processing, the level-select cards and the

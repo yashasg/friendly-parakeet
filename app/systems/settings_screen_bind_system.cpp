@@ -24,7 +24,7 @@ constexpr float kReduceMotionToggleY = 880.0f;
 
 // Bind context — owns the per-frame singleton reads so the per-slot
 // `bind_*` functions are pure transforms over their slot's `UiLabel` +
-// `UiToggleState`. Mirrors the `*BindContext` shape used by the sibling
+// toggle state tags. Mirrors the `*BindContext` shape used by the sibling
 // `game_over_scoreboard_bind_system` / `song_complete_scoreboard_bind_system` /
 // `gameplay_hud_bind_system` binders.
 //
@@ -61,7 +61,12 @@ void bind_toggle_impl(entt::registry& reg, entt::entity e, UiLabel& label,
     std::snprintf(buf, sizeof(buf), "[%s] %s: %s",
                   on ? "X" : " ", name, on ? "ON" : "OFF");
     ui_label_set(label, buf);
-    reg.emplace_or_replace<UiToggleState>(e, UiToggleState{on});
+    reg.remove<UiToggleOnTag, UiToggleOffTag>(e);
+    if (on) {
+        reg.emplace_or_replace<UiToggleOnTag>(e);
+    } else {
+        reg.emplace_or_replace<UiToggleOffTag>(e);
+    }
 }
 
 void bind_haptics_toggle(const SettingsBindContext& ctx, entt::registry& reg,

@@ -97,16 +97,6 @@ struct DifficultyIndex {
     int value = 0;
 };
 
-// Two-state toggle data for buttons carrying `UiToggleTag` (Settings
-// screen, issue #1295). The bind system (e.g.
-// `settings_screen_bind_system`) writes the current ON/OFF state each
-// frame from the underlying domain data (`SettingsState::haptics_enabled`,
-// `!SettingsState::reduce_motion`, …). `ui_render_system` reads it to
-// pick the two-cue colour + icon-prefix row.
-struct UiToggleState {
-    bool on = false;
-};
-
 // Per-entity font-size override for `UiLabel` rendering (issue #1297).
 // When absent the renderer falls back to the bounds-height heuristic
 // (height ≥ 80 ⇒ 56, else 24). Written by per-screen bind systems for
