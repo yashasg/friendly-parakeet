@@ -143,7 +143,7 @@ bool ensure_entry(entt::registry& reg, const char* key) {
 }
 
 int32_t get_current_high_score(const entt::registry& reg, const HighScoreSession& session) {
-    return session.key_hash == 0 ? 0 : get_score_by_hash(reg, session.key_hash);
+    return get_score_by_hash(reg, session.key_hash);
 }
 
 namespace {
@@ -286,19 +286,19 @@ persistence::Result save_high_scores(const entt::registry& reg, const std::files
 }
 
 bool update_if_higher(entt::registry& reg, const HighScoreSession& session, int32_t new_score) {
-    const bool has_session_key = session.key_hash != 0;
     new_score = std::max(new_score, 0);
-    const int32_t stored = has_session_key ? get_score_by_hash(reg, session.key_hash) : 0;
-    if (has_session_key && new_score > stored) {
-        const auto entity = find_entry_by_hash(reg, session.key_hash);
-        if (entity == entt::null) {
-            TraceLog(LOG_WARNING, "High score entry hash %u not found; score update skipped",
-                     static_cast<unsigned int>(session.key_hash));
-            return false;
-        }
-        reg.get<HighScoreEntry>(entity).score = new_score;
+    const auto entity = find_entry_by_hash(reg, session.key_hash);
+    if (entity == entt::null) {
+        TraceLog(LOG_WARNING, "High score entry hash %u not found; score update skipped",
+                 static_cast<unsigned int>(session.key_hash));
+        return false;
     }
-    return has_session_key;
+    auto& entry = reg.get<HighScoreEntry>(entity);
+    const int32_t stored = entry.score;
+    if (new_score > stored) {
+        entry.score = new_score;
+    }
+    return true;
 }
 
 }  // namespace high_score

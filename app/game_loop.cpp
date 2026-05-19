@@ -234,8 +234,8 @@ bool game_loop_init(entt::registry& reg,
 
     // High scores — load from disk; defaults remain if file is missing/corrupt/path-invalid.
     // Entries live as `HighScoreEntry` rows in the registry (Fabian Principle 3 /
-    // issue #1560); only the persistence bookkeeping + active-session pointer remain
-    // as ctx singletons.
+    // issue #1560); only persistence bookkeeping is initialized here. The
+    // active-session ctx row is emplaced by setup_play_session once a key exists.
     {
         HighScorePersistence persistence_state;
         if (path_result.ok()) {
@@ -246,7 +246,6 @@ bool game_loop_init(entt::registry& reg,
         }
         log_persistence_result("high score load", persistence_state.last_load);
         reset_ctx_singleton<HighScorePersistence>(reg, persistence_state);
-        reset_ctx_singleton<HighScoreSession>(reg);
     }
 
     // Cameras + render targets + GPU meshes

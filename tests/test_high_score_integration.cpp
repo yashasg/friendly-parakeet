@@ -118,8 +118,8 @@ TEST_CASE("Play session: missing selected beatmap returns to level select withou
     auto reg = make_registry();
     auto& lss = reg.ctx().get<LevelSelectState>();
     high_score::set_score(reg, "1_stomper|medium", 4321);
-    auto& session = reg.ctx().get<HighScoreSession>();
-    session.key_hash = high_score::make_key_hash("1_stomper", "medium");
+    reg.ctx().emplace<HighScoreSession>(
+        HighScoreSession{high_score::make_key_hash("1_stomper", "medium")});
     reg.ctx().insert_or_assign(LevelSelectConfirmedTag{});
 
     reg.ctx().emplace<PlaySessionContentOverride>(
@@ -135,7 +135,7 @@ TEST_CASE("Play session: missing selected beatmap returns to level select withou
     }
     CHECK(reg.view<PlayerTag>().empty());
     CHECK(reg.ctx().find<ScoreState>() == nullptr);
-    CHECK(session.key_hash == 0);
+    CHECK_FALSE(reg.ctx().contains<HighScoreSession>());
     CHECK(high_score::entry_count(reg) == 1);
 
     reg.ctx().erase<PlaySessionContentOverride>();
@@ -147,6 +147,7 @@ TEST_CASE("Play session: missing selected beatmap returns to level select withou
     CHECK(reg.ctx().find<SongState>() != nullptr);
     CHECK(reg.ctx().find<ScoreState>() != nullptr);
     CHECK(reg.ctx().contains<GamePhasePlayingTag>());
+    CHECK(reg.ctx().contains<HighScoreSession>());
     CHECK_FALSE(reg.view<PlayerTag>().empty());
 }
 
@@ -207,7 +208,7 @@ TEST_CASE("Play session: overlong high-score key disables session score entry",
 
     setup_play_session(reg);
 
-    CHECK(reg.ctx().get<HighScoreSession>().key_hash == 0);
+    CHECK_FALSE(reg.ctx().contains<HighScoreSession>());
     CHECK(reg.ctx().get<CurrentSongHighScore>().value == 0);
     CHECK(high_score::entry_count(reg) == 0);
 }
@@ -250,7 +251,8 @@ TEST_CASE("High score integration: new song-complete high score persists",
     auto reg = make_registry();
     reg.ctx().get<HighScorePersistence>().path = file.string();
     high_score::ensure_entry(reg, "song_001|easy");
-    reg.ctx().get<HighScoreSession>().key_hash = high_score::make_key_hash("song_001", "easy");
+    reg.ctx().emplace<HighScoreSession>(
+        HighScoreSession{high_score::make_key_hash("song_001", "easy")});
     high_score::set_score(reg, "song_001|easy", 1000);
 
     auto& score = reg.ctx().get<ScoreState>();
@@ -280,7 +282,8 @@ TEST_CASE("High score integration: lower game-over score does not overwrite pers
     auto reg = make_registry();
     reg.ctx().get<HighScorePersistence>().path = file.string();
     high_score::ensure_entry(reg, "song_001|easy");
-    reg.ctx().get<HighScoreSession>().key_hash = high_score::make_key_hash("song_001", "easy");
+    reg.ctx().emplace<HighScoreSession>(
+        HighScoreSession{high_score::make_key_hash("song_001", "easy")});
     high_score::set_score(reg, "song_001|easy", 3000);
 
     auto& score = reg.ctx().get<ScoreState>();
@@ -306,7 +309,8 @@ TEST_CASE("High score integration: missing active entry does not report new best
         const std::string key = "song_" + std::to_string(i) + "|easy";
         REQUIRE(high_score::set_score(reg, key.c_str(), i * 100));
     }
-    reg.ctx().get<HighScoreSession>().key_hash = high_score::make_key_hash("overflow", "hard");
+    reg.ctx().emplace<HighScoreSession>(
+        HighScoreSession{high_score::make_key_hash("overflow", "hard")});
 
     auto& score = reg.ctx().get<ScoreState>();
     auto& current = reg.ctx().get<CurrentSongHighScore>();
@@ -341,7 +345,8 @@ TEST_CASE("High score integration: failed save keeps dirty state for retry",
     auto reg = make_registry();
     reg.ctx().get<HighScorePersistence>().path = blocked_file.string();
     high_score::ensure_entry(reg, "song_001|easy");
-    reg.ctx().get<HighScoreSession>().key_hash = high_score::make_key_hash("song_001", "easy");
+    reg.ctx().emplace<HighScoreSession>(
+        HighScoreSession{high_score::make_key_hash("song_001", "easy")});
     high_score::set_score(reg, "song_001|easy", 1000);
 
     auto& score = reg.ctx().get<ScoreState>();
@@ -408,7 +413,8 @@ TEST_CASE("High score bootstrap: persistence path is populated for save call sit
     score.score = 2500;
 
     high_score::ensure_entry(reg, "song_001|easy");
-    reg.ctx().get<HighScoreSession>().key_hash = high_score::make_key_hash("song_001", "easy");
+    reg.ctx().emplace<HighScoreSession>(
+        HighScoreSession{high_score::make_key_hash("song_001", "easy")});
 
     const auto& persistence = reg.ctx().get<HighScorePersistence>();
     REQUIRE_FALSE(persistence.path.empty());

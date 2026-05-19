@@ -171,9 +171,7 @@ void setup_play_session(entt::registry& reg) {
         reg.ctx().erase<MusicContext>();
         reg.ctx().erase<MusicPlayingTag>();
         reg.ctx().erase<MusicPausedTag>();
-        if (auto* session = reg.ctx().find<HighScoreSession>()) {
-            session->key_hash = 0;
-        }
+        erase_ctx_if_exists<HighScoreSession>(reg);
         erase_ctx_if_exists<ScoreState>(reg);
         erase_ctx_if_exists<ScoreDisplay>(reg);
         erase_ctx_if_exists<CurrentSongHighScore>(reg);
@@ -199,12 +197,13 @@ void setup_play_session(entt::registry& reg) {
     assign_or_emplace_ctx(reg, ScoreDisplay{});
     assign_or_emplace_ctx(reg, CurrentSongHighScore{});
 
-    // Wire high score: derive song_id from beatmap filename and set HighScoreSession::key_hash.
+    // Wire high score: derive song_id from beatmap filename and emplace HighScoreSession.
     // The key string is built once in a stack buffer (no heap); ensure_entry pre-registers
     // the entry so update_if_higher can later update by hash without the key string.
     // HighScoreEntry rows live in the registry (issue #1560), so the operations don't
     // need a HighScoreState ctx-singleton gate any more.
     {
+        erase_ctx_if_exists<HighScoreSession>(reg);
         std::string stem = std::filesystem::path(beatmap_path).stem().string();
         static const std::string BEATMAP_SUFFIX = "_beatmap";
         if (stem.size() > BEATMAP_SUFFIX.size() &&
@@ -214,12 +213,9 @@ void setup_play_session(entt::registry& reg) {
         char key_buf[HighScoreState::KEY_CAP]{};
         const int32_t key_len = high_score::make_key_str(
             key_buf, HighScoreState::KEY_CAP, stem.c_str(), beatmap.difficulty.c_str());
-        assign_or_emplace_ctx(
-            reg,
-            HighScoreSession{key_len >= 0
-                ? entt::hashed_string::value(static_cast<const char*>(key_buf))
-                : 0});
         if (key_len >= 0) {
+            reg.ctx().emplace<HighScoreSession>(
+                HighScoreSession{entt::hashed_string::value(static_cast<const char*>(key_buf))});
             high_score::ensure_entry(reg, key_buf);
         } else {
             TraceLog(LOG_WARNING,
