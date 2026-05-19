@@ -35,6 +35,25 @@ TEST_CASE("game_state: energy depletion beats song complete after playback finis
     CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);
 }
 
+TEST_CASE("game_state: game over entry is idempotent after song already finished",
+          "[gamestate][issue1676]") {
+    auto reg = make_rhythm_registry();
+    set_test_phase<GamePhasePlayingTag>(reg);
+    reg.ctx().emplace<SongFinishedTag>();
+    reg.ctx().erase<SongPlayingTag>();
+    reg.ctx().get<EnergyState>().energy = 0.0f;
+
+    game_state_system(reg, 0.016f);
+    REQUIRE(reg.ctx().contains<NextPhaseGameOverTag>());
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(reg.ctx().contains<GamePhaseGameOverTag>());
+    CHECK(reg.ctx().contains<SongFinishedTag>());
+    CHECK_FALSE(reg.ctx().contains<SongPlayingTag>());
+    CHECK_FALSE(is_phase_transition_pending(reg));
+}
+
 TEST_CASE("game_state: song complete waits for obstacles to clear", "[gamestate]") {
     auto reg = make_rhythm_registry();
     set_test_phase<GamePhasePlayingTag>(reg);

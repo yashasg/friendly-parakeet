@@ -27,7 +27,7 @@ bool update_and_persist_high_score(entt::registry& reg) {
     }
     if (auto* hp = reg.ctx().find<HighScorePersistence>()) {
         if (score_exceeds_high_score && recorded_new_high_score && has_active_high_score_key) {
-            reg.ctx().emplace<HighScoreDirtyTag>();
+            reg.ctx().insert_or_assign(HighScoreDirtyTag{});
         }
         if (reg.ctx().contains<HighScoreDirtyTag>()) {
             if (hp->path.empty()) {
@@ -69,7 +69,7 @@ void game_state_enter_terminal_phase_game_over(entt::registry& reg) {
     // emplace one and erase the other regardless of whether a SongState
     // payload still exists (mirrors the prior `song.finished = true;
     // song.playing = false;` invariant).
-    reg.ctx().emplace<SongFinishedTag>();
+    reg.ctx().insert_or_assign(SongFinishedTag{});
     reg.ctx().erase<SongPlayingTag>();
 }
 

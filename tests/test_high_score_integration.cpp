@@ -326,6 +326,17 @@ TEST_CASE("High score integration: failed save keeps dirty state for retry",
     CHECK(reg.ctx().contains<HighScoreDirtyTag>());
     CHECK(persistence_state.last_save.status == persistence::Status::DirectoryCreateFailed);
 
+    score.score = 3000;
+    request_phase_transition<NextPhaseGameOverTag>(reg);
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(current.value == 3000);
+    CHECK(high_score::get_score(reg, "song_001|easy") == 3000);
+    CHECK(reg.ctx().contains<HighScoreDirtyTag>());
+    CHECK(reg.ctx().get<HighScorePersistence>().last_save.status
+          == persistence::Status::DirectoryCreateFailed);
+
     remove_path(root);
     const auto retry_file = root / "high_scores.json";
     reg.ctx().get<HighScorePersistence>().path = retry_file.string();
@@ -340,7 +351,7 @@ TEST_CASE("High score integration: failed save keeps dirty state for retry",
 
     entt::registry loaded;
     REQUIRE(high_score::load_high_scores(loaded, retry_file).ok());
-    CHECK(high_score::get_score(loaded, "song_001|easy") == 2500);
+    CHECK(high_score::get_score(loaded, "song_001|easy") == 3000);
 
     remove_path(root);
 }
