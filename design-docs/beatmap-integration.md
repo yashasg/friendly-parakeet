@@ -228,6 +228,9 @@ creates the standard runtime obstacle archetypes via the kind-specific
   │  ✅ energy_bar_system          (HUD bar visual update)          │
   │  ✅ particle_system            (ParticleData timer → cull)      │
   │                                                                  │
+  │  Level select confirmation routes first-time players through     │
+  │  GamePhaseTutorialTag; FTUE-complete players enter Playing.      │
+  │                                                                  │
   │  PLAYING TICK (tick_playing_systems — playing_systems_runner):   │
   │  ✅ beat_log_system            (per-beat diagnostic log)        │
   │  ✅ beat_scheduler_system      (BeatMap → spawn entities)       │
