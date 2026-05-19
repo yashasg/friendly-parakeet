@@ -143,6 +143,33 @@ struct EnergyBarTag {};
 struct PendingEnergyEffectTag {};
 struct EnergyFlashTag         {};
 
+// ── Pending scoring-resolution markers (per-frame row tables) ─
+// Per Fabian's existential processing (issue #1629 / .squad/decisions.md
+// § 9 Principle 3 — "No array columns"), the former `ScoringSystemScratch`
+// `std::vector<MissRecord> miss_buf` and `std::vector<HitRecord> hit_buf`
+// inline-array columns + parallel `*_capacity_exceeded_count` counters are
+// eradicated. Each "needs scoring resolution" row is now a tag on the
+// obstacle entity itself — the row IS the entity (foreign key implicit).
+//
+// `scoring_system` emplaces one of these tags during the per-pass gather
+// (read-only over the obstacle view, EnTT-iteration-safe), then iterates
+// `view<PendingXResolveTag>()` for the drain (mutating Obstacle/ScoredTag/
+// TimingGrade/TierTag is now safe because the iterated storage is the
+// disjoint pending-resolve tag). The drain epilogue batch-removes the
+// pending tag via `reg.remove<...>(view.begin(), view.end())`.
+//
+// `PendingHitResolveTag` is reused across the 4 graded tier passes plus
+// the ungraded hit pass — each pass clears the tag before the next pass
+// emplaces it, so there is never cross-tier aliasing. `process_tier_hit_pass`
+// is templated on the existing `TimingXTag`, which selects the tier traits
+// (energy delta, results counter, particle color, popup queue) — the per-
+// tier identity stays on the obstacle's existing TimingXTag, not on the
+// resolve marker. `PendingNonScorableCleanupTag` carries the final
+// epilogue's batch-cleanup rows.
+struct PendingMissResolveTag        {};
+struct PendingHitResolveTag         {};
+struct PendingNonScorableCleanupTag {};
+
 // ── Test player (deterministic AI) ───────────────────────────
 struct TestPlayerPlannedTag {};
 
