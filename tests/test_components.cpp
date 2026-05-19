@@ -58,13 +58,13 @@ TEST_CASE("components: Lane defaults to center", "[components]") {
     CHECK(l.current == 1);
 }
 
-TEST_CASE("components: LaneTransition defaults to invalid target", "[components]") {
+TEST_CASE("components: LaneTransition requires an explicit target", "[components]") {
     // Presence of `LaneTransition` IS "lane transition in flight" — both
-    // columns are always meaningful while the row exists. The defaulted
-    // `target == -1` only surfaces if a caller emplaces the row without
-    // initializing it; normal writers always set `target` to a valid lane.
-    LaneTransition lt{};
-    CHECK(lt.target == -1);
+    // columns are always meaningful while the row exists, so callers must
+    // provide the destination lane when creating the row.
+    CHECK_FALSE(std::is_default_constructible_v<LaneTransition>);
+    LaneTransition lt{int8_t{2}};
+    CHECK(lt.target == 2);
     CHECK(lt.lerp_t == 0.0f);
 }
 

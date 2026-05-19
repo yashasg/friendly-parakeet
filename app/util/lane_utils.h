@@ -40,15 +40,13 @@ inline int8_t nearest_lane_for_x(float x) {
     return nearest_lane;
 }
 
-// Validates the player's lane row + any in-flight `LaneTransition` row
-// (issue #1533): an invalid `current` snaps back to the default lane and
-// cancels the transition; an invalid `LaneTransition::target` cancels the
-// transition. Returns true if anything was repaired.
+// Validates the player's lane row (issue #1533): an invalid `current` snaps
+// back to the default lane and cancels any in-flight transition. Transition
+// targets are guaranteed by `LaneTransition` construction.
 inline bool normalize(entt::registry& reg,
                       entt::entity entity,
                       Lane& lane,
                       WorldPosition* transform = nullptr) {
-    bool repaired = false;
     if (!is_valid(lane.current)) {
         lane.current = kDefaultLane;
         if (reg.all_of<LaneTransition>(entity)) {
@@ -60,16 +58,7 @@ inline bool normalize(entt::registry& reg,
         return true;
     }
 
-    if (auto* transition = reg.try_get<LaneTransition>(entity);
-        transition && !is_valid(transition->target)) {
-        reg.remove<LaneTransition>(entity);
-        if (transform) {
-            snap_to_current_lane(lane, *transform);
-        }
-        repaired = true;
-    }
-
-    return repaired;
+    return false;
 }
 
 }  // namespace lane_utils

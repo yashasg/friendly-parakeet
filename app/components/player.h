@@ -1,9 +1,11 @@
 #pragma once
 
 #include <array>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
+#include "constants.h"
 #include "tags/tags.h"
 
 enum class Shape : uint8_t {
@@ -93,8 +95,14 @@ struct Lane {
 // world x-position; `test_player_system` reads `target` to compute the
 // player's effective lane during action planning.
 struct LaneTransition {
-    int8_t target = -1;
-    float  lerp_t = 0.0f;
+    LaneTransition() = delete;
+    explicit LaneTransition(int8_t target_lane, float transition_t = 0.0f)
+        : target(target_lane), lerp_t(transition_t) {
+        assert(constants::is_valid_lane(target_lane));
+    }
+
+    int8_t target;
+    float  lerp_t;
 };
 
 // ── Vertical motion state (per-state component tables) ──────
