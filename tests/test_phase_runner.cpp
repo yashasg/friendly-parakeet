@@ -114,16 +114,17 @@ TEST_CASE("tick_playing_systems: shape window activates before collision", "[pha
 // Verifies that popup_feedback_system and energy_system are wired in
 // tick_fixed_systems (NOT inside tick_playing_systems / the runner).
 //
-// Why placement matters: scoring_system (inside tick_playing_systems) populates
-// ScorePopupRequestQueue; popup_feedback_system must run AFTER tick_playing_systems
-// so the queue is already filled when popup_feedback consumes it.  Moving them
-// INTO tick_playing_systems would run them before scoring_system, silently
-// dropping all popups.
+// Why placement matters: scoring_system (inside tick_playing_systems) emplaces
+// `PopupRequest` row entities tagged with `PopupRequestTier*Tag` (issue #1626);
+// popup_feedback_system must run AFTER tick_playing_systems so the per-tier row
+// tables are populated before popup_feedback drains them. Moving them INTO
+// tick_playing_systems would run them before scoring_system, silently dropping
+// all popups.
 //
 // Why relative ordering between obstacle_despawn and popup_feedback does NOT
 // matter (Keaton-r14 finding): these two systems are commutative.
 //   obstacle_despawn reads ObstacleTag+WorldPosition → destroys entities
-//   popup_feedback  reads ScorePopupRequestQueue (ctx) → creates popup entities
+//   popup_feedback  reads PopupRequest + PopupRequestTier*Tag → creates popup entities
 // Their data surfaces are disjoint; no observable state diff results from
 // swapping them.  The relative call order in fixed_tick_runner.cpp is a
 // cache-locality preference, not a semantic invariant.
@@ -137,9 +138,10 @@ TEST_CASE("tick_fixed_systems: popup_feedback and energy run in score-feedback c
     set_test_phase<GamePhasePlayingTag>(reg);
 
     // Pre-seed a popup request directly (bypasses scoring_system path; tests
-    // that popup_feedback_system is wired and consumes the queue).
-    auto& queue = reg.ctx().emplace<ScorePopupRequestQueue>();
-    queue.untimed.push_back({100.0f, 200.0f, 10});
+    // that popup_feedback_system is wired and consumes the row table).
+    // Per-frame row table (issue #1626): each request is its own entity
+    // tagged with one of the `PopupRequestTier*Tag`s + a `PopupRequest` row.
+    enqueue_popup_request<PopupRequestTierUntimedTag>(reg, 100.0f, 200.0f, 10);
 
     // Pre-seed a pending energy effect to verify energy_system is wired
     // (per-frame row table — issue #1627).
@@ -151,11 +153,12 @@ TEST_CASE("tick_fixed_systems: popup_feedback and energy run in score-feedback c
     tick_fixed_systems(reg, 0.016f);
 
     // popup_feedback_system must have consumed the queue and spawned an entity.
-    CHECK(queue.untimed.empty());
-    CHECK(queue.perfect.empty());
-    CHECK(queue.good.empty());
-    CHECK(queue.ok.empty());
-    CHECK(queue.bad.empty());
+    // Each per-tier row table is empty after drain.
+    CHECK(reg.view<PopupRequest, PopupRequestTierPerfectTag>().size_hint() == 0u);
+    CHECK(reg.view<PopupRequest, PopupRequestTierGoodTag>().size_hint()    == 0u);
+    CHECK(reg.view<PopupRequest, PopupRequestTierOkTag>().size_hint()      == 0u);
+    CHECK(reg.view<PopupRequest, PopupRequestTierBadTag>().size_hint()     == 0u);
+    CHECK(reg.view<PopupRequest, PopupRequestTierUntimedTag>().size_hint() == 0u);
     const auto popup_view = reg.view<ScorePopup>();
     CHECK_FALSE(popup_view.empty());
 

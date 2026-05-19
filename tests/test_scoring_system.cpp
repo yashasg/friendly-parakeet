@@ -478,12 +478,10 @@ TEST_CASE("scoring: obstacle/timing points still apply after playback has finish
     CHECK(score.score >= constants::PTS_SHAPE_GATE);
 }
 
-TEST_CASE("runtime scratch: dense scoring burst processes all hits correctly", "[scoring][issue557][issue1629]") {
+TEST_CASE("runtime scratch: dense scoring burst processes all hits correctly", "[scoring][issue557][issue1629][issue1626]") {
     auto reg = make_registry();
     constexpr int dense_count = 6;
     runtime_system_scratch_reserve(reg, dense_count);
-
-    auto& popup_queue = reg.ctx().get<ScorePopupRequestQueue>();
 
     for (int i = 0; i < dense_count; ++i) {
         auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + static_cast<float>(i));
@@ -499,7 +497,11 @@ TEST_CASE("runtime scratch: dense scoring burst processes all hits correctly", "
     CHECK(reg.view<PendingHitResolveTag>().size() == 0u);
     CHECK(reg.view<PendingMissResolveTag>().size() == 0u);
     CHECK(reg.view<PendingNonScorableCleanupTag>().size() == 0u);
-    CHECK(popup_queue.good.size() == static_cast<std::size_t>(dense_count));
+    // ScorePopupRequestQueue → per-tier row table (issue #1626): each scored
+    // hit is its own `PopupRequest` row entity tagged with the matching
+    // `PopupRequestTier*Tag` instead of a slot in `queue.<tier>`. All Good-
+    // tier hits in this burst end up in `view<PopupRequest, PopupRequestTierGoodTag>`.
+    CHECK(reg.view<PopupRequest, PopupRequestTierGoodTag>().size_hint() == static_cast<std::size_t>(dense_count));
     // PendingEnergyEffects → row table (issue #1627): each enqueued effect is
     // now a `PendingEnergyEffectTag` row entity, not a vector slot. There is
     // no per-frame reserved capacity to guard — the storage grows naturally
