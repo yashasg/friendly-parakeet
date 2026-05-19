@@ -291,20 +291,24 @@ TEST_CASE("song_playback: pause to playing resume guard is one-shot",
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
 
-    auto& music = reg.ctx().emplace<MusicContext>();
-    music.loaded = true;
-    music.started = true;
-    music.paused = true;
+    // Per issue #1618 / Fabian Principle 3, presence of `MusicContext`
+    // ctx singleton IS "stream loaded"; `MusicPlayingTag` / `MusicPausedTag`
+    // ctx tags carry the started/paused state machine. raylib's stream
+    // entry points are no-ops on a zero-initialized `Music`, so the
+    // lifecycle dispatch is exercised without an actual loaded stream.
+    reg.ctx().emplace<MusicContext>();
+    reg.ctx().emplace<MusicPlayingTag>();
+    reg.ctx().emplace<MusicPausedTag>();
 
     set_test_phase<GamePhasePlayingTag>(reg);
     song.playing = true;
 
     song_playback_system(reg, 0.016f);
-    CHECK_FALSE(music.paused);
+    CHECK_FALSE(reg.ctx().contains<MusicPausedTag>());
 
     song_playback_system(reg, 0.016f);
-    CHECK_FALSE(music.paused);
+    CHECK_FALSE(reg.ctx().contains<MusicPausedTag>());
 
     song_playback_system(reg, 0.016f);
-    CHECK_FALSE(music.paused);
+    CHECK_FALSE(reg.ctx().contains<MusicPausedTag>());
 }

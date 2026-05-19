@@ -251,10 +251,14 @@ bool game_loop_init(entt::registry& reg,
     // Cameras + render targets + GPU meshes
     camera::init(reg);
 
-    // UI + beatmap + music
+    // UI + beatmap + music — `MusicContext` is no longer pre-emplaced.
+    // Per issue #1618 / Fabian Principle 3, presence of the `MusicContext`
+    // ctx singleton IS "stream loaded"; `play_session.cpp` emplaces it
+    // lazily after a successful `LoadMusicStream`. Audio-device availability
+    // is gated by `IsAudioDeviceReady()` instead of the former "is the
+    // singleton emplaced?" proxy.
     create_beat_map_entity(reg);
     reset_ctx_singleton<SongState>(reg);
-    reset_ctx_singleton<MusicContext>(reg);
 
     // Test player (optional)
     if (test_player_mode) {
@@ -391,6 +395,9 @@ void game_loop_shutdown(entt::registry& reg) {
         if (music) {
             music->release();
         }
+        reg.ctx().erase<MusicContext>();
+        reg.ctx().erase<MusicPlayingTag>();
+        reg.ctx().erase<MusicPausedTag>();
     }
     camera::shutdown(reg);
     if (auto* text_ctx = reg.ctx().find<TextContext>()) {

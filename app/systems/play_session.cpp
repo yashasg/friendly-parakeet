@@ -165,9 +165,12 @@ void setup_play_session(entt::registry& reg) {
                      error.beat_index, error.message.c_str());
         }
         runtime_system_scratch_init(reg);
-        if (auto* music = reg.ctx().find<MusicContext>()) {
-            music->release();
-        }
+        // Per issue #1618: presence of `MusicContext` ctx singleton IS
+        // "stream loaded" (Fabian Principle 3). On beatmap load failure we
+        // drop the entire singleton plus its playback-state tags.
+        reg.ctx().erase<MusicContext>();
+        reg.ctx().erase<MusicPlayingTag>();
+        reg.ctx().erase<MusicPausedTag>();
         if (auto* session = reg.ctx().find<HighScoreSession>()) {
             session->key_hash = 0;
         }
@@ -229,23 +232,25 @@ void setup_play_session(entt::registry& reg) {
     song.playing = true;
     song.restart_music = true;
 
-    // Load music (only if MusicContext exists — not in test mode)
-    auto* music = reg.ctx().find<MusicContext>();
-    if (music) {
-        music->release();
-    }
-    if (music && !beatmap.song_path.empty()) {
+    // Load music — presence of `MusicContext` ctx singleton IS "stream
+    // loaded" (Fabian Principle 3, issue #1618). We erase any prior
+    // singleton + playback tags up-front, then emplace on a successful
+    // `LoadMusicStream`. `IsAudioDeviceReady()` is the proper "audio
+    // available" gate (replaces the former `if (music)` proxy which
+    // depended on game_loop_init pre-emplacing an empty MusicContext).
+    reg.ctx().erase<MusicContext>();
+    reg.ctx().erase<MusicPlayingTag>();
+    reg.ctx().erase<MusicPausedTag>();
+    if (IsAudioDeviceReady() && !beatmap.song_path.empty()) {
         std::string exe_audio = util::join_app_dir(GetApplicationDirectory(), beatmap.song_path);
         const char* audio_paths[] = { exe_audio.c_str(), beatmap.song_path.c_str() };
         for (const char* path : audio_paths) {
             Music stream = LoadMusicStream(path);
             stream.looping = false;
             if (music_stream_is_playable(stream)) {
-                music->stream  = stream;
-                music->loaded  = true;
-                music->started = false;
-                music->paused = false;
-                SetMusicVolume(music->stream, music->volume);
+                auto& music = reg.ctx().emplace<MusicContext>();
+                music.stream = stream;
+                SetMusicVolume(music.stream, music.volume);
                 TraceLog(LOG_INFO, "Loaded music: %s", path);
                 break;
             }
