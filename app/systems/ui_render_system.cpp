@@ -604,22 +604,24 @@ void render_ui_entities(entt::registry& reg) {
 } // namespace
 
 void ui_render_system(entt::registry& reg, float /*alpha*/) {
-    auto& text_ctx = reg.ctx().get<TextContext>();
+    auto* text_ctx = reg.ctx().find<TextContext>();
     const auto& st = reg.ctx().get<ScreenTransform>();
     auto& ui_cam = ui_camera(reg).cam;
 
     ClearBackground(BLANK);
     BeginMode2D(ui_cam);
 
-    // Popups
-    {
+    // Popups (skipped entirely when fonts failed to load — issue #1619 made
+    // presence of the `TextContext` ctx singleton IS the "fonts loaded"
+    // predicate, eradicating the parallel-bool `loaded` NULL column).
+    if (text_ctx != nullptr) {
         auto view = reg.view<PopupDisplay, ScreenPosition, TagHUDPass>();
         for (auto [entity, pd, sp] : view.each()) {
-            if (!text_ctx.loaded || pd.text[0] == '\0') {
+            if (pd.text[0] == '\0') {
                 continue;
             }
 
-            const Font& font = popup_font_for_size(text_ctx, pd.font_size);
+            const Font& font = popup_font_for_size(*text_ctx, pd.font_size);
             const float font_size = static_cast<float>(font.baseSize);
             const float spacing = 1.0f;
 

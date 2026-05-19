@@ -186,7 +186,6 @@ TEST_CASE("runtime contexts: explicit release is idempotent without live handles
     MusicContext music;
     SessionLog log;
 
-    text.loaded = true;
     music.loaded = true;
     music.started = true;
     music.paused = true;
@@ -198,7 +197,6 @@ TEST_CASE("runtime contexts: explicit release is idempotent without live handles
     log.release();
     log.release();
 
-    CHECK_FALSE(text.loaded);
     CHECK_FALSE(music.loaded);
     CHECK_FALSE(music.started);
     CHECK_FALSE(music.paused);
