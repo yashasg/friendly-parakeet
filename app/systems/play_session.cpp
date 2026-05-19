@@ -28,44 +28,6 @@
 
 namespace {
 
-bool load_runtime_beat_map(const char* path,
-                           BeatMap& out,
-                           std::vector<BeatMapError>& errors,
-                           const std::string& difficulty_key) {
-    BeatMap candidate;
-    if (!load_beat_map(path, candidate, errors, difficulty_key)) {
-        return false;
-    }
-
-    std::vector<BeatMapError> validation_errors;
-    if (validate_beat_map(candidate, validation_errors)) {
-        out = std::move(candidate);
-        return true;
-    }
-
-    // Runtime tolerates the "Different-shape gates must be >= 3 beats apart"
-    // validation error and treats it as a warning; any other validation error
-    // fails the load.
-    bool only_allowed_errors = !validation_errors.empty();
-    for (const BeatMapError& error : validation_errors) {
-        if (error.message != "Different-shape gates must be >= 3 beats apart") {
-            only_allowed_errors = false;
-        }
-        errors.push_back(error);
-    }
-
-    if (!only_allowed_errors) {
-        return false;
-    }
-
-    for (const BeatMapError& error : validation_errors) {
-        TraceLog(LOG_WARNING, "Beatmap validation warning at beat %d: %s",
-                 error.beat_index, error.message.c_str());
-    }
-    out = std::move(candidate);
-    return true;
-}
-
 template <typename T>
 T& assign_or_emplace_ctx(entt::registry& reg, T value = T{}) {
     if (auto* existing = reg.ctx().find<T>()) {
@@ -159,7 +121,35 @@ void setup_play_session(entt::registry& reg) {
     bool loaded = false;
     for (const char* path : paths) {
         load_errors.clear();
-        if (load_runtime_beat_map(path, beatmap, load_errors, difficulty_key)) {
+        bool loaded_this_path = false;
+        BeatMap candidate;
+        if (load_beat_map(path, candidate, load_errors, difficulty_key)) {
+            std::vector<BeatMapError> validation_errors;
+            if (validate_beat_map(candidate, validation_errors)) {
+                beatmap = std::move(candidate);
+                loaded_this_path = true;
+            } else {
+                // Runtime tolerates the "Different-shape gates must be >= 3
+                // beats apart" validation error and treats it as a warning;
+                // any other validation error fails the load.
+                bool only_allowed_errors = !validation_errors.empty();
+                for (const BeatMapError& error : validation_errors) {
+                    if (error.message != "Different-shape gates must be >= 3 beats apart") {
+                        only_allowed_errors = false;
+                    }
+                    load_errors.push_back(error);
+                }
+                if (only_allowed_errors) {
+                    for (const BeatMapError& error : validation_errors) {
+                        TraceLog(LOG_WARNING, "Beatmap validation warning at beat %d: %s",
+                                 error.beat_index, error.message.c_str());
+                    }
+                    beatmap = std::move(candidate);
+                    loaded_this_path = true;
+                }
+            }
+        }
+        if (loaded_this_path) {
             const size_t total_beats = beat_map_total_count(beatmap);
             TraceLog(LOG_INFO, "Loaded beatmap: %s (%zu beats, difficulty=%s)",
                      path, total_beats, beatmap.difficulty.c_str());
