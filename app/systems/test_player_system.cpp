@@ -144,8 +144,12 @@ static TestPlayerAction determine_action(
 // ── System ───────────────────────────────────────────────────
 
 void test_player_system(entt::registry& reg, float dt) {
+    // Presence of the `TestPlayerState` ctx singleton IS "test player
+    // enabled" (Fabian Principle 3, issue #1620 — eradicated the parallel-
+    // bool `active` NULL-column gate). `test_player_init` is the sole
+    // emplace site; default game-loop startup leaves the singleton absent.
     auto* state = reg.ctx().find<TestPlayerState>();
-    if (!state || !state->active) return;
+    if (!state) return;
 
     auto& gs    = reg.ctx().get<GameState>();
     auto& ctx   = reg.ctx();

@@ -39,10 +39,13 @@ void test_player_init(entt::registry& reg, SkillConfig skill,
         session_state = &reg.ctx().emplace<TestPlayerSessionState>();
     }
 
-    auto& tp_state = reg.ctx().get<TestPlayerState>();
-    tp_state = TestPlayerState{};
+    // `TestPlayerState` ctx singleton presence IS "test player enabled"
+    // (Fabian Principle 3, issue #1620). `test_player_init` is the sole
+    // emplace site; erase-then-emplace is idempotent and resets all hot
+    // state in one move (replaces the old `tp_state = TestPlayerState{}`).
+    reg.ctx().erase<TestPlayerState>();
+    auto& tp_state = reg.ctx().emplace<TestPlayerState>();
     tp_state.skill  = skill;
-    tp_state.active = true;
 
     unsigned seed = session_state->rng_seed;
     if (session_state->use_runtime_seed) {

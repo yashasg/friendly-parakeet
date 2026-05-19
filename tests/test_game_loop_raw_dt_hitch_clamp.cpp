@@ -44,7 +44,6 @@ TEST_CASE("test_player_system: action timers advance by at most kMaxFrameDt unde
     auto reg = make_rhythm_registry();
     auto& tp = reg.ctx().emplace<TestPlayerState>();
     tp.skill  = SKILL_PRO;
-    tp.active = true;
     tp.rng.seed(42);
 
     // Per Fabian Principle 3 / #1611, queued actions live as components on
