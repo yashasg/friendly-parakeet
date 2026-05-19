@@ -296,6 +296,28 @@ inline void run_semantic_input_tick(entt::registry& reg, float dt = 0.016f) {
     game_state_system(reg, dt);
 }
 
+// ── PendingEnergyEffect row-table helpers (issue #1627) ───────────────────
+// `PendingEnergyEffects::events` was a `std::vector<Event>` array column on
+// a ctx singleton — eradicated by issue #1627 into a per-frame row table.
+// Each enqueued effect is its own entity carrying `PendingEnergyEffectTag` +
+// `EnergyDelta` (+ optional `EnergyFlashTag`). Mirrors scoring_system's
+// `enqueue_energy_effect`. Tests use these to seed gameplay-energy effects
+// without re-coding the per-row emplace pattern at every test site.
+
+inline entt::entity enqueue_pending_energy_effect(entt::registry& reg,
+                                                  float delta,
+                                                  bool flash = false) {
+    auto e = reg.create();
+    reg.emplace<PendingEnergyEffectTag>(e);
+    reg.emplace<EnergyDelta>(e, EnergyDelta{delta});
+    if (flash) reg.emplace<EnergyFlashTag>(e);
+    return e;
+}
+
+inline bool pending_energy_effects_empty(const entt::registry& reg) {
+    return reg.view<PendingEnergyEffectTag>().empty();
+}
+
 // Sets up a registry with rhythm singletons included
 inline entt::registry make_rhythm_registry() {
     entt::registry reg = make_registry();

@@ -485,10 +485,8 @@ TEST_CASE("runtime scratch: dense scoring burst stays within reserved capacity",
     runtime_system_scratch_reserve(reg, dense_count);
 
     auto& scratch = reg.ctx().get<ScoringSystemScratch>();
-    auto& energy = reg.ctx().get<PendingEnergyEffects>();
     auto& popup_queue = reg.ctx().get<ScorePopupRequestQueue>();
     const auto hit_capacity = scratch.hit_buf.capacity();
-    const auto energy_capacity = energy.events.capacity();
     // Per-tier queues (post-#1202/#1204): the dense burst below all goes
     // into queue.good, so guard the Good queue's capacity for this test.
     const auto popup_capacity = popup_queue.good.capacity();
@@ -502,12 +500,14 @@ TEST_CASE("runtime scratch: dense scoring burst stays within reserved capacity",
     scoring_system(reg, 0.0f);
 
     CHECK(scratch.hit_buf.capacity() == hit_capacity);
-    CHECK(energy.events.capacity() == energy_capacity);
     CHECK(popup_queue.good.capacity() == popup_capacity);
     CHECK(scratch.hit_capacity_exceeded_count == 0);
-    CHECK(energy.capacity_exceeded_count == 0);
     CHECK(popup_queue.capacity_exceeded_count == 0);
-    CHECK(energy.events.size() == static_cast<std::size_t>(dense_count));
+    // PendingEnergyEffects → row table (issue #1627): each enqueued effect is
+    // now a `PendingEnergyEffectTag` row entity, not a vector slot. There is
+    // no per-frame reserved capacity to guard — the storage grows naturally
+    // and `energy_system` destroys all rows at the start of its tick.
+    CHECK(reg.view<PendingEnergyEffectTag>().size() == static_cast<std::size_t>(dense_count));
     CHECK(popup_queue.good.size() == static_cast<std::size_t>(dense_count));
 }
 

@@ -19,11 +19,14 @@
 namespace {
 
 void enqueue_energy_effect(entt::registry& reg, float delta, bool flash = false) {
-    auto& pending = reg.ctx().get<PendingEnergyEffects>();
-    if (pending.events.size() >= pending.events.capacity()) {
-        ++pending.capacity_exceeded_count;
-    }
-    pending.events.push_back(PendingEnergyEffects::Event{delta, flash});
+    // Per-frame row table (issue #1627): each enqueued effect is its own
+    // entity. `energy_system` walks the row table in insertion order and
+    // destroys the rows. Replaces the former `PendingEnergyEffects::events`
+    // `std::vector<Event>` array column (Fabian Principle 3).
+    auto e = reg.create();
+    reg.emplace<PendingEnergyEffectTag>(e);
+    reg.emplace<EnergyDelta>(e, EnergyDelta{delta});
+    if (flash) reg.emplace<EnergyFlashTag>(e);
 }
 
 // Per-tier traits — Fabian per-value table: each specialization carries the

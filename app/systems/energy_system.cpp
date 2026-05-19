@@ -18,16 +18,24 @@ void energy_system(entt::registry& reg, float dt) {
     };
 
     // Apply deferred gameplay energy effects (single writer boundary).
+    // Per-frame row table (issue #1627): one entity per enqueued delta,
+    // tagged `PendingEnergyEffectTag` (+ optional `EnergyFlashTag`).
+    // EnTT's default forward iteration on `sparse_set` walks the packed
+    // array back-to-front (last-emplaced first); the original
+    // `vector<Event>` forward-iterated insertion order. Use `rbegin/rend`
+    // to traverse the row table in insertion order, preserving the
+    // "misses first, then per-tier hits" clamp semantics scoring_system
+    // writes the rows in.
     {
-        auto& pending = reg.ctx().get<PendingEnergyEffects>();
-        // Preserve per-event clamp semantics (misses first, then hits).
-        for (const auto& effect : pending.events) {
-            apply_clamped_delta(effect.delta);
-            if (effect.flash) {
+        auto pending = reg.view<PendingEnergyEffectTag>();
+        for (auto it = pending.rbegin(), last = pending.rend(); it != last; ++it) {
+            const auto e = *it;
+            apply_clamped_delta(reg.get<EnergyDelta>(e).value);
+            if (reg.all_of<EnergyFlashTag>(e)) {
                 energy->flash_timer = constants::ENERGY_FLASH_DURATION;
             }
         }
-        pending.events.clear();
+        reg.destroy(pending.begin(), pending.end());
     }
 
     if (song && energy->energy <= 0.0f && !is_phase_transition_pending(reg)) {

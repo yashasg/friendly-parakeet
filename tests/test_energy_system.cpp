@@ -31,58 +31,54 @@ TEST_CASE("energy: pending miss drain is applied by energy_system", "[energy]") 
     auto reg = make_rhythm_registry();
     auto& energy = reg.ctx().get<EnergyState>();
     energy.energy = 0.8f;
-    auto& pending = reg.ctx().emplace<PendingEnergyEffects>();
-    pending.events.push_back({-constants::ENERGY_DRAIN_MISS, true});
+    enqueue_pending_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
 
     energy_system(reg, 0.016f);
 
     CHECK_THAT(energy.energy, Catch::Matchers::WithinAbs(0.8f - constants::ENERGY_DRAIN_MISS, 0.0001f));
     CHECK(energy.flash_timer > 0.0f);
     CHECK(energy.flash_timer < constants::ENERGY_FLASH_DURATION);
-    CHECK(pending.events.empty());
+    CHECK(pending_energy_effects_empty(reg));
 }
 
 TEST_CASE("energy: pending perfect recovery is applied by energy_system", "[energy]") {
     auto reg = make_rhythm_registry();
     auto& energy = reg.ctx().get<EnergyState>();
     energy.energy = 0.2f;
-    auto& pending = reg.ctx().emplace<PendingEnergyEffects>();
-    pending.events.push_back({constants::ENERGY_RECOVER_PERFECT, false});
+    enqueue_pending_energy_effect(reg, constants::ENERGY_RECOVER_PERFECT, false);
 
     energy_system(reg, 0.016f);
 
     CHECK_THAT(energy.energy,
                Catch::Matchers::WithinAbs(0.2f + constants::ENERGY_RECOVER_PERFECT, 0.0001f));
-    CHECK(pending.events.empty());
+    CHECK(pending_energy_effects_empty(reg));
 }
 
 TEST_CASE("energy: pending events clamp each step in order", "[energy]") {
     auto reg = make_rhythm_registry();
     auto& energy = reg.ctx().get<EnergyState>();
     energy.energy = 0.0f;
-    auto& pending = reg.ctx().emplace<PendingEnergyEffects>();
-    pending.events.push_back({-constants::ENERGY_DRAIN_MISS, true});
-    pending.events.push_back({constants::ENERGY_RECOVER_PERFECT, false});
+    enqueue_pending_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
+    enqueue_pending_energy_effect(reg, constants::ENERGY_RECOVER_PERFECT, false);
 
     energy_system(reg, 0.016f);
 
     CHECK_THAT(energy.energy, Catch::Matchers::WithinAbs(constants::ENERGY_RECOVER_PERFECT, 0.0001f));
     CHECK(energy.flash_timer > 0.0f);
-    CHECK(pending.events.empty());
+    CHECK(pending_energy_effects_empty(reg));
 }
 
 TEST_CASE("energy: sloppy early-player pattern remains net-positive", "[energy][tuning][issue395]") {
     auto reg = make_rhythm_registry();
     auto& energy = reg.ctx().get<EnergyState>();
     energy.energy = 0.5f;
-    auto& pending = reg.ctx().emplace<PendingEnergyEffects>();
 
-    pending.events.push_back({constants::ENERGY_RECOVER_OK, false});
-    pending.events.push_back({constants::ENERGY_RECOVER_OK, false});
-    pending.events.push_back({constants::ENERGY_RECOVER_OK, false});
-    pending.events.push_back({constants::ENERGY_RECOVER_OK, false});
-    pending.events.push_back({constants::ENERGY_RECOVER_OK, false});
-    pending.events.push_back({-constants::ENERGY_DRAIN_BAD, true});
+    enqueue_pending_energy_effect(reg, constants::ENERGY_RECOVER_OK, false);
+    enqueue_pending_energy_effect(reg, constants::ENERGY_RECOVER_OK, false);
+    enqueue_pending_energy_effect(reg, constants::ENERGY_RECOVER_OK, false);
+    enqueue_pending_energy_effect(reg, constants::ENERGY_RECOVER_OK, false);
+    enqueue_pending_energy_effect(reg, constants::ENERGY_RECOVER_OK, false);
+    enqueue_pending_energy_effect(reg, -constants::ENERGY_DRAIN_BAD, true);
 
     energy_system(reg, 0.016f);
 

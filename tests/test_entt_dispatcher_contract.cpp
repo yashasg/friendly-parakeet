@@ -195,7 +195,9 @@ TEST_CASE("runtime scratch queues are explicit registry context state",
     auto reg = make_registry();
 
     CHECK(reg.ctx().contains<ScoringSystemScratch>());
-    CHECK(reg.ctx().contains<PendingEnergyEffects>());
+    // PendingEnergyEffects ctx singleton was eradicated by issue #1627 — its
+    // contents now live as per-frame row entities tagged
+    // `PendingEnergyEffectTag` (no ctx residency to assert).
     CHECK(reg.ctx().contains<ScorePopupRequestQueue>());
     CHECK(reg.ctx().contains<ObstacleDespawnScratch>());
     CHECK(reg.ctx().contains<PopupDisplayScratch>());

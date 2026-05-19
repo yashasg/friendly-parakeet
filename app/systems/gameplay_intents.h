@@ -5,14 +5,14 @@
 
 #include "../components/rhythm.h"
 
-struct PendingEnergyEffects {
-    struct Event {
-        float delta = 0.0f;
-        bool  flash = false;
-    };
-
-    std::vector<Event> events;
-    uint32_t capacity_exceeded_count = 0;
+// Per-row value for one pending energy delta (issue #1627). Attached to
+// an entity carrying `PendingEnergyEffectTag` (+ optional `EnergyFlashTag`)
+// by `scoring_system` during the miss/hit passes; drained and destroyed by
+// `energy_system` at the start of the same frame. Replaces the former
+// `PendingEnergyEffects::events` `std::vector<Event>` array column
+// (Fabian Principle 3 — no array columns).
+struct EnergyDelta {
+    float value = 0.0f;
 };
 
 // Per-tier popup request (no tier discriminator field — the queue it lives
