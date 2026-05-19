@@ -200,7 +200,8 @@ bool game_loop_init(entt::registry& reg,
     reset_ctx_singleton<ScoreState>(reg);
     reset_ctx_singleton<ScoreDisplay>(reg);
     reset_ctx_singleton<CurrentSongHighScore>(reg);
-    reset_ctx_singleton<LevelSelectState>(reg);
+    reset_ctx_singleton<LevelSelectState>(
+        reg, make_startup_level_select_state(difficulty, selected_level));
     reset_ctx_singleton<EnergyState>(reg);
     reset_ctx_singleton<SongResults>(reg);
     // `TestPlayerState` is no longer pre-emplaced at startup — its presence

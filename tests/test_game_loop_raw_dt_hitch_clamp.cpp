@@ -39,6 +39,22 @@ TEST_CASE("clamp_frame_dt: caps any hitch reading at kMaxFrameDt", "[game_loop][
     CHECK(clamp_frame_dt(5.0f) == kMaxFrameDt);
 }
 
+TEST_CASE("startup level select state applies CLI level and difficulty",
+          "[game_loop][issue-1701]") {
+    const LevelSelectState state = make_startup_level_select_state("hard", 2);
+
+    CHECK(state.selected_level == 2);
+    CHECK(state.selected_difficulty == 2);
+}
+
+TEST_CASE("startup level select state falls back for invalid CLI values",
+          "[game_loop][issue-1701]") {
+    const LevelSelectState state = make_startup_level_select_state("unknown", -1);
+
+    CHECK(state.selected_level == content_config::DEFAULT_LEVEL_INDEX);
+    CHECK(state.selected_difficulty == content_config::DEFAULT_DIFFICULTY_INDEX);
+}
+
 TEST_CASE("test_player_system: action timers advance by at most kMaxFrameDt under a hitch",
           "[test_player][game_loop][issue-1352]") {
     auto reg = make_rhythm_registry();

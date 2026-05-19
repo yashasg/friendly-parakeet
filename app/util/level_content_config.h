@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstring>
+
 struct LevelInfo {
     const char* title;
     const char* beatmap_path;
@@ -44,6 +46,18 @@ inline constexpr const char* const DIFFICULTY_KEYS[DIFFICULTY_COUNT] = {
 
 [[nodiscard]] constexpr int difficulty_index_or_default(int index) noexcept {
     return is_valid_difficulty_index(index) ? index : DEFAULT_DIFFICULTY_INDEX;
+}
+
+[[nodiscard]] inline int difficulty_index_for_key_or_default(const char* key) noexcept {
+    if (!key) {
+        return DEFAULT_DIFFICULTY_INDEX;
+    }
+    for (int index = 0; index < DIFFICULTY_COUNT; ++index) {
+        if (std::strcmp(DIFFICULTY_KEYS[index], key) == 0) {
+            return index;
+        }
+    }
+    return DEFAULT_DIFFICULTY_INDEX;
 }
 
 }  // namespace content_config
