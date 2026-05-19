@@ -9,7 +9,6 @@
 #include <raylib.h>
 #include <ctime>
 #include <cstdio>
-#include <cstring>
 #include <cstdint>
 #include <string>
 
@@ -26,14 +25,7 @@ void test_player_init(entt::registry& reg, SkillConfig skill,
     auto& lss = reg.ctx().get<LevelSelectState>();
     lss.selected_level = content_config::level_index_or_default(selected_level);
 
-    int sel_diff = content_config::DEFAULT_DIFFICULTY_INDEX;
-    for (int d = 0; d < content_config::DIFFICULTY_COUNT; ++d) {
-        if (std::strcmp(content_config::DIFFICULTY_KEYS[d], difficulty) == 0) {
-            sel_diff = d;
-            break;
-        }
-    }
-    lss.selected_difficulty = sel_diff;
+    lss.selected_difficulty = content_config::difficulty_index_for_key_or_default(difficulty);
 
     auto* session_state = reg.ctx().find<TestPlayerSessionState>();
     if (!session_state) {

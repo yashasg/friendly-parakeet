@@ -1,5 +1,6 @@
 #pragma once
 #include <entt/entt.hpp>
+#include "components/game_state.h"
 #include "util/level_content_config.h"
 #include "systems/test_player.h"
 
@@ -16,6 +17,16 @@ inline constexpr float kMaxFrameDt = 0.1f;
 // game_loop_frame; exported so tests can pin the contract without raylib init.
 inline constexpr float clamp_frame_dt(float raw_dt) noexcept {
     return raw_dt < kMaxFrameDt ? raw_dt : kMaxFrameDt;
+}
+
+// Build the initial level-select row from startup CLI options. Used before
+// normal play and test-player setup so both entry paths share the same seed.
+[[nodiscard]] inline LevelSelectState make_startup_level_select_state(const char* difficulty,
+                                                                      int selected_level) noexcept {
+    LevelSelectState state{};
+    state.selected_level = content_config::level_index_or_default(selected_level);
+    state.selected_difficulty = content_config::difficulty_index_for_key_or_default(difficulty);
+    return state;
 }
 
 // Initialize platform (window, audio), all game singletons, cameras, meshes, UI.
