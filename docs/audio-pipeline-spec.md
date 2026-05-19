@@ -6,7 +6,10 @@
 > `app/components/music.h` proposal under § Change 3), but the runtime
 > shipped differently: `MusicContext` lives in
 > `app/systems/audio_resources.h` — not `app/components/music.h`, which
-> was never created (see #1351). The rest of the runtime uses
+> was never created (see #1351). `MusicContext.loaded`,
+> `MusicContext.started`, and `MusicContext.paused` were removed in #1618:
+> context presence means "loaded", while `MusicPlayingTag` and
+> `MusicPausedTag` carry playback state. The rest of the runtime uses
 > `EnergyState` plus dispatcher-based `PlaySfxEvent` / `PlayHapticEvent`
 > routing and CMake content copy rules. For current truth see
 > `README.md`, `design-docs/beatmap-integration.md`,
@@ -30,15 +33,15 @@ content/beatmaps/         parse_beat_map()              ┌───────
                                                               ▼
                                                          ┌──────────┐
                                                          │SongState │◀────────────────────────────  song_playback_system
-                                                         │.song_time│  writes song_time, current_beat
-                                                         │.playing  │  reads MusicContext for clock
+                                                         │.song_time│  writes song_time
+                                                         │          │  lifecycle lives in ctx tags
                                                          └──────────┘
 
 content/audio/            LoadMusicStream()              ┌──────────────┐
   2_drama.flac ───────────────────────────────────────▶  │ MusicContext  │◀───────────────────────  song_playback_system
                                                          │ .stream      │  UpdateMusicStream()
-                                                         │ .loaded      │  GetMusicTimePlayed()
-                                                         │ .started     │  PlayMusicStream()
+                                                         │ .volume      │  GetMusicTimePlayed()
+                                                         │ ctx tags     │  Play/Pause/Resume/Stop
                                                          └──────────────┘
 
                                                          ┌──────────────────┐
@@ -309,7 +312,22 @@ assert(map.difficulty == "easy");
 
 ## Change 3: MusicContext Singleton
 
-### Data
+> **Current implementation note:** this section's original proposal is
+> obsolete. The shipped singleton is `app/systems/audio_resources.h`:
+>
+> ```cpp
+> struct MusicContext {
+>     Music stream{};
+>     float volume = 0.8f;
+> };
+> ```
+>
+> There are no `loaded`, `started`, or `paused` booleans. Presence of
+> `MusicContext` in `reg.ctx()` means a stream is loaded; `MusicPlayingTag`
+> and `MusicPausedTag` in `reg.ctx()` are the playback state; and
+> `RestartMusicRequestTag` requests a restart.
+
+### Historical plan (obsolete)
 
 Add to **`app/components/rhythm.h`**, after the `SongResults` struct (after line 103, before the helper functions):
 
@@ -585,9 +603,16 @@ For Emscripten shutdown: `emscripten_set_main_loop` with arg `1` means it never 
 
 ## Change 5: song_playback_system — Authoritative Audio Clock
 
+> **Current implementation note:** the full-file replacement below is
+> historical. The current system dispatches from phase/song/music ctx tags:
+> `SongPlayingTag`, `SongFinishedTag`, `RestartMusicRequestTag`,
+> `MusicPlayingTag`, and `MusicPausedTag`. It does not read or write
+> `SongState.playing`, `SongState.finished`, `MusicContext.loaded`,
+> `MusicContext.started`, or `MusicContext.paused`.
+
 ### Data
-Reads: `SongState`, `MusicContext` (optional — existential check), `GameState`.
-Writes: `SongState.song_time`, `SongState.current_beat`, `SongState.playing`, `SongState.finished`, `MusicContext.started`.
+Current reads: `SongState`, `BeatMap`, `MusicContext` presence, phase/song/music ctx tags.
+Current writes: `SongState.song_time`, `BeatCursor`, and music/song ctx tags.
 
 ### File
 **`app/systems/song_playback_system.cpp`** — full replacement.
