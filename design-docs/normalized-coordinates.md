@@ -1,27 +1,30 @@
 # Normalized Coordinates — Feature Spec (Draft)
 
-> **Status**: Parked — captured for future implementation.
+> **Status**: Parked — partially implemented for UI/layout; remaining gameplay
+> math migration is captured for future implementation.
 > Acceptance/checklist traceability: `docs/acceptance-traceability.md`.
 
 ## Problem
 
-The codebase currently uses fixed pixel values (720×1280) for all game logic:
-positions, distances, speeds, collision margins, vision ranges, etc. This
-ties gameplay to a single resolution and breaks on devices with different
-screen sizes.
+The codebase still has gameplay math tied to the 720×1280 virtual framebuffer:
+lane positions, player/obstacle distances, speeds, collision margins, vision
+ranges, and ring thresholds. HUD, scene, and overlay layout have already started
+using normalized viewport constants (`*_N`) derived from the same virtual
+framebuffer, so the remaining risk is the hybrid state: some systems are
+resolution-relative while core gameplay logic is still pixel-locked.
 
 ## Constraint from Stakeholder
 
 > "We can enforce an aspect ratio, but not a resolution."
 
 The game should work on any resolution that matches the enforced aspect ratio.
-All gameplay math should use **normalized coordinates** (0.0–1.0) or
+All remaining gameplay math should use **normalized coordinates** (0.0–1.0) or
 aspect-ratio-relative units instead of raw pixels.
 
 ## Scope (when we come back to this)
 
 ```
-  Current (pixels)                 Target (normalized)
+  Remaining gameplay pixels        Target (normalized)
   ─────────────────────            ─────────────────────
   PLAYER_Y    = 920.0f             PLAYER_Y    = 0.719  (920/1280)
   LANE_X[1]   = 360.0f             LANE_X[1]   = 0.500  (360/720)
@@ -34,10 +37,15 @@ aspect-ratio-relative units instead of raw pixels.
 
 ## What Needs to Change
 
-- [ ] `constants.h` — all values become ratios (0.0–1.0 of screen H or W)
+- [x] `constants.h` — HUD, scene, and overlay layout have normalized `*_N`
+      companions for draw-time conversion to virtual pixels
+- [ ] `constants.h` — remaining gameplay-space values become ratios
+      (0.0–1.0 of screen H or W) or explicit aspect-relative units
 - [ ] Collision margins, proximity-ring radii, vision ranges — all normalized
-- [ ] Render system — multiply normalized coords by actual screen dimensions
-- [ ] Input system — divide touch coords by screen dimensions
+- [ ] Gameplay render systems — convert normalized gameplay coords at the
+      rendering boundary
+- [ ] Input system — divide touch coords by screen dimensions before gameplay
+      decisions
 - [ ] Test player — vision_range and all distance thresholds become normalized
 - [ ] Ring zone thresholds — distance math uses normalized units
 - [ ] Beatmap format — lane/position values become normalized or symbolic
@@ -46,7 +54,9 @@ aspect-ratio-relative units instead of raw pixels.
 ## Notes
 
 - The existing `RenderTexture2D` virtual framebuffer (720×1280 → window blit)
-  already handles display scaling, but game LOGIC is still pixel-locked.
+  already handles display scaling, but core gameplay logic is still pixel-locked.
+- HUD, scenes, and overlays use normalized viewport constants in `constants.h`
+  and convert them back to virtual pixels at draw/update boundaries.
 - Normalized coords decouple logic from display — the render layer is the
   only place that needs to know actual pixel dimensions.
 - Aspect ratio spec TBD — likely 9:16 (portrait mobile) enforced.
