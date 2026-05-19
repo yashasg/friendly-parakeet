@@ -290,7 +290,8 @@ creates the standard runtime obstacle archetypes via the kind-specific
 ## 3.4 beat_scheduler_system — ✅ ALREADY IMPLEMENTED
 
 ```
-  Spawns obstacle entities from BeatMap.beats[] when song_time
+  Spawns obstacle entities from BeatMap's per-(kind, shape, timing-source)
+  row tables (see rhythm-spec.md / app/components/beat_map.h) when song_time
   crosses spawn_time thresholds. It calls the kind-specific
   spawn_<kind>_rhythm() helpers (spawn_shape_gate_rhythm,
   spawn_split_path_rhythm, spawn_onset_marker_rhythm) in
@@ -526,7 +527,7 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
   STEP 4 — Song Playback + Beat Scheduler          ✅ DONE
   ──────────────────────────────
   • song_playback_system: advances song_time, detects song end
-  • beat_scheduler_system: spawns obstacles from BeatMap.beats[]
+  • beat_scheduler_system: spawns obstacles from BeatMap's per-(kind, shape, timing-source) row tables
   • no separate random obstacle spawner is part of the current runtime path
 
   STEP 5 — Content Asset Copying                    ✅ DONE
@@ -606,7 +607,7 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
   ┌────────────────────────────┬──────────┬───────────┬──────────────┐
   │  Data                      │ Per-elem │ Max count │ Total bytes  │
   ├────────────────────────────┼──────────┼───────────┼──────────────┤
-  │  BeatMap.beats vector      │    8B    │   256     │    2,048     │
+  │  BeatMap row tables (14)   │   ~8B    │   ~256    │   ~2,048     │
   │  SongState singleton       │  160B    │     1     │      160     │
   │  SongResults singleton     │   28B    │     1     │       28     │
   │  MusicContext singleton    │   ~40B   │     1     │       40     │
@@ -619,7 +620,7 @@ Ordered by dependency chain. Steps marked ✅ are already on `main`.
   └────────────────────────────┴──────────┴───────────┴──────────────┘
 
   nlohmann::json temporary is freed after load_beat_map returns.
-  Steady-state overhead: ~3 KB (singletons + beats vector).
+  Steady-state overhead: ~3 KB (singletons + BeatMap row tables).
   raylib music stream buffer is internal to raylib, managed automatically.
 ```
 
