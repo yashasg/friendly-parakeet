@@ -8,6 +8,7 @@
 #include "../constants.h"
 #include "../util/lane_utils.h"
 #include <raymath.h>
+#include <cassert>
 
 void player_movement_system(entt::registry& reg, float dt) {
     auto* song = reg.ctx().find<SongState>();
@@ -35,7 +36,8 @@ void player_movement_system(entt::registry& reg, float dt) {
             transform.position.x = constants::LANE_X[lane.current];
             transition = nullptr;
         }
-        if (transition && lane_utils::is_valid(transition->target)) {
+        if (transition) {
+            assert(lane_utils::is_valid(transition->target));
             transition->lerp_t += dt * constants::LANE_SWITCH_SPEED;
             const float from_x = constants::LANE_X[lane.current];
             const float to_x   = constants::LANE_X[transition->target];
