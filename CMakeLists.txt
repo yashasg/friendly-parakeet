@@ -489,19 +489,8 @@ if(AUDIO_FILES)
     )
 endif()
 
-# Copy UI screen JSON files next to the executable
-file(GLOB UI_SCREEN_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/content/ui/screens/*.json)
+# Copy UI root JSON config next to the executable
 file(GLOB UI_ROOT_FILES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/content/ui/*.json)
-if(UI_SCREEN_FILES)
-    add_custom_command(TARGET shapeshifter POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory
-            "$<TARGET_FILE_DIR:shapeshifter>/content/ui/screens"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${UI_SCREEN_FILES}
-            "$<TARGET_FILE_DIR:shapeshifter>/content/ui/screens/"
-        COMMENT "Copying UI screen assets"
-    )
-endif()
 if(UI_ROOT_FILES)
     add_custom_command(TARGET shapeshifter POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory
