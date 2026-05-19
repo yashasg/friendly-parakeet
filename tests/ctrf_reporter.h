@@ -48,6 +48,13 @@ static std::string ctrf_report_path() {
 #endif
 }
 
+static bool ctrf_report_path_from_environment() {
+    if (const char* path = std::getenv("SHAPESHIFTER_CTRF_REPORT_PATH")) {
+        return path[0] != '\0';
+    }
+    return false;
+}
+
 struct CtrfTestResult {
     std::string name;
     std::string status;
@@ -118,6 +125,10 @@ public:
     }
 
     void testRunEnded(Catch::TestRunStats const&) override {
+        if (results_.size() <= 1U && !ctrf_report_path_from_environment()) {
+            return;
+        }
+
         int64_t run_stop = ctrf_now_ms();
 
         int passed = 0, failed = 0, skipped = 0, other = 0;

@@ -6,6 +6,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include "temp_paths.h"
 
 using Catch::Matchers::WithinAbs;
 
@@ -177,7 +178,9 @@ TEST_CASE("Settings persistence: settings_from_json rejects malformed field type
 }
 
 TEST_CASE("Settings persistence: round-trip save and load", "[settings]") {
-    std::filesystem::path test_dir = "test_settings_tmp";
+    test_paths::ScopedPath scoped_dir{
+        test_paths::unique_relative_path("test_settings_tmp")};
+    const std::filesystem::path& test_dir = scoped_dir.path;
     std::filesystem::path test_file = test_dir / "settings.json";
 
     std::filesystem::create_directories(test_dir);
@@ -202,12 +205,12 @@ TEST_CASE("Settings persistence: round-trip save and load", "[settings]") {
     CHECK(loaded.reduce_motion == true);
     CHECK(loaded.ftue_run_count == 1);
 
-    // Cleanup
-    std::filesystem::remove_all(test_dir);
 }
 
 TEST_CASE("Settings persistence: save_settings supports current-directory files", "[settings]") {
-    std::filesystem::path test_file = "settings_current_dir_tmp.json";
+    test_paths::ScopedPath scoped_file{
+        test_paths::unique_relative_path("settings_current_dir_tmp.json")};
+    const std::filesystem::path& test_file = scoped_file.path;
     std::filesystem::remove(test_file);
 
     SettingsState state;
@@ -220,11 +223,11 @@ TEST_CASE("Settings persistence: save_settings supports current-directory files"
     CHECK(settings::load_settings(loaded, test_file).ok());
     CHECK(loaded.audio_offset_ms == 20);
 
-    std::filesystem::remove(test_file);
 }
 
 TEST_CASE("Settings persistence: load_settings returns false for missing file", "[settings]") {
-    std::filesystem::path nonexistent = "nonexistent_file_xyz.json";
+    const std::filesystem::path nonexistent =
+        test_paths::unique_relative_path("nonexistent_file_xyz.json");
     SettingsState state;
 
     const auto result = settings::load_settings(state, nonexistent);
@@ -232,7 +235,9 @@ TEST_CASE("Settings persistence: load_settings returns false for missing file", 
 }
 
 TEST_CASE("Settings persistence: load_settings handles malformed JSON", "[settings]") {
-    std::filesystem::path test_dir = "test_settings_tmp";
+    test_paths::ScopedPath scoped_dir{
+        test_paths::unique_relative_path("test_settings_tmp")};
+    const std::filesystem::path& test_dir = scoped_dir.path;
     std::filesystem::path test_file = test_dir / "bad_settings.json";
 
     std::filesystem::create_directories(test_dir);
@@ -246,12 +251,12 @@ TEST_CASE("Settings persistence: load_settings handles malformed JSON", "[settin
     const auto result = settings::load_settings(state, test_file);
     CHECK(result.status == persistence::Status::CorruptData);
 
-    // Cleanup
-    std::filesystem::remove_all(test_dir);
 }
 
 TEST_CASE("Settings persistence: save_settings reports unwritable parent path", "[settings]") {
-    std::filesystem::path root = "test_settings_unwritable_parent";
+    test_paths::ScopedPath scoped_root{
+        test_paths::unique_relative_path("test_settings_unwritable_parent")};
+    const std::filesystem::path& root = scoped_root.path;
     std::filesystem::path not_a_dir = root / "not_a_directory";
     std::filesystem::path target = not_a_dir / "settings.json";
 
@@ -267,11 +272,12 @@ TEST_CASE("Settings persistence: save_settings reports unwritable parent path", 
     const auto result = settings::save_settings(state, target);
     CHECK(result.status == persistence::Status::DirectoryCreateFailed);
 
-    std::filesystem::remove_all(root);
 }
 
 TEST_CASE("Settings persistence runtime: mark_dirty_and_save persists and clears dirty", "[settings][issue-303]") {
-    const std::filesystem::path root = "test_settings_runtime_save";
+    test_paths::ScopedPath scoped_root{
+        test_paths::unique_relative_path("test_settings_runtime_save")};
+    const std::filesystem::path& root = scoped_root.path;
     const std::filesystem::path file = root / "settings.json";
     std::filesystem::remove_all(root);
 
@@ -298,7 +304,6 @@ TEST_CASE("Settings persistence runtime: mark_dirty_and_save persists and clears
     CHECK(loaded.reduce_motion == state.reduce_motion);
     CHECK(loaded.ftue_run_count == state.ftue_run_count);
 
-    std::filesystem::remove_all(root);
 }
 
 TEST_CASE("Settings persistence runtime: mark_dirty_and_save keeps dirty when path unavailable",
@@ -315,16 +320,19 @@ TEST_CASE("Settings persistence runtime: mark_dirty_and_save keeps dirty when pa
 
 TEST_CASE("Persistence paths: one shared policy resolves both settings and high-score files", "[settings]") {
     persistence::Paths paths;
-    const auto result = persistence::resolve_paths(paths, "test_persistence_policy_root");
+    test_paths::ScopedPath scoped_root{
+        test_paths::unique_relative_path("test_persistence_policy_root")};
+    const auto result = persistence::resolve_paths(paths, scoped_root.path);
     REQUIRE(result.ok());
     CHECK(paths.settings_file == paths.root_dir / "settings.json");
     CHECK(paths.high_scores_file == paths.root_dir / "high_scores.json");
-    std::filesystem::remove_all(paths.root_dir);
 }
 
 TEST_CASE("Persistence paths: nested root override creates parent directories recursively",
           "[settings][persistence][issue-1025]") {
-    const auto root = std::filesystem::path("test_persistence_policy_nested_root");
+    test_paths::ScopedPath scoped_root{
+        test_paths::unique_relative_path("test_persistence_policy_nested_root")};
+    const std::filesystem::path& root = scoped_root.path;
     const auto nested_root = root / "missing" / "parent" / "shapeshifter";
     std::filesystem::remove_all(root);
 
@@ -335,11 +343,11 @@ TEST_CASE("Persistence paths: nested root override creates parent directories re
     CHECK(paths.settings_file == nested_root / "settings.json");
     CHECK(paths.high_scores_file == nested_root / "high_scores.json");
 
-    std::filesystem::remove_all(root);
 }
 
 TEST_CASE("Persistence sync seams skip paths outside the web persistence root", "[settings]") {
-    const std::filesystem::path current_dir_file = "settings_current_dir_tmp.json";
+    const std::filesystem::path current_dir_file =
+        test_paths::unique_relative_path("settings_current_dir_tmp.json");
     CHECK(persistence::prepare_for_persistence_read(current_dir_file).ok());
     CHECK(persistence::flush_persistence_writes(current_dir_file).ok());
 }
@@ -377,7 +385,9 @@ TEST_CASE("Web persistence initialization failures remain retryable",
 }
 
 TEST_CASE("Settings persistence helper: file path resolution reports failure without CWD fallback", "[settings]") {
-    const auto root = std::filesystem::path("test_settings_path_resolution_failure");
+    test_paths::ScopedPath scoped_root{
+        test_paths::unique_relative_path("test_settings_path_resolution_failure")};
+    const auto& root = scoped_root.path;
     const auto blocked_root = root / "blocked_root";
     std::filesystem::remove_all(root);
     std::filesystem::create_directories(root);
@@ -387,16 +397,18 @@ TEST_CASE("Settings persistence helper: file path resolution reports failure wit
         out << "file blocks directory creation";
     }
 
-    std::filesystem::path file_path = "seed_should_clear.json";
+    std::filesystem::path file_path =
+        test_paths::unique_relative_path("seed_should_clear.json");
     const auto result = settings::get_settings_file_path(file_path, blocked_root);
     CHECK(result.status == persistence::Status::DirectoryCreateFailed);
     CHECK(file_path.empty());
 
-    std::filesystem::remove_all(root);
 }
 
 TEST_CASE("Persistence paths: directory creation failure is observable", "[settings]") {
-    const auto root = std::filesystem::path("test_persistence_policy_failure");
+    test_paths::ScopedPath scoped_root{
+        test_paths::unique_relative_path("test_persistence_policy_failure")};
+    const auto& root = scoped_root.path;
     const auto blocked_root = root / "blocked_root";
     std::filesystem::remove_all(root);
     std::filesystem::create_directories(root);
@@ -410,12 +422,13 @@ TEST_CASE("Persistence paths: directory creation failure is observable", "[setti
     const auto result = persistence::resolve_paths(paths, blocked_root);
     CHECK(result.status == persistence::Status::DirectoryCreateFailed);
 
-    std::filesystem::remove_all(root);
 }
 
 TEST_CASE("Settings persistence: save_settings creates nested parent directories",
           "[settings][persistence][issue-1025]") {
-    const auto root = std::filesystem::path("test_settings_nested_parent");
+    test_paths::ScopedPath scoped_root{
+        test_paths::unique_relative_path("test_settings_nested_parent")};
+    const auto& root = scoped_root.path;
     const auto file = root / "missing" / "parent" / "settings.json";
     std::filesystem::remove_all(root);
 
@@ -428,5 +441,4 @@ TEST_CASE("Settings persistence: save_settings creates nested parent directories
     REQUIRE(settings::load_settings(loaded, file).ok());
     CHECK(loaded.audio_offset_ms == state.audio_offset_ms);
 
-    std::filesystem::remove_all(root);
 }

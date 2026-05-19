@@ -12,11 +12,12 @@
 #include "systems/play_session.h"
 #include "test_helpers.h"
 #include "systems/high_score_system.h"
+#include "temp_paths.h"
 
 namespace {
 
 std::filesystem::path temp_high_score_path(const char* name) {
-    return std::filesystem::temp_directory_path() / name;
+    return test_paths::unique_temp_path(name);
 }
 
 void remove_path(const std::filesystem::path& path) {
@@ -26,17 +27,15 @@ void remove_path(const std::filesystem::path& path) {
 
 struct TempBeatMapFile {
     explicit TempBeatMapFile(const char* name, const std::string& json)
-        : path(std::filesystem::temp_directory_path() / name) {
+        : scoped_path(test_paths::unique_temp_path(name)),
+          path(scoped_path.path) {
         std::filesystem::remove(path);
         std::ofstream out(path);
         REQUIRE(out.good());
         out << json;
     }
 
-    ~TempBeatMapFile() {
-        std::filesystem::remove(path);
-    }
-
+    test_paths::ScopedPath scoped_path;
     std::filesystem::path path;
 };
 
@@ -296,7 +295,9 @@ TEST_CASE("High score integration: missing active entry does not report new best
 
 TEST_CASE("High score integration: failed save keeps dirty state for retry",
           "[high_score][gamestate]") {
-    const auto root = std::filesystem::path("test_high_score_retry_state");
+    test_paths::ScopedPath scoped_root{
+        test_paths::unique_relative_path("test_high_score_retry_state")};
+    const auto& root = scoped_root.path;
     const auto blocked_parent = root / "blocked_parent";
     const auto blocked_file = blocked_parent / "high_scores.json";
     remove_path(root);
