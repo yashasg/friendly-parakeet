@@ -106,6 +106,8 @@ The Input System translates raw touch / mouse / keyboard events into game action
 // The mutex is maintained inline at the two set sites in input_system
 // (insert one tag + erase the sibling) and via the shared
 // `clear_input_source` helper which drops both tags.
+// Declared in `app/tags/tags.h` (canonical tags single-header per
+// issue #1645).
 struct InputSourceMouse {};
 struct InputSourceTouch {};
 

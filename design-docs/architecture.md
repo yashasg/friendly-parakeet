@@ -463,7 +463,8 @@ struct EnergyState {
 /// became per-source ctx tables. Presence of `InputSourceMouse` ⇔ Mouse
 /// owns the current gesture; presence of `InputSourceTouch` ⇔ Touch owns
 /// it; absence of both ⇔ None. The mutex (at most one tag present) is
-/// maintained by input_system helpers.
+/// maintained by input_system helpers. Declared in `app/tags/tags.h`
+/// (canonical tags single-header per issue #1645).
 struct InputSourceMouse {};
 struct InputSourceTouch {};
 
@@ -1748,7 +1749,7 @@ app/
 │   └── song_state.h             ← SongState, BeatCursor (row table, issue #1545)
 │
 ├── systems/                     ← all system free functions
-│   ├── input.h                  ← InputState, ActiveTouchSlot, InputSourceMouse, InputSourceTouch (singleton hardware-capture state + per-finger touch row)
+│   ├── input.h                  ← InputState, ActiveTouchSlot (singleton hardware-capture state + per-finger touch row); InputSourceMouse / InputSourceTouch tags live in app/tags/tags.h (#1645)
 │   ├── all_systems.h            ← convenience #include for all systems
 │   ├── input_system.cpp         ← raylib polling → semantic dispatcher events
 │   ├── game_state_system.cpp    ← phase transitions

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../tags/tags.h"
+
 // ── Raw input state (internal to input_system) ──────────────────────────────
 // Tracks touch/mouse hardware state. Downstream systems should read
 // semantic events, not this struct — except for quit_requested.
@@ -12,17 +14,10 @@
 // (issue #1194) — this is per-frame ctx-singleton hardware-capture state,
 // not entity-owned component data.
 
-// Per-source ctx tags replacing the former `InputSource` enum
-// (issues #1202 / #1204). The former 3-state mutex
-// (`None`/`Mouse`/`Touch`) on `InputState::active_source` becomes:
-//   • presence of `InputSourceMouse` ctx table  ⇔ Mouse owns the gesture
-//   • presence of `InputSourceTouch` ctx table  ⇔ Touch owns the gesture
-//   • absence of both                            ⇔ None
-// The mutex (at most one tag present) is enforced inline at the two set
-// sites in input_system (insert one tag + erase the sibling) and via the
-// shared `clear_input_source` helper which drops both tags.
-struct InputSourceMouse {};
-struct InputSourceTouch {};
+// The per-source `InputSourceMouse` / `InputSourceTouch` ctx tags that
+// replace the former `InputSource` enum (issues #1202 / #1204) live in
+// `app/tags/tags.h` (canonical tags single-header per Principle 2 /
+// issue #1645). See the "Input source mutex" section there.
 
 // One row per currently-tracked finger (issue #1612 / Fabian Principle 3).
 // Presence in `reg.view<ActiveTouchSlot>()` IS membership in "currently
