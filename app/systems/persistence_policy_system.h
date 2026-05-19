@@ -31,6 +31,16 @@ struct Paths {
     std::filesystem::path high_scores_file;
 };
 
+struct WebPersistenceInitState {
+    bool initialized{false};
+};
+
+using WebPersistenceBootstrap = Result (*)(void* context);
+
+Result ensure_web_persistence_ready(WebPersistenceInitState& state,
+                                    WebPersistenceBootstrap bootstrap,
+                                    void* context);
+
 Result resolve_paths(Paths& out_paths, const std::filesystem::path& root_override = {});
 
 std::error_code ensure_directory_exists(const std::filesystem::path& dir);

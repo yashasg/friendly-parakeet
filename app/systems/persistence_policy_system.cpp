@@ -50,13 +50,7 @@ Result sync_web_filesystem(const bool populate, const Status failure_status) {
     return sync_failed != 0 ? Result{failure_status, std::make_error_code(std::errc::io_error)} : Result{};
 }
 
-Result ensure_web_persistence_ready() {
-    static bool initialized = false;
-
-    if (initialized) {
-        return Result{};
-    }
-
+Result bootstrap_web_persistence(void*) {
     const int mount_status = EM_ASM_INT(
         {
             if (typeof FS === 'undefined' || typeof IDBFS === 'undefined') {
@@ -81,11 +75,17 @@ Result ensure_web_persistence_ready() {
         return Result{Status::PathUnavailable, std::make_error_code(std::errc::io_error)};
     }
 
-    const auto init_result = sync_web_filesystem(true, Status::FileReadFailed);
-    if (init_result.ok()) {
-        initialized = true;
-    }
-    return init_result;
+    return sync_web_filesystem(true, Status::FileReadFailed);
+}
+
+WebPersistenceInitState& web_persistence_init_state() {
+    static WebPersistenceInitState state;
+    return state;
+}
+
+Result ensure_web_persistence_ready() {
+    return persistence::ensure_web_persistence_ready(
+        web_persistence_init_state(), bootstrap_web_persistence, nullptr);
 }
 
 bool path_uses_web_persistence(const std::filesystem::path& path) {
@@ -96,6 +96,20 @@ bool path_uses_web_persistence(const std::filesystem::path& path) {
 #endif
 
 }  // namespace
+
+Result ensure_web_persistence_ready(WebPersistenceInitState& state,
+                                    const WebPersistenceBootstrap bootstrap,
+                                    void* context) {
+    if (state.initialized) {
+        return Result{};
+    }
+
+    const auto init_result = bootstrap(context);
+    if (init_result.ok()) {
+        state.initialized = true;
+    }
+    return init_result;
+}
 
 std::error_code ensure_directory_exists(const std::filesystem::path& dir) {
     if (dir.empty()) return {};

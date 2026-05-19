@@ -4,6 +4,8 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "systems/persistence_policy_system.h"
+
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -97,21 +99,30 @@ TEST_CASE("wasm persistence uses explicit IDBFS policy and save flush hooks", "[
 
 TEST_CASE("wasm persistence readiness retries after initialization failure",
           "[persistence][architecture][issue887]") {
-    const fs::path root = find_repo_root();
-    const std::string policy_source = read_file(root / "app" / "systems" / "persistence_policy_system.cpp");
+    struct RetryContext {
+        int calls{0};
+        int failures_before_success{1};
+    } context;
 
-    const std::size_t mount_failure_return = policy_source.find(
-        "return Result{Status::PathUnavailable, std::make_error_code(std::errc::io_error)};");
-    const std::size_t sync_result = policy_source.find(
-        "const auto init_result = sync_web_filesystem(true, Status::FileReadFailed);");
-    const std::size_t success_guard = policy_source.find("if (init_result.ok()) {", sync_result);
-    const std::size_t initialized_true = policy_source.find("initialized = true;", success_guard);
+    auto bootstrap = [](void* raw_context) -> persistence::Result {
+        auto& ctx = *static_cast<RetryContext*>(raw_context);
+        ++ctx.calls;
+        if (ctx.calls <= ctx.failures_before_success) {
+            return {persistence::Status::PathUnavailable,
+                    std::make_error_code(std::errc::io_error)};
+        }
+        return {};
+    };
 
-    REQUIRE(mount_failure_return != std::string::npos);
-    REQUIRE(sync_result != std::string::npos);
-    REQUIRE(success_guard != std::string::npos);
-    REQUIRE(initialized_true != std::string::npos);
-    CHECK(mount_failure_return < sync_result);
-    CHECK(sync_result < success_guard);
-    CHECK(success_guard < initialized_true);
+    persistence::WebPersistenceInitState state;
+    CHECK_FALSE(persistence::ensure_web_persistence_ready(state, bootstrap, &context).ok());
+    CHECK_FALSE(state.initialized);
+    CHECK(context.calls == 1);
+
+    CHECK(persistence::ensure_web_persistence_ready(state, bootstrap, &context).ok());
+    CHECK(state.initialized);
+    CHECK(context.calls == 2);
+
+    CHECK(persistence::ensure_web_persistence_ready(state, bootstrap, &context).ok());
+    CHECK(context.calls == 2);
 }
