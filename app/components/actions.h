@@ -3,19 +3,19 @@
 #include <cstdint>
 
 // ActionId enumerates every button control name that appears across
-// `content/ui/screens/*.rgl`. Carried by the `OnPress` component on button
-// entities spawned by the rguilayout codegen (see `tools/rguilayout/codegen.py`).
+// `content/ui/screens/*.rgl`. The rguilayout codegen verifies button names
+// against this enum, then emits a matching `UiAction<Name>Tag` on the button
+// entity (see `tools/rguilayout/codegen.py`).
 //
 // Convention (per #1193): the control name in the .rgl IS the ActionId
 // enumerator name. Two buttons named identically on different screens map to
-// the same ActionId; consumer systems disambiguate by also reading the
-// entity's per-screen tag (`GameOverScreenTag` vs `SongCompleteScreenTag`,
-// etc., from `app/tags/tags.h`).
+// the same ActionId and therefore the same generated action tag; consumer
+// systems can further disambiguate by reading per-screen tags when needed
+// (`GameOverScreenTag` vs `SongCompleteScreenTag`, etc., from
+// `app/tags/tags.h`).
 //
-// NOTE: no consumer system currently dispatches on ActionId. Building the
-// UI-input system that reads this enum is the next ECS work item; see #1193
-// "Out of scope" section for the follow-up issue list. Until then, the enum
-// is data declaration only — no `switch` on it anywhere in `app/`.
+// Consumer systems do not dispatch on ActionId. It is a codegen validation
+// label only; runtime press behavior is selected by ECS tag membership.
 //
 // Maintenance: when a new button control name appears in a .rgl file the
 // codegen verifies it against this enum and errors out if an enumerator is

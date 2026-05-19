@@ -75,8 +75,9 @@ class EmitterTests(unittest.TestCase):
         self.assertIn("SettingsScreenTag", out)
         self.assertIn("UiButtonTag", out)
         self.assertIn("UiLabelTag", out)
-        self.assertIn("OnPress", out)
-        self.assertIn("ActionId::HapticsToggle", out)
+        self.assertIn("UiActionHapticsToggleTag", out)
+        self.assertNotIn("OnPress", out)
+        self.assertNotIn("ActionId::HapticsToggle", out)
 
     def test_emit_does_not_use_uikind_enum_or_god_struct(self):
         # Doctrinal: existential per-kind tags replace the spec's UiKind enum.

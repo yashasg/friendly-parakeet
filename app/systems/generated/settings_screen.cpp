@@ -4,7 +4,6 @@
 // per-screen tag + per-kind tag + atomic UI components.
 // Regenerate via `cmake --build` (codegen runs on .rgl change).
 
-#include "components/actions.h"
 #include "components/ui.h"
 #include "tags/tags.h"
 
@@ -41,7 +40,7 @@ void spawn_settings_screen(entt::registry& reg) {
         reg.emplace<UiBounds>(e, 72.0f, 77.0f);
         auto& label = reg.emplace<UiLabel>(e);
         ui_label_set(label, "-");
-        reg.emplace<OnPress>(e, ActionId::AudioOffsetMinus);
+        reg.emplace<UiActionAudioOffsetMinusTag>(e);
     }
     {
         // AudioOffsetDisplay (label)
@@ -62,7 +61,7 @@ void spawn_settings_screen(entt::registry& reg) {
         reg.emplace<UiBounds>(e, 72.0f, 77.0f);
         auto& label = reg.emplace<UiLabel>(e);
         ui_label_set(label, "+");
-        reg.emplace<OnPress>(e, ActionId::AudioOffsetPlus);
+        reg.emplace<UiActionAudioOffsetPlusTag>(e);
     }
     {
         // HapticsToggle (button)
@@ -75,7 +74,7 @@ void spawn_settings_screen(entt::registry& reg) {
         reg.emplace<UiBounds>(e, 416.0f, 100.0f);
         auto& label = reg.emplace<UiLabel>(e);
         ui_label_set(label, "HAPTICS: ON");
-        reg.emplace<OnPress>(e, ActionId::HapticsToggle);
+        reg.emplace<UiActionHapticsToggleTag>(e);
     }
     {
         // HapticsValue (label)
@@ -98,7 +97,7 @@ void spawn_settings_screen(entt::registry& reg) {
         reg.emplace<UiBounds>(e, 416.0f, 100.0f);
         auto& label = reg.emplace<UiLabel>(e);
         ui_label_set(label, "MOTION: OFF");
-        reg.emplace<OnPress>(e, ActionId::ReduceMotionToggle);
+        reg.emplace<UiActionReduceMotionToggleTag>(e);
     }
     {
         // ReduceMotionValue (label)
@@ -119,7 +118,7 @@ void spawn_settings_screen(entt::registry& reg) {
         reg.emplace<UiBounds>(e, 200.0f, 100.0f);
         auto& label = reg.emplace<UiLabel>(e);
         ui_label_set(label, "BACK");
-        reg.emplace<OnPress>(e, ActionId::CloseButton);
+        reg.emplace<UiActionCloseButtonTag>(e);
     }
 }
 

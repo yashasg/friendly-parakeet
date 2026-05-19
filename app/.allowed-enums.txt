@@ -41,12 +41,10 @@ Shape              # lookup key — perfect-hash index into per-shape function-p
                    # are lookup-key passthroughs (function args, return values,
                    # per-shape literal iteration) — exactly Fabian's Keep category.
 ActionId           # UI button-action label (issue #1193). Convention: each `.rgl`
-                   # button control's `name` field maps to an enumerator. Carried
-                   # by `OnPress` on button entities spawned by the rguilayout
-                   # codegen. No consumer system dispatches on ActionId today; the
-                   # future ui_update_system will use it as a lookup-key index
-                   # into a per-action function-pointer table (same mechanic as
-                   # `kShapeFlatDrawFns`), never as a `switch` discriminator.
+                   # button control's `name` field maps to an enumerator for
+                   # codegen verification. Runtime buttons carry matching
+                   # `UiAction*Tag` membership rows; no consumer system
+                   # dispatches on ActionId.
 
 # --- Pending eradication per #1202 / #1204 (set must shrink, never grow) ----
 # Each row below is a control-flow enum awaiting migration to per-case tags

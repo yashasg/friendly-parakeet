@@ -3,7 +3,7 @@
 // `level_select_dynamic_spawn_system` paints the per-level cards and
 // per-(level, difficulty) buttons that the legacy controller drew
 // imperatively. The system runs every time the player enters Level
-// Select; a regression in card/button geometry or `ActionId` assignment
+// Select; a regression in card/button geometry or action-tag assignment
 // would silently break level selection.
 
 #include <catch2/catch_test_macros.hpp>
@@ -11,7 +11,6 @@
 #include <string>
 
 #include "test_helpers.h"
-#include "components/actions.h"
 #include "components/ui.h"
 #include "systems/level_select_dynamic_spawn_system.h"
 #include "systems/generated/screen_spawners.h"
@@ -89,24 +88,18 @@ TEST_CASE("level_select_dynamic_spawn: spawns one card per level with monotonica
     CHECK(card_ui_button_count == 0);
 }
 
-TEST_CASE("level_select_dynamic_spawn: spawns 3 difficulty buttons per card with matching ActionId",
+TEST_CASE("level_select_dynamic_spawn: spawns 3 difficulty buttons per card with matching action tag",
           "[level_select][ui][issue1296][issue1333]") {
     auto reg = make_registry();
     spawn_level_select_screen_full(reg);
 
     auto diff_view = reg.view<DifficultyButtonTag, UiButtonTag,
                               LevelSelectScreenTag, LevelIndex,
-                              DifficultyIndex, UiPosition, UiBounds, OnPress,
+                              DifficultyIndex, UiPosition, UiBounds,
                               UiLabel>();
 
     constexpr int kExpectedTotal =
         content_config::LEVEL_COUNT * content_config::DIFFICULTY_COUNT;
-
-    constexpr ActionId kExpectedAction[content_config::DIFFICULTY_COUNT] = {
-        ActionId::DifficultyEasy,
-        ActionId::DifficultyMedium,
-        ActionId::DifficultyHard,
-    };
 
     int total = 0;
     bool seen[content_config::LEVEL_COUNT][content_config::DIFFICULTY_COUNT] = {};
@@ -117,7 +110,6 @@ TEST_CASE("level_select_dynamic_spawn: spawns 3 difficulty buttons per card with
         const auto& di      = diff_view.get<DifficultyIndex>(entity);
         const auto& pos     = diff_view.get<UiPosition>(entity);
         const auto& bounds  = diff_view.get<UiBounds>(entity);
-        const auto& press   = diff_view.get<OnPress>(entity);
         const auto& label   = diff_view.get<UiLabel>(entity);
 
         REQUIRE(li.value >= 0);
@@ -137,7 +129,13 @@ TEST_CASE("level_select_dynamic_spawn: spawns 3 difficulty buttons per card with
         CHECK(near(bounds.w, kDiffBtnW));
         CHECK(near(bounds.h, kDiffBtnH));
 
-        CHECK(press.action == kExpectedAction[di.value]);
+        if (di.value == 0) {
+            CHECK(reg.all_of<UiActionDifficultyEasyTag>(entity));
+        } else if (di.value == 1) {
+            CHECK(reg.all_of<UiActionDifficultyMediumTag>(entity));
+        } else {
+            CHECK(reg.all_of<UiActionDifficultyHardTag>(entity));
+        }
 
         const std::string expected_label{content_config::DIFFICULTY_NAMES[di.value]};
         CHECK(std::string(label.text.data()) == expected_label);

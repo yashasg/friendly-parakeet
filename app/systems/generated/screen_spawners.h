@@ -6,7 +6,7 @@
 // `tools/rguilayout/codegen.py` (one pair per `.rgl` in
 // `content/ui/screens/`). Per #1193: each call creates one entity per
 // control row in its `.rgl`, carrying atomic `UiPosition` / `UiBounds` /
-// `UiLabel` (+ `OnPress` for buttons) plus a per-screen tag (e.g.
+// `UiLabel` (+ `UiAction*Tag` for buttons) plus a per-screen tag (e.g.
 // `PausedScreenTag`) and a per-kind tag (`UiLabelTag` / `UiButtonTag` /
 // `UiDummyRecTag`) — see `app/components/ui.h` and `app/tags/tags.h`.
 //

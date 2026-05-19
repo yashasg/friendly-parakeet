@@ -1,8 +1,8 @@
 // Tests for the entity-driven UI update system (issue #1287 / refs #1193 OoS-A).
 //
-// `ui_update_system` hit-tests `view<UiPosition, UiBounds, OnPress,
-// UiButtonTag>` against the frame's pointer-release event and dispatches the
-// matching `ActionId` via a per-action function-pointer table. These tests
+// `ui_update_system` hit-tests `view<UiPosition, UiBounds, UiButtonTag>`
+// against the frame's pointer-release event and dispatches via the matching
+// `UiAction*Tag` membership row. These tests
 // pin the dispatch semantics for the Paused-screen pilot:
 //
 //   * pointer hit on Resume button → `NextPhasePlayingTag` requested
@@ -21,7 +21,6 @@
 
 #include "test_helpers.h"
 
-#include "components/actions.h"
 #include "components/game_state.h"
 #include "components/ui.h"
 #include "constants.h"
@@ -744,11 +743,11 @@ TEST_CASE("Title ExitButton carries UiHiddenOnWebTag (#511, issue #1294)",
     entt::registry reg;
     spawn_title_screen(reg);
 
-    auto exit_view = reg.view<OnPress, UiHiddenOnWebTag, TitleScreenTag>();
+    auto exit_view = reg.view<UiActionExitButtonTag, UiHiddenOnWebTag,
+                              TitleScreenTag>();
     int matches = 0;
-    for (auto [e, on_press] : exit_view.each()) {
+    for (auto e : exit_view) {
         (void)e;
-        CHECK(on_press.action == ActionId::ExitButton);
         ++matches;
     }
     CHECK(matches == 1);
@@ -934,17 +933,8 @@ TEST_CASE("Settings toggle buttons carry UiToggleTag (issue #1295)",
     auto toggles = reg.view<UiToggleTag, UiButtonTag, SettingsScreenTag>();
     CHECK(toggles.size_hint() == 2);
 
-    int haptics = 0, motion = 0, other = 0;
-    auto with_action = reg.view<UiToggleTag, OnPress>();
-    for (auto [e, on_press] : with_action.each()) {
-        (void)e;
-        if (on_press.action == ActionId::HapticsToggle) ++haptics;
-        else if (on_press.action == ActionId::ReduceMotionToggle) ++motion;
-        else ++other;
-    }
-    CHECK(haptics == 1);
-    CHECK(motion == 1);
-    CHECK(other == 0);
+    CHECK(reg.view<UiToggleTag, UiActionHapticsToggleTag>().size_hint() == 1);
+    CHECK(reg.view<UiToggleTag, UiActionReduceMotionToggleTag>().size_hint() == 1);
 
     // Non-toggle Settings buttons (audio +/- and CloseButton) must NOT
     // carry the toggle tag — otherwise the render system would apply
@@ -1230,7 +1220,7 @@ TEST_CASE("screen_lifecycle_system: spawns Level Select entities on phase entry,
     CHECK(reg.view<LevelSelectScreenTag>().size() == 0);
 }
 
-TEST_CASE("Level Select cards carry LevelCardTag + LevelIndex; no OnPress (#1296)",
+TEST_CASE("Level Select cards carry LevelCardTag + LevelIndex; no UiButtonTag (#1296)",
           "[ui][level_select][issue1296]") {
     entt::registry reg = make_registry();
     sync_game_phase_tags<GamePhaseLevelSelectTag>(reg);
@@ -1250,7 +1240,6 @@ TEST_CASE("Level Select cards carry LevelCardTag + LevelIndex; no OnPress (#1296
         // generic button view means diff buttons (Pass A) and other UI
         // buttons (Pass B) win priority when they overlap the card region.
         CHECK_FALSE(reg.all_of<UiButtonTag>(e));
-        CHECK_FALSE(reg.all_of<OnPress>(e));
     }
     CHECK(card_count == content_config::LEVEL_COUNT);
     for (int i = 0; i < content_config::LEVEL_COUNT; ++i) {
@@ -1259,28 +1248,30 @@ TEST_CASE("Level Select cards carry LevelCardTag + LevelIndex; no OnPress (#1296
 }
 
 TEST_CASE("Level Select difficulty buttons carry DifficultyButtonTag + LevelIndex + "
-          "DifficultyIndex + matching ActionId (#1296)",
+          "DifficultyIndex + matching action tag (#1296)",
           "[ui][level_select][issue1296]") {
     entt::registry reg = make_registry();
     sync_game_phase_tags<GamePhaseLevelSelectTag>(reg);
     screen_lifecycle_system(reg);
 
     auto diffs = reg.view<DifficultyButtonTag, LevelIndex, DifficultyIndex,
-                          UiButtonTag, OnPress, LevelSelectScreenTag>();
+                          UiButtonTag, LevelSelectScreenTag>();
     int per_pair[content_config::LEVEL_COUNT][content_config::DIFFICULTY_COUNT] = {};
     int total = 0;
     for (auto e : diffs) {
         ++total;
         const auto& li = diffs.get<LevelIndex>(e);
         const auto& di = diffs.get<DifficultyIndex>(e);
-        const auto& op = diffs.get<OnPress>(e);
         REQUIRE(content_config::is_valid_level_index(li.value));
         REQUIRE(content_config::is_valid_difficulty_index(di.value));
         ++per_pair[li.value][di.value];
-        const ActionId expected = (di.value == 0)   ? ActionId::DifficultyEasy
-                                : (di.value == 1)   ? ActionId::DifficultyMedium
-                                                    : ActionId::DifficultyHard;
-        CHECK(op.action == expected);
+        if (di.value == 0) {
+            CHECK(reg.all_of<UiActionDifficultyEasyTag>(e));
+        } else if (di.value == 1) {
+            CHECK(reg.all_of<UiActionDifficultyMediumTag>(e));
+        } else {
+            CHECK(reg.all_of<UiActionDifficultyHardTag>(e));
+        }
     }
     CHECK(total
           == content_config::LEVEL_COUNT * content_config::DIFFICULTY_COUNT);

@@ -4,7 +4,6 @@
 // per-screen tag + per-kind tag + atomic UI components.
 // Regenerate via `cmake --build` (codegen runs on .rgl change).
 
-#include "components/actions.h"
 #include "components/ui.h"
 #include "tags/tags.h"
 
@@ -111,7 +110,7 @@ void spawn_game_over_screen(entt::registry& reg) {
         reg.emplace<UiBounds>(e, 280.0f, 50.0f);
         auto& label = reg.emplace<UiLabel>(e);
         ui_label_set(label, "RESTART");
-        reg.emplace<OnPress>(e, ActionId::RestartButton);
+        reg.emplace<UiActionRestartButtonTag>(e);
     }
     {
         // LevelSelectButton (button)
@@ -122,7 +121,7 @@ void spawn_game_over_screen(entt::registry& reg) {
         reg.emplace<UiBounds>(e, 280.0f, 50.0f);
         auto& label = reg.emplace<UiLabel>(e);
         ui_label_set(label, "LEVEL SELECT");
-        reg.emplace<OnPress>(e, ActionId::LevelSelectButton);
+        reg.emplace<UiActionLevelSelectButtonTag>(e);
     }
     {
         // MenuButton (button)
@@ -133,7 +132,7 @@ void spawn_game_over_screen(entt::registry& reg) {
         reg.emplace<UiBounds>(e, 280.0f, 50.0f);
         auto& label = reg.emplace<UiLabel>(e);
         ui_label_set(label, "MAIN MENU");
-        reg.emplace<OnPress>(e, ActionId::MenuButton);
+        reg.emplace<UiActionMenuButtonTag>(e);
     }
 }
 

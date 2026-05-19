@@ -1,7 +1,5 @@
 #pragma once
 
-#include "actions.h"
-
 #include <array>
 #include <cstddef>
 #include <cstdio>
@@ -22,12 +20,10 @@
 //   * `UiLabel`             — display text. Fixed-size char buffer (no heap),
 //                             matching the `PopupDisplay::text` convention
 //                             elsewhere in this codebase.
-//   * `OnPress`             — buttons only. Carries the `ActionId` that the
-//                             UI-input system will dispatch on press.
+//   * `UiAction*Tag`        — buttons only. Presence selects press behavior
+//                             without dispatching on `ActionId`.
 //
-// No system consumes these components yet. The render / input systems that
-// will read them are out of scope per #1193; see the issue body for the
-// follow-up issue list.
+// Render and input systems consume these rows directly from the registry.
 
 inline constexpr std::size_t kUiLabelMaxLength = 63;
 
@@ -76,10 +72,6 @@ inline void ui_label_set_int(UiLabel& label, int value) noexcept {
     std::snprintf(buf, sizeof(buf), "%d", value);
     ui_label_set(label, buf);
 }
-
-struct OnPress {
-    ActionId action = ActionId::None;
-};
 
 // Per-entity row index for dynamic-spawn UI archetypes (level-select cards
 // and difficulty buttons, issue #1296). Each level-select card carries

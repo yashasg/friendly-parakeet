@@ -4,7 +4,6 @@
 // per-screen tag + per-kind tag + atomic UI components.
 // Regenerate via `cmake --build` (codegen runs on .rgl change).
 
-#include "components/actions.h"
 #include "components/ui.h"
 #include "tags/tags.h"
 
@@ -41,7 +40,7 @@ void spawn_paused_screen(entt::registry& reg) {
         reg.emplace<UiBounds>(e, 400.0f, 100.0f);
         auto& label = reg.emplace<UiLabel>(e);
         ui_label_set(label, "RESUME");
-        reg.emplace<OnPress>(e, ActionId::ResumeButton);
+        reg.emplace<UiActionResumeButtonTag>(e);
     }
     {
         // MenuInstruction (label)
@@ -62,7 +61,7 @@ void spawn_paused_screen(entt::registry& reg) {
         reg.emplace<UiBounds>(e, 400.0f, 100.0f);
         auto& label = reg.emplace<UiLabel>(e);
         ui_label_set(label, "MAIN MENU");
-        reg.emplace<OnPress>(e, ActionId::MenuButton);
+        reg.emplace<UiActionMenuButtonTag>(e);
     }
 }
 

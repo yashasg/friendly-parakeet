@@ -9,8 +9,8 @@ becomes one `<screen>_screen.cpp` that exposes:
     void despawn_<screen>_screen(entt::registry& reg);
 
 Each control row in the `.rgl` becomes one ECS entity carrying atomic
-components (`UiPosition`, `UiBounds`, `UiLabel`, optionally `OnPress`) plus
-two existential tags: a per-screen tag and a per-kind tag. See
+components (`UiPosition`, `UiBounds`, `UiLabel`) plus existential tags:
+a per-screen tag, a per-kind tag, and a per-action tag for buttons. See
 `app/components/ui.h`, `app/components/actions.h`, and `app/tags/tags.h`
 for the component / tag declarations.
 
@@ -46,7 +46,7 @@ from typing import Dict, List, Tuple
 
 
 # ── .rgl type-code table ────────────────────────────────────────────────
-# Maps the type code in the .rgl row to a (per-kind tag, needs-OnPress) tuple.
+# Maps the type code in the .rgl row to a (per-kind tag, needs-action-tag) tuple.
 RGL_TYPES: Dict[int, Tuple[str, bool]] = {
     4:  ("UiLabelTag",    False),  # static text
     5:  ("UiButtonTag",   True),   # pressable
@@ -252,7 +252,6 @@ def emit_spawner_cpp(layout: Layout, path: Path) -> str:
     a("// per-screen tag + per-kind tag + atomic UI components.")
     a("// Regenerate via `cmake --build` (codegen runs on .rgl change).")
     a("")
-    a('#include "components/actions.h"')
     a('#include "components/ui.h"')
     a('#include "tags/tags.h"')
     a("")
@@ -265,7 +264,7 @@ def emit_spawner_cpp(layout: Layout, path: Path) -> str:
         if kind is None:
             _fail(path, f"control {c.name!r} uses unknown type code "
                         f"{c.type_code} (known: {sorted(RGL_TYPES)})")
-        kind_tag, needs_onpress = kind
+        kind_tag, needs_action_tag = kind
         anc_x, anc_y = _anchor_offset(layout, c.anchor_id, path)
         # Absolute (anchor + relative) pixel offset, baked at codegen time.
         abs_x = anc_x + c.x
@@ -284,8 +283,8 @@ def emit_spawner_cpp(layout: Layout, path: Path) -> str:
             a(f'        ui_label_set(label, "{_cpp_escape(c.text)}");')
         else:
             a(f"        (void)label;  // dynamic-text slot; bound by render system")
-        if needs_onpress:
-            a(f"        reg.emplace<OnPress>(e, ActionId::{c.name});")
+        if needs_action_tag:
+            a(f"        reg.emplace<UiAction{c.name}Tag>(e);")
         a(f"    }}")
     a("}")
     a("")
