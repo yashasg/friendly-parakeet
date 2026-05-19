@@ -21,7 +21,9 @@ static_assert(static_cast<int>(SFX::Count) == 6,
 static_assert(static_cast<int>(SFX::ShapeShift) == 0,
               "SFX enum must be zero-based for array indexing");
 
-// The resident sound bank that owns raylib Sound handles for each SFX lives
-// in `app/systems/sfx_bank_resources.h` (issue #1358). `app/components/audio.h`
-// stays plain data — see .squad/decisions.md §"app/components parallel audit
-// verdict (consolidated)".
+// One row per currently-loaded SFX lives in `app/components/loaded_sfx.h`
+// (issue #1616, follow-up to #1358). The former `SFXBank` ctx singleton
+// carrying `Sound sounds[SFX_COUNT]` + `bool sound_loaded[SFX_COUNT]`
+// array columns is eradicated; `app/components/audio.h` stays plain enum
+// data — see .squad/decisions.md §"app/components parallel audit verdict
+// (consolidated)".

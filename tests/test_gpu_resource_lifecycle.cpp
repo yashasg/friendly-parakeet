@@ -15,7 +15,7 @@
 #include <type_traits>
 
 #include "components/audio.h"
-#include "systems/sfx_bank_resources.h"
+#include "components/loaded_sfx.h"
 #include "systems/audio_resources.h"
 #include "components/camera_resources.h"
 #include "systems/camera_resources.h"
@@ -68,18 +68,18 @@ static_assert(std::is_move_constructible_v<TextContext>,
 static_assert(std::is_move_assignable_v<TextContext>,
     "TextContext must be move-assignable.");
 
-static_assert(!std::is_copy_constructible_v<SFXBank>,
-    "SFXBank must not be copy-constructible: copying Sound handles would "
+static_assert(!std::is_copy_constructible_v<LoadedSfx>,
+    "LoadedSfx must not be copy-constructible: copying Sound handles would "
     "cause double-unload on destruction.");
 
-static_assert(!std::is_copy_assignable_v<SFXBank>,
-    "SFXBank must not be copy-assignable.");
+static_assert(!std::is_copy_assignable_v<LoadedSfx>,
+    "LoadedSfx must not be copy-assignable.");
 
-static_assert(std::is_move_constructible_v<SFXBank>,
-    "SFXBank must be move-constructible for registry ctx emplace.");
+static_assert(std::is_move_constructible_v<LoadedSfx>,
+    "LoadedSfx must be move-constructible for registry storage.");
 
-static_assert(std::is_move_assignable_v<SFXBank>,
-    "SFXBank must be move-assignable.");
+static_assert(std::is_move_assignable_v<LoadedSfx>,
+    "LoadedSfx must be move-assignable.");
 
 static_assert(!std::is_copy_constructible_v<MusicContext>,
     "MusicContext must not be copy-constructible: copying Music handles would "
@@ -162,24 +162,20 @@ TEST_CASE("runtime contexts: registry erase releases default resources safely",
     entt::registry reg;
 
     reg.ctx().emplace<TextContext>();
-    reg.ctx().emplace<SFXBank>();
     reg.ctx().emplace<MusicContext>();
     reg.ctx().emplace<SessionLog>();
 
     // Sanity: emplace actually installed the contexts before we erase them
     // (otherwise the erase-then-contains check below would be vacuously true).
     REQUIRE(reg.ctx().contains<TextContext>());
-    REQUIRE(reg.ctx().contains<SFXBank>());
     REQUIRE(reg.ctx().contains<MusicContext>());
     REQUIRE(reg.ctx().contains<SessionLog>());
 
     reg.ctx().erase<TextContext>();
-    reg.ctx().erase<SFXBank>();
     reg.ctx().erase<MusicContext>();
     reg.ctx().erase<SessionLog>();
 
     CHECK_FALSE(reg.ctx().contains<TextContext>());
-    CHECK_FALSE(reg.ctx().contains<SFXBank>());
     CHECK_FALSE(reg.ctx().contains<MusicContext>());
     CHECK_FALSE(reg.ctx().contains<SessionLog>());
 }
@@ -187,31 +183,47 @@ TEST_CASE("runtime contexts: registry erase releases default resources safely",
 TEST_CASE("runtime contexts: explicit release is idempotent without live handles",
           "[resource_lifecycle][issue648]") {
     TextContext text;
-    SFXBank sfx;
     MusicContext music;
     SessionLog log;
 
     text.loaded = true;
-    sfx.loaded = true;
     music.loaded = true;
     music.started = true;
     music.paused = true;
 
     text.release();
     text.release();
-    sfx.release();
-    sfx.release();
     music.release();
     music.release();
     log.release();
     log.release();
 
     CHECK_FALSE(text.loaded);
-    CHECK_FALSE(sfx.loaded);
     CHECK_FALSE(music.loaded);
     CHECK_FALSE(music.started);
     CHECK_FALSE(music.paused);
     CHECK(log.file == nullptr);
+}
+
+// Replaces the former `SFXBank::release()` idempotence test (#1616).
+// `LoadedSfx` is the row-table normalization of the eradicated array
+// column; default-constructed `Sound{}` fails `IsSoundValid`, so the
+// destructor is a no-op without an audio device. Move semantics transfer
+// the (zero-init) handle and zero out the source.
+TEST_CASE("LoadedSfx: default-constructed destruct + move are headless-safe",
+          "[resource_lifecycle][audio]") {
+    {
+        LoadedSfx sfx{};
+        CHECK_FALSE(IsSoundValid(sfx.sound));
+        // Destructor fires at end of scope; must not call UnloadSound.
+    }
+
+    LoadedSfx src{};
+    src.key = SFX::ShapeShift;
+    LoadedSfx dst{std::move(src)};
+    CHECK(dst.key == SFX::ShapeShift);
+    CHECK_FALSE(IsSoundValid(src.sound));
+    CHECK_FALSE(IsSoundValid(dst.sound));
 }
 
 TEST_CASE("SessionLog: move transfers file ownership",

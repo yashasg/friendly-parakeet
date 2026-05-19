@@ -1,7 +1,8 @@
 #include "sfx_bank.h"
-#include "sfx_bank_resources.h"
 #include "../components/audio.h"
+#include "../components/loaded_sfx.h"
 
+#include <entt/entt.hpp>
 #include <raylib.h>
 
 #include <algorithm>
@@ -91,66 +92,38 @@ Sound make_procedural_sound(const SfxSpec& spec) {
 
 }  // namespace
 
+// Load procedurally-generated `Sound` handles for every `SFX` enum value
+// that successfully passes `IsSoundValid` after `LoadSoundFromWave`. Each
+// successful load becomes one `LoadedSfx` row entity — sounds that fail
+// validation simply never produce a row (presence ⇒ valid, the
+// load-time gate replaces the former parallel `sound_loaded[]` NULL
+// cursor — issue #1616 / Fabian Principle 3).
+//
+// Idempotent: re-entry with any existing `LoadedSfx` rows or a not-ready
+// audio device is a no-op.
 void sfx_bank_init(entt::registry& reg) {
-    auto* bank = reg.ctx().find<SFXBank>();
-    if (!bank) {
-        bank = &reg.ctx().emplace<SFXBank>();
-    }
+    if (!IsAudioDeviceReady()) return;
+    if (!reg.view<LoadedSfx>().empty()) return;
 
-    if (bank->loaded || !IsAudioDeviceReady()) return;
-
-    bool any_loaded = false;
     for (int idx = 0; idx < SFX_COUNT; ++idx) {
-        bank->sounds[idx] = make_procedural_sound(SFX_SPECS[static_cast<std::size_t>(idx)]);
-        bank->sound_loaded[idx] = IsSoundValid(bank->sounds[idx]);
-        any_loaded = any_loaded || bank->sound_loaded[idx];
+        Sound sound = make_procedural_sound(SFX_SPECS[static_cast<std::size_t>(idx)]);
+        if (!IsSoundValid(sound)) continue;
+        const auto entity = reg.create();
+        reg.emplace<LoadedSfx>(entity, static_cast<SFX>(idx), sound);
     }
-    bank->loaded = any_loaded;
 }
 
+// Tear down every `LoadedSfx` row. Collect-then-destroy (#1597) so we
+// never mutate the storage we're walking; entity destruction fires the
+// `LoadedSfx` destructor which calls `UnloadSound`.
 void sfx_bank_unload(entt::registry& reg) {
-    auto* bank = reg.ctx().find<SFXBank>();
-    if (!bank) return;
-
-    bank->release();
-}
-
-void SFXBank::release() {
-    for (int idx = 0; idx < SFX_COUNT; ++idx) {
-        if (sound_loaded[idx] && IsSoundValid(sounds[idx])) {
-            UnloadSound(sounds[idx]);
-        }
-        sounds[idx] = {};
-        sound_loaded[idx] = false;
+    std::vector<entt::entity> doomed;
+    auto view = reg.view<LoadedSfx>();
+    doomed.reserve(view.size());
+    for (auto entity : view) {
+        doomed.push_back(entity);
     }
-    loaded = false;
-}
-
-SFXBank::~SFXBank() { release(); }
-
-SFXBank::SFXBank(SFXBank&& other) noexcept
-    : loaded{other.loaded}
-{
-    for (int idx = 0; idx < SFX_COUNT; ++idx) {
-        sounds[idx] = other.sounds[idx];
-        sound_loaded[idx] = other.sound_loaded[idx];
-        other.sounds[idx] = {};
-        other.sound_loaded[idx] = false;
+    for (auto entity : doomed) {
+        reg.destroy(entity);
     }
-    other.loaded = false;
-}
-
-SFXBank& SFXBank::operator=(SFXBank&& other) noexcept {
-    if (this != &other) {
-        release();
-        for (int idx = 0; idx < SFX_COUNT; ++idx) {
-            sounds[idx] = other.sounds[idx];
-            sound_loaded[idx] = other.sound_loaded[idx];
-            other.sounds[idx] = {};
-            other.sound_loaded[idx] = false;
-        }
-        loaded = other.loaded;
-        other.loaded = false;
-    }
-    return *this;
 }
