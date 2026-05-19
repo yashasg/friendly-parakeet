@@ -290,7 +290,7 @@ Each module exports a well-defined API. Sub-agents build to these contracts.
 export const state = {
   // Beatmap data (exported to JSON)
   songId: "", title: "", bpm: 120, offset: 0, leadBeats: 4,
-  duration: 180, songPath: "",
+  duration_sec: 180, songPath: "",
   difficulties: { easy: { beats: [] }, medium: { beats: [] }, hard: { beats: [] } },
   activeDifficulty: "easy",
 
