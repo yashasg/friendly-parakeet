@@ -131,12 +131,18 @@ struct WorldPosition {
     Vector2 position = {0.0f, 0.0f};
 };
 
-/// Movement vector in pixels/second for entities that integrate position.
-/// Iterated with WorldPosition by motion_system every frame.
+/// Velocity vector (units per second) for entities that integrate
+/// `position += velocity * dt` (motion_system). The runtime uses raw
+/// `Vector2` directly — the former `MotionVelocity { Vector2 value }`
+/// single-field wrapper was deleted per issue #1198 (companion to the
+/// `BlockedLanes` → `uint8_t` unwrap in PR #1240). Existence of a
+/// `Vector2` component on an entity is the ownership marker for
+/// dt-integrated movement. The per-entity `Vector2` slot is reserved
+/// for velocity semantics; other Vector2-shaped wrappers
+/// (`ScreenPosition`, `DrawSize`) remain as named structs to avoid
+/// colliding on archetypes that also carry a velocity.
 /// Rhythm obstacles use BeatInfo and are positioned by scroll_system instead.
-struct MotionVelocity {
-    Vector2 value = {0.0f, 0.0f};
-};
+// (no struct — Vector2 IS the velocity slot)
 ```
 
 ### 2.2 — HOT: Player State (read every frame for collision + render)
@@ -626,7 +632,7 @@ struct DrawSize {
 ```cpp
 // components/particle.h
 
-/// Particle-specific data (WorldPosition, MotionVelocity, Color are separate).
+/// Particle-specific data (WorldPosition, Vector2 velocity, Color are separate).
 struct ParticleData {
     float size;            // base rendered size
     float remaining;       // seconds until destroy
@@ -678,7 +684,7 @@ struct AudioQueue {
 COMPONENT          BYTES   ACCESS     ITERATED BY
 ─────────────────────────────────────────────────────────────
 WorldPosition       8     HOT        motion, render, collision, despawn
-MotionVelocity       8     HOT        motion, particle effects
+Vector2 (velocity)   8     HOT        motion, particle effects
 ParticleData        12     HOT        particle expiry/render fade
 ScorePopup          12     HOT        popup expiry/render fade
 PlayerTag            0     HOT        collision/filter
@@ -795,7 +801,7 @@ system in the same frame (unidirectional data flow).
  │  │                           song_time + BeatInfo.        │
  │  │                                                        │
  │  │     f. motion_system      For every (WorldPosition,   │
- │  │                           MotionVelocity):             │
+ │  │                           Vector2 velocity):           │
  │  │                           position += velocity * dt.   │
  │  │                           Simple, tight inner loop.    │
  │  │                                                        │
@@ -980,7 +986,7 @@ eradicated. Per #1533, the former `ShapeWindow::press_time` sentinel and
 │ RequiredShapeTriangleTag   (tag, 0 bytes)                 │
 │ int8_t                     (1 byte, lane = 1)             │
 │ WorldPosition     { position: {360.0, -120.0} }           │
-│ MotionVelocity    { value: {0.0, 400.0} }                 │
+│ Vector2           { x: 0.0, y: 400.0 } (velocity)         │
 │ Obstacle          { base_points: 200 }                    │
 │ Color             { r: 50, g: 205, b: 50, a: 255 }        │
 │ DrawSize          { w: 720, h: 80 }                       │
@@ -1016,7 +1022,7 @@ LowBar/HighBar entity archetypes are historical only. The current runtime enum, 
 │ RequiredShapeCircleTag     (tag, 0 bytes)                 │
 │ int8_t                     (1 byte, lane = 2)             │
 │ WorldPosition     { position: {360.0, -120.0} }           │
-│ MotionVelocity    { value: {0.0, 400.0} }                 │
+│ Vector2           { x: 0.0, y: 400.0 } (velocity)         │
 │ Obstacle          { base_points: 300 }                    │
 │ Color             { r: 255, g: 215, b: 0, a: 255 }        │
 │ DrawSize          { w: 720, h: 80 }                       │
@@ -1032,7 +1038,7 @@ semantics as the required dodge lane — where the player must be).
 ┌─ Onset Marker ────────────────────────────────────────────┐
 │ ObstacleTag        (tag, 0 bytes)                         │
 │ WorldPosition     { position: {360.0, -120.0} }          │
-│ MotionVelocity     { value: {0.0, 400.0} }                │
+│ Vector2            { x: 0.0, y: 400.0 } (velocity)        │
 │ Obstacle           { base_points: 0 }                      │
 │ OnsetMarkerTag     (tag, 0 bytes)                         │
 │ NonScorableTag     (tag, 0 bytes)                         │
@@ -1057,7 +1063,7 @@ during normal play.
 ```
 ┌─ Score Popup ─────────────────────────────────────────────┐
 │ WorldPosition     { position: {360.0, 900.0} }          │
-│ MotionVelocity     { value: {0.0, -80.0} } (floats up)   │
+│ Vector2            { x: 0.0, y: -80.0 } (velocity, floats up) │
 │ ScorePopup         { value: 600, tier: 3, remaining: 1.2 } │
 │ Color              { r: 255, g: 200, b: 50, a: 255 }     │
 │ TagHUDPass         (tag, 0 bytes)                          │
@@ -1071,7 +1077,7 @@ Total: ~33 bytes per entity (0–5 active)
 ┌─ Particle ────────────────────────────────────────────────┐
 │ ParticleTag        (tag, 0 bytes)                         │
 │ WorldPosition     { position: {360.0, 920.0} }          │
-│ MotionVelocity     { value: {rand, rand} } (random burst) │
+│ Vector2            { x: rand, y: rand } (velocity, random burst) │
 │ ParticleData       { size: 4.0, remaining: 0.6, max_time: 0.6 } │
 │ Color              { r: 255, g: 100, b: 50, a: 255 }     │
 │ TagEffectsPass     (tag, 0 bytes)                          │
@@ -1425,7 +1431,7 @@ This entire game state fits in L1 cache (~32-64 KB).
   ▲
   │
   │  ■ WorldPosition  (motion, render, collision, every frame, R+W)
-  │  ■ MotionVelocity  (motion + particle, every frame, R+W)
+  │  ■ Vector2 velocity (motion + particle, every frame, R+W)
   │  ■ ParticleData    (particle sys, every frame, R+W)
   │  ■ ScorePopup      (popup sys, every frame, R+W)
   │
@@ -1453,7 +1459,7 @@ EnTT stores each component type in its own **sparse set** — effectively a
 
 ```
 WorldPosition pool: [xf0] [xf1] [xf2] [xf3] ... [xfN]    contiguous in memory
-MotionVelocity pool: [vel0] [vel1] [vel2] ... [velN]      contiguous in memory
+Vector2 (velocity) pool: [vel0] [vel1] [vel2] ... [velN]  contiguous in memory
 Obstacle pool:   [obs0] [obs1] [obs2] ... [obsM]          contiguous in memory
 ```
 
@@ -1464,7 +1470,7 @@ Obstacle pool:   [obs0] [obs1] [obs2] ... [obsM]          contiguous in memory
    alleviate.
 
 2. **Iteration patterns are simple**. The hottest loop (`motion_system`) reads
-   `WorldPosition` + `MotionVelocity` together — two tiny pools that are in L1
+   `WorldPosition` + `Vector2` (velocity) together — two tiny pools that are in L1
    after the first iteration.
 
 3. **SoA (splitting `WorldPosition::position` into x[] and y[])** would add
@@ -1475,10 +1481,10 @@ The current implementation uses an EnTT view for the small dt-integrated set:
 
 ```cpp
 void motion_system(entt::registry& reg, float dt) {
-    auto motion_view = reg.view<WorldPosition, MotionVelocity>();
+    auto motion_view = reg.view<WorldPosition, Vector2>();
     for (auto [entity, transform, velocity] : motion_view.each()) {
-        transform.position.x += velocity.value.x * dt;
-        transform.position.y += velocity.value.y * dt;
+        transform.position.x += velocity.x * dt;
+        transform.position.y += velocity.y * dt;
     }
 }
 ```
@@ -1716,7 +1722,7 @@ app/
 ├── constants.h                  ← all tuning knobs (§1)
 │
 ├── components/                  ← all component structs
-│   ├── transform.h              ← WorldPosition, MotionVelocity
+│   ├── transform.h              ← WorldPosition (Vector2 IS the velocity slot, #1198)
 │   ├── player.h                 ← PlayerTag, PlayerShape, ShapeWindow, Lane,
 │   │                              LaneTransition (present when mid-lane-
 │   │                              shift; row table per Fabian Principle 3,
@@ -1809,10 +1815,10 @@ for (auto [entity, pos, obs] : view.each()) {
 
 ```cpp
 // Used in motion_system for dt-integrated entities.
-auto motion_view = reg.view<WorldPosition, MotionVelocity>();
+auto motion_view = reg.view<WorldPosition, Vector2>();
 for (auto [entity, transform, velocity] : motion_view.each()) {
-    transform.position.x += velocity.value.x * dt;
-    transform.position.y += velocity.value.y * dt;
+    transform.position.x += velocity.x * dt;
+    transform.position.y += velocity.y * dt;
 }
 ```
 
