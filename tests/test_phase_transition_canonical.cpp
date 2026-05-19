@@ -5,6 +5,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cctype>
 #include <filesystem>
 #include <fstream>
@@ -189,6 +190,10 @@ bool should_skip_source_path(const fs::path& path) {
     return false;
 }
 
+bool is_production_cpp_source_extension(const std::string& ext) {
+    return ext == ".h" || ext == ".hpp" || ext == ".cpp" || ext == ".cc" || ext == ".cxx";
+}
+
 std::vector<fs::path> production_app_sources(const fs::path& app_root) {
     std::vector<fs::path> out;
     if (!fs::exists(app_root)) return out;
@@ -199,7 +204,7 @@ std::vector<fs::path> production_app_sources(const fs::path& app_root) {
         if (should_skip_source_path(rel)) continue;
 
         const auto ext = entry.path().extension().string();
-        if (ext == ".cpp" || ext == ".h" || ext == ".hpp") {
+        if (is_production_cpp_source_extension(ext)) {
             out.push_back(entry.path());
         }
     }
@@ -256,6 +261,58 @@ TEST_CASE("phase_transition: enforcement catches non-UI/non-input direct callers
 
     const auto offenders = collect_enter_phase_offenders(fixtures, canonical_enter_phase_allowlist());
     REQUIRE(offenders == std::vector<std::string>{"app/systems/rogue_system.cpp"});
+}
+
+TEST_CASE("phase_transition: source scan covers repo C++ suffixes (#1686)",
+          "[phase_transition][architecture]") {
+    const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    const fs::path temp_root =
+        fs::temp_directory_path() / ("shapeshifter_phase_transition_sources_" + std::to_string(stamp));
+    const fs::path app_root = temp_root / "app";
+    const fs::path systems_root = app_root / "systems";
+    const fs::path build_root = app_root / "build";
+
+    fs::remove_all(temp_root);
+    fs::create_directories(systems_root);
+    fs::create_directories(build_root);
+
+    const std::vector<fs::path> included = {
+        systems_root / "canonical.cpp",
+        systems_root / "canonical.h",
+        systems_root / "canonical.hpp",
+        systems_root / "canonical.cc",
+        systems_root / "canonical.cxx",
+    };
+    for (const auto& p : included) {
+        std::ofstream f(p);
+        f << "void marker() {}\n";
+    }
+    {
+        std::ofstream f(systems_root / "notes.txt");
+        f << "not source\n";
+    }
+    {
+        std::ofstream f(build_root / "generated.cpp");
+        f << "void skipped() {}\n";
+    }
+
+    auto sources = production_app_sources(app_root);
+    std::vector<std::string> rel_paths;
+    rel_paths.reserve(sources.size());
+    for (const auto& p : sources) {
+        rel_paths.push_back(fs::relative(p, app_root).generic_string());
+    }
+    std::sort(rel_paths.begin(), rel_paths.end());
+
+    CHECK(rel_paths == std::vector<std::string>{
+                           "systems/canonical.cc",
+                           "systems/canonical.cpp",
+                           "systems/canonical.cxx",
+                           "systems/canonical.h",
+                           "systems/canonical.hpp",
+                       });
+
+    fs::remove_all(temp_root);
 }
 
 TEST_CASE("phase_transition: entity-driven UI dispatch guards entry input",
