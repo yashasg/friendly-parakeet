@@ -114,7 +114,7 @@ TEST_CASE("entity: obstacle mesh overflow does not create orphan MeshChild", "[a
     reg.emplace<ShapeGateTag>(parent);
 
     CHECK(count_mesh_children(reg) == ObstacleChildren::MAX);
-    CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
+    CHECK_THROWS_AS(spawn_shape_gate_meshes(reg, parent), std::logic_error);
     CHECK(count_mesh_children(reg) == ObstacleChildren::MAX);
 
     destroy_obstacle_with_children(reg, parent);
@@ -133,14 +133,14 @@ TEST_CASE("entity: obstacle mesh lifetime helper cleans factory children", "[arc
     CHECK(count_mesh_children(reg) == 0);
 }
 
-TEST_CASE("entity: direct mesh factory cleanup does not depend on ObstacleTag order", "[archetype][render][cleanup]") {
+TEST_CASE("entity: direct shape-gate mesh cleanup does not depend on ObstacleTag order", "[archetype][render][cleanup]") {
     entt::registry reg;
     auto parent = make_mesh_factory_obstacle(reg);
     set_required_shape_tag(reg, parent, Shape::Circle);
     reg.emplace<ObstacleTag>(parent);
     reg.emplace<ShapeGateTag>(parent);
 
-    spawn_obstacle_meshes(reg, parent);
+    spawn_shape_gate_meshes(reg, parent);
     REQUIRE(count_mesh_children(reg) > 0);
 
     destroy_obstacle_with_children(reg, parent);
@@ -156,7 +156,7 @@ TEST_CASE("entity: mesh factory rejects invalid required lane before children", 
         reg.emplace<int8_t>(parent, int8_t{-1});
         reg.emplace<SplitPathTag>(parent);
 
-        CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
+        CHECK_THROWS_AS(spawn_split_path_meshes(reg, parent), std::logic_error);
         check_no_mesh_children(reg, parent);
     }
 
@@ -167,7 +167,7 @@ TEST_CASE("entity: mesh factory rejects invalid required lane before children", 
         reg.emplace<int8_t>(parent, int8_t{3});
         reg.emplace<SplitPathTag>(parent);
 
-        CHECK_THROWS_AS(spawn_obstacle_meshes(reg, parent), std::logic_error);
+        CHECK_THROWS_AS(spawn_split_path_meshes(reg, parent), std::logic_error);
         check_no_mesh_children(reg, parent);
     }
 }

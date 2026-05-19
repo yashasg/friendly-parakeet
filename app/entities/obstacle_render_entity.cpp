@@ -77,58 +77,55 @@ static entt::entity add_shape_child(entt::registry& reg, entt::entity parent,
     return e;
 }
 
-void spawn_obstacle_meshes(entt::registry& reg, entt::entity logical) {
+void spawn_shape_gate_meshes(entt::registry& reg, entt::entity logical) {
     const auto* wt_ptr = reg.try_get<WorldPosition>(logical);
     auto& col = reg.get<Color>(logical);
-    auto& dsz = reg.get<DrawSize>(logical);
 
-    // Per-kind transforms (issue #1202/#1204). Each obstacle entity
-    // carries exactly one kind tag (ShapeGateTag/SplitPathTag/OnsetMarkerTag);
-    // each branch below operates on that tag's filtered view of one row.
-    if (reg.all_of<ShapeGateTag>(logical)) {
-        if (!wt_ptr) return;
-        const auto& wt = *wt_ptr;
-        const bool has_req = has_required_shape_tag(reg, logical);
-        uint8_t mesh_index = 0;
-        if (has_req) {
-            mesh_index = checked_shape_mesh_index(current_required_shape(reg, logical));
-        }
-        // Shape gates now render as shape-only prompts (no side walls/slabs).
-        if (has_req)
-            add_shape_child(reg, logical, mesh_index, wt.position.x, 0.0f,
-                            40, col);
-        return;
+    if (!wt_ptr) return;
+    const auto& wt = *wt_ptr;
+    const bool has_req = has_required_shape_tag(reg, logical);
+    uint8_t mesh_index = 0;
+    if (has_req) {
+        mesh_index = checked_shape_mesh_index(current_required_shape(reg, logical));
     }
-    if (reg.all_of<SplitPathTag>(logical)) {
-        auto* rlane = reg.try_get<int8_t>(logical);
-        int lane_index = 0;
-        if (rlane) {
-            const int candidate = static_cast<int>(*rlane);
-            if (candidate < 0 || candidate >= constants::LANE_COUNT) {
-                throw std::logic_error("Invalid required lane index");
-            }
-            lane_index = candidate;
+    // Shape gates render as shape-only prompts (no side walls/slabs).
+    if (has_req)
+        add_shape_child(reg, logical, mesh_index, wt.position.x, 0.0f,
+                        40, col);
+}
+
+void spawn_split_path_meshes(entt::registry& reg, entt::entity logical) {
+    auto& col = reg.get<Color>(logical);
+    auto& dsz = reg.get<DrawSize>(logical);
+    auto* rlane = reg.try_get<int8_t>(logical);
+    int lane_index = 0;
+    if (rlane) {
+        const int candidate = static_cast<int>(*rlane);
+        if (candidate < 0 || candidate >= constants::LANE_COUNT) {
+            throw std::logic_error("Invalid required lane index");
         }
-        const bool has_req = has_required_shape_tag(reg, logical);
-        uint8_t mesh_index = 0;
-        if (has_req) {
-            mesh_index = checked_shape_mesh_index(current_required_shape(reg, logical));
-        }
-        for (int i = 0; i < constants::LANE_COUNT; ++i)
-            if (!rlane || i != lane_index)
-                add_slab_child(reg, logical, constants::LANE_X[i]-120,
-                               240.0f, dsz.h, constants::OBSTACLE_3D_HEIGHT, col);
-        if (has_req && rlane)
-            add_shape_child(reg, logical, mesh_index,
-                            constants::LANE_X[lane_index],
-                            0.0f, 30, {255, 255, 255, 180});
-        return;
+        lane_index = candidate;
     }
-    if (reg.all_of<OnsetMarkerTag>(logical)) {
-        add_slab_child(reg, logical, 0.0f, dsz.w, dsz.h,
-                       constants::OBSTACLE_3D_HEIGHT, col);
-        return;
+    const bool has_req = has_required_shape_tag(reg, logical);
+    uint8_t mesh_index = 0;
+    if (has_req) {
+        mesh_index = checked_shape_mesh_index(current_required_shape(reg, logical));
     }
+    for (int i = 0; i < constants::LANE_COUNT; ++i)
+        if (!rlane || i != lane_index)
+            add_slab_child(reg, logical, constants::LANE_X[i]-120,
+                           240.0f, dsz.h, constants::OBSTACLE_3D_HEIGHT, col);
+    if (has_req && rlane)
+        add_shape_child(reg, logical, mesh_index,
+                        constants::LANE_X[lane_index],
+                        0.0f, 30, {255, 255, 255, 180});
+}
+
+void spawn_onset_marker_meshes(entt::registry& reg, entt::entity logical) {
+    auto& col = reg.get<Color>(logical);
+    auto& dsz = reg.get<DrawSize>(logical);
+    add_slab_child(reg, logical, 0.0f, dsz.w, dsz.h,
+                   constants::OBSTACLE_3D_HEIGHT, col);
 }
 
 

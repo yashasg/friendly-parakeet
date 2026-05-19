@@ -11,8 +11,9 @@
 
 namespace {
 
-void finish_obstacle(entt::registry& reg, entt::entity e) {
-    spawn_obstacle_meshes(reg, e);
+template <typename MeshSpawner>
+void finish_obstacle(entt::registry& reg, entt::entity e, MeshSpawner spawn_meshes) {
+    spawn_meshes(reg, e);
     reg.emplace<ObstacleTag>(e);
 }
 
@@ -25,20 +26,21 @@ void finish_obstacle(entt::registry& reg, entt::entity e) {
 // per-kind symbols remain (call sites in `app/systems/beat_scheduler_system.cpp`
 // and several `tests/*.cpp` files reference them by name) and thin-call
 // into one of these two finalizers parameterized on the builder.
-template <typename Builder, typename Params>
-entt::entity spawn_with_velocity(entt::registry& reg, Builder build, const Params& params) {
+template <typename Builder, typename Params, typename MeshSpawner>
+entt::entity spawn_with_velocity(entt::registry& reg, Builder build, const Params& params,
+                                 MeshSpawner spawn_meshes) {
     auto e = build(reg, params);
     reg.emplace<Vector2>(e, Vector2{0.0f, params.speed});
-    finish_obstacle(reg, e);
+    finish_obstacle(reg, e, spawn_meshes);
     return e;
 }
 
-template <typename Builder, typename Params>
+template <typename Builder, typename Params, typename MeshSpawner>
 entt::entity spawn_with_beat(entt::registry& reg, Builder build, const Params& params,
-                             const BeatInfo& beat_info) {
+                             const BeatInfo& beat_info, MeshSpawner spawn_meshes) {
     auto e = build(reg, params);
     reg.emplace<BeatInfo>(e, beat_info);
-    finish_obstacle(reg, e);
+    finish_obstacle(reg, e, spawn_meshes);
     return e;
 }
 
@@ -93,28 +95,28 @@ entt::entity create_onset_marker(entt::registry& reg, const OnsetMarkerSpawn& pa
 } // namespace
 
 entt::entity spawn_shape_gate_obstacle(entt::registry& reg, const ShapeGateSpawn& params) {
-    return spawn_with_velocity(reg, create_shape_gate, params);
+    return spawn_with_velocity(reg, create_shape_gate, params, spawn_shape_gate_meshes);
 }
 
 entt::entity spawn_split_path_obstacle(entt::registry& reg, const SplitPathSpawn& params) {
-    return spawn_with_velocity(reg, create_split_path, params);
+    return spawn_with_velocity(reg, create_split_path, params, spawn_split_path_meshes);
 }
 
 entt::entity spawn_onset_marker_obstacle(entt::registry& reg, const OnsetMarkerSpawn& params) {
-    return spawn_with_velocity(reg, create_onset_marker, params);
+    return spawn_with_velocity(reg, create_onset_marker, params, spawn_onset_marker_meshes);
 }
 
 entt::entity spawn_shape_gate_rhythm(entt::registry& reg, const ShapeGateSpawn& params,
                                      const BeatInfo& beat_info) {
-    return spawn_with_beat(reg, create_shape_gate, params, beat_info);
+    return spawn_with_beat(reg, create_shape_gate, params, beat_info, spawn_shape_gate_meshes);
 }
 
 entt::entity spawn_split_path_rhythm(entt::registry& reg, const SplitPathSpawn& params,
                                      const BeatInfo& beat_info) {
-    return spawn_with_beat(reg, create_split_path, params, beat_info);
+    return spawn_with_beat(reg, create_split_path, params, beat_info, spawn_split_path_meshes);
 }
 
 entt::entity spawn_onset_marker_rhythm(entt::registry& reg, const OnsetMarkerSpawn& params,
                                        const BeatInfo& beat_info) {
-    return spawn_with_beat(reg, create_onset_marker, params, beat_info);
+    return spawn_with_beat(reg, create_onset_marker, params, beat_info, spawn_onset_marker_meshes);
 }
