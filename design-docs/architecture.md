@@ -719,7 +719,7 @@ NextPhase*Tag        0     per-frame  pending-transition mirror; drained by `cle
 BeatMap             var    session    setup_play_session (write), beat_scheduler (read)
 SongState          160     per-frame  song_playback/beat_scheduler
 EnergyState         12     per-frame  energy_system (write), ui_render (read)
-PendingEnergyEffects var   per-frame  scoring_system (push), energy_system (drain)
+PendingEnergyEffectTag var per-frame  scoring_system (emplace rows), energy_system (drain rows)
 ScoreState          12     per-frame  scoring_system (write), render (read)
 ScorePopupRequestQueue var per-frame  scoring_system (push), popup_feedback_system (drain)
 PlaySfxEvent        var    per-frame  dispatcher events drained by audio_system

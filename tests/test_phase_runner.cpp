@@ -141,9 +141,9 @@ TEST_CASE("tick_fixed_systems: popup_feedback and energy run in score-feedback c
     auto& queue = reg.ctx().emplace<ScorePopupRequestQueue>();
     queue.untimed.push_back({100.0f, 200.0f, 10});
 
-    // Pre-seed a pending energy effect to verify energy_system is wired.
-    auto& pending = reg.ctx().emplace<PendingEnergyEffects>();
-    pending.events.push_back({20.0f, false});
+    // Pre-seed a pending energy effect to verify energy_system is wired
+    // (per-frame row table — issue #1627).
+    enqueue_pending_energy_effect(reg, 20.0f, false);
 
     // Set energy to 0 so the +20 effect is visible after clamping.
     reg.ctx().get<EnergyState>().energy = 0.0f;
@@ -163,25 +163,24 @@ TEST_CASE("tick_fixed_systems: popup_feedback and energy run in score-feedback c
     CHECK(reg.ctx().get<EnergyState>().energy > 0.0f);
 
     // Pending events must be cleared.
-    CHECK(pending.events.empty());
+    CHECK(pending_energy_effects_empty(reg));
 }
 
 TEST_CASE("tick_fixed_systems: energy depletion requests GameOver before next Playing pass",
           "[phase_guard][energy][regression][issue781]") {
     auto reg = make_rhythm_registry();
     auto& energy = reg.ctx().get<EnergyState>();
-    auto& pending = reg.ctx().get<PendingEnergyEffects>();
     auto& results = reg.ctx().get<SongResults>();
 
     energy.energy = constants::ENERGY_DRAIN_MISS;
-    pending.events.push_back({-constants::ENERGY_DRAIN_MISS, true});
+    enqueue_pending_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
 
     tick_fixed_systems(reg, 0.016f);
 
     REQUIRE(energy.energy == 0.0f);
     REQUIRE(reg.ctx().contains<NextPhaseGameOverTag>());
     CHECK(reg.ctx().find<EnergyDepletedDeath>() != nullptr);
-    CHECK(pending.events.empty());
+    CHECK(pending_energy_effects_empty(reg));
 
     auto late_miss = reg.create();
     reg.emplace<ObstacleTag>(late_miss);
@@ -212,13 +211,12 @@ TEST_CASE("tick_fixed_systems: fatal final drain wins after song finishes",
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
     auto& energy = reg.ctx().get<EnergyState>();
-    auto& pending = reg.ctx().get<PendingEnergyEffects>();
 
     song.song_time = song.duration_sec;
     reg.ctx().emplace<SongPlayingTag>();
     reg.ctx().erase<SongFinishedTag>();
     energy.energy = constants::ENERGY_DRAIN_MISS;
-    pending.events.push_back({-constants::ENERGY_DRAIN_MISS, true});
+    enqueue_pending_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
 
     tick_fixed_systems(reg, 0.016f);
 

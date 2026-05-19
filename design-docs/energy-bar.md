@@ -114,8 +114,10 @@ constexpr float ENERGY_CRITICAL_THRESH  = 0.25f;   // below this → bar pulses 
 ## Energy Modification Points
 
 Energy deltas are enqueued by gameplay systems and applied by
-`energy_system` through `PendingEnergyEffects`.  Gameplay systems should not
-mutate `EnergyState::energy` directly.
+`energy_system` through the `PendingEnergyEffectTag` row table (issue
+#1627: each enqueued effect is its own per-frame entity tagged
+`PendingEnergyEffectTag` + `EnergyDelta` + optional `EnergyFlashTag`).
+Gameplay systems should not mutate `EnergyState::energy` directly.
 
 ### 1. collision_system.cpp — on MISS
 

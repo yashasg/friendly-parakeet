@@ -224,7 +224,7 @@ creates the standard runtime obstacle archetypes via the kind-specific
   │  ✅ obstacle_despawn_system    (destroy off-camera obstacles)   │
   │  ✅ popup_feedback_system      (drain ScorePopupRequestQueue)   │
   │  ✅ popup_display_system       (ScorePopup timer → fade/cull)   │
-  │  ✅ energy_system              (drain PendingEnergyEffects)     │
+  │  ✅ energy_system              (drain PendingEnergyEffectTag rows)│
   │  ✅ energy_bar_system          (HUD bar visual update)          │
   │  ✅ particle_system            (ParticleData timer → cull)      │
   │                                                                  │

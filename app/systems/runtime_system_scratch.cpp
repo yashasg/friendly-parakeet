@@ -19,7 +19,6 @@ constexpr std::size_t kMinimumGameplayScratchCapacity = 8;
 
 void runtime_system_scratch_init(entt::registry& reg) {
     reg.ctx().insert_or_assign(ScoringSystemScratch{});
-    reg.ctx().insert_or_assign(PendingEnergyEffects{});
     reg.ctx().insert_or_assign(ScorePopupRequestQueue{});
     reg.ctx().insert_or_assign(ObstacleDespawnScratch{});
     reg.ctx().insert_or_assign(PopupDisplayScratch{});
@@ -40,7 +39,9 @@ void runtime_system_scratch_reserve(entt::registry& reg, std::size_t beat_capaci
     scoring.miss_buf.reserve(capacity);
     scoring.hit_buf.reserve(capacity);
 
-    reg.ctx().get<PendingEnergyEffects>().events.reserve(capacity);
+    // PendingEnergyEffects events were a `std::vector<Event>` array column —
+    // eradicated by issue #1627 into a per-frame row table. No reserve
+    // needed; entt's storage grows as `scoring_system` emplaces rows.
     // Each per-tier popup queue is reserved independently — the total capacity
     // budget is sized so any single tier can absorb a full-frame burst without
     // reallocating. (Per #1202/#1204, ScorePopupRequestQueue is now 5 per-tier

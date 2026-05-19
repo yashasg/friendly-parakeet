@@ -112,6 +112,22 @@ struct ParticleTag {};
 // ── HUD / Energy bar ─────────────────────────────────────────
 struct EnergyBarTag {};
 
+// ── Pending energy effect (per-frame row table) ──────────────
+// Per Fabian's existential processing (issue #1627 / .squad/decisions.md
+// § 9 Principle 3 — "No array columns"), each enqueued energy delta is
+// its own entity in a per-frame row table. `scoring_system` creates one
+// entity per gameplay event (miss drain, tier recovery); `energy_system`
+// walks `view<PendingEnergyEffectTag>` in storage order (= insertion
+// order = miss-pass-first, then per-tier hit-pass), applies the deltas,
+// and `reg.destroy()`s the rows. Replaces the former
+// `PendingEnergyEffects::events` `std::vector<Event>` array column.
+//
+// Presence of `EnergyFlashTag` alongside the tag signals "trigger
+// the energy-bar flash for this delta" — what the former
+// `Event::flash` bool encoded.
+struct PendingEnergyEffectTag {};
+struct EnergyFlashTag         {};
+
 // ── Test player (deterministic AI) ───────────────────────────
 struct TestPlayerPlannedTag {};
 
