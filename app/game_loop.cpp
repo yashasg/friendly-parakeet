@@ -203,7 +203,10 @@ bool game_loop_init(entt::registry& reg,
     reset_ctx_singleton<LevelSelectState>(reg);
     reset_ctx_singleton<EnergyState>(reg);
     reset_ctx_singleton<SongResults>(reg);
-    reset_ctx_singleton<TestPlayerState>(reg);
+    // `TestPlayerState` is no longer pre-emplaced at startup — its presence
+    // IS "test player enabled" (Fabian Principle 3, issue #1620). The sole
+    // emplace site is `test_player_init`; default play sessions leave it
+    // absent and `test_player_system` early-outs on `find<>() == nullptr`.
     reset_ctx_singleton<TestPlayerSessionState>(reg);
     reset_ctx_singleton<SessionLog>(reg);
     runtime_system_scratch_init(reg);

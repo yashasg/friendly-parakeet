@@ -10,7 +10,6 @@ static entt::registry make_test_player_registry(SkillConfig skill = SKILL_PRO) {
     entt::registry reg = make_rhythm_registry();
     auto& tp = reg.ctx().emplace<TestPlayerState>();
     tp.skill = skill;
-    tp.active = true;
     tp.rng.seed(42);
     return reg;
 }

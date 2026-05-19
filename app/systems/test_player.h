@@ -66,18 +66,23 @@ struct TestPlayerAction {
 };
 
 // ── Test player state (context singleton) ────────────────────
-// Hot state (accessed every frame): active, swipe_cooldown_timer.
+// Hot state (accessed every frame): swipe_cooldown_timer.
 // Warm state (accessed during perception): skill, rng.
 //
-// Per Fabian Principle 3 (.squad/decisions.md § 9 — no array columns), the
-// former `actions[MAX_ACTIONS] + action_count` inline array column is
-// eradicated. Each queued action now lives as a `TestPlayerAction` component
-// attached to the obstacle entity it tracks (the `obstacle` field IS the
-// foreign key — identity-driven membership). MAX_ACTIONS survives as a
-// runtime cap asserted at enqueue time, not a static array bound.
+// Per Fabian Principle 3 (.squad/decisions.md § 9 — no NULL columns / no
+// array columns), the former `actions[MAX_ACTIONS] + action_count` inline
+// array column is eradicated (issue #1611); each queued action now lives
+// as a `TestPlayerAction` component attached to the obstacle entity it
+// tracks. The former `bool active` parallel-bool NULL-column gate over
+// the singleton is also eradicated (issue #1620) — presence of the
+// `TestPlayerState` ctx singleton IS "test player enabled", so
+// `test_player_init` is the sole emplace site and `test_player_system`
+// reads `find<TestPlayerState>() != nullptr` instead of a flag.
+//
+// MAX_ACTIONS survives as a runtime cap asserted at enqueue time, not a
+// static array bound.
 struct TestPlayerState {
     SkillConfig skill   = SKILL_PRO;
-    bool        active  = false;
 
     // Delay between consecutive lane swipes (simulates human re-swipe time)
     static constexpr float SWIPE_COOLDOWN = 0.125f;  // 125ms (midpoint of 100-150ms)
