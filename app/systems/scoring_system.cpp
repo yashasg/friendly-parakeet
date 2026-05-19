@@ -1,5 +1,4 @@
 #include "all_systems.h"
-#include "scoring_system.h"
 #include "../components/game_state.h"
 #include "../components/scoring.h"
 #include "../components/obstacle.h"
@@ -118,47 +117,49 @@ float chain_multiplier_for_count(int32_t chain_count) {
 // Process one tier of graded hits. Per-tier constants come from
 // tier_score_traits<TierTag>; the chain/score/popup-queue logic is shared
 // across tiers because that data is per-row (not per-tier).
+//
+// Two-phase pattern (Fabian Principle 3 / issue #1629): gather emplaces
+// `PendingHitResolveTag` on each matching obstacle while iterating the
+// gather view read-only (EnTT-iteration-safe). Drain iterates the disjoint
+// `PendingHitResolveTag` storage, reading the per-row data via
+// `reg.get<Obstacle>(e)` / `reg.get<WorldPosition>(e)` (still live on the
+// entity until the strip step at the bottom of the loop body). The pending
+// tag is batch-removed after the drain so the same tag can be reused by
+// the next tier pass.
 template <typename TierTag>
 void process_tier_hit_pass(entt::registry& reg,
                            ScoreState& score,
                            SongResults* results,
-                           ScoringSystemScratch& scratch,
                            ScorePopupRequestQueue& popup_queue) {
-    auto& hit_buf = scratch.hit_buf;
-    hit_buf.clear();
-
-    auto view = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldPosition, TimingGrade, TierTag>(
-        entt::exclude<MissTag, NonScorableTag>);
-    for (auto [e, obs, wt, tg] : view.each()) {
-        HitRecord r;
-        r.e          = e;
-        r.popup_xy   = wt.position;
-        r.obs        = obs;
-        r.has_timing = true;
-        r.precision  = tg.precision;
-        if (hit_buf.size() >= hit_buf.capacity()) {
-            ++scratch.hit_capacity_exceeded_count;
+    {
+        auto gather = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldPosition, TimingGrade, TierTag>(
+            entt::exclude<MissTag, NonScorableTag>);
+        for (auto e : gather) {
+            reg.emplace<PendingHitResolveTag>(e);
         }
-        hit_buf.push_back(r);
     }
 
-    if (hit_buf.empty()) return;
+    auto drain = reg.view<PendingHitResolveTag>();
+    if (drain.size() == 0u) return;
 
     using Traits = tier_score_traits<TierTag>;
 
-    for (auto& r : hit_buf) {
+    for (auto e : drain) {
+        const auto& obs = reg.get<Obstacle>(e);
+        const auto& wp  = reg.get<WorldPosition>(e);
+
         enqueue_energy_effect(reg, Traits::energy_delta_signed, Traits::energy_flash);
         if (results) {
             ((*results).*Traits::results_counter) += 1;
         }
 
-        const bool contributes_to_chain = r.obs.base_points > 0;
+        const bool contributes_to_chain = obs.base_points > 0;
         if (contributes_to_chain) {
             score.chain_count++;
         }
         const float chain_mult  = chain_multiplier_for_count(score.chain_count);
-        int points = static_cast<int>(
-            std::floor(static_cast<float>(r.obs.base_points) * Traits::multiplier * chain_mult));
+        const int points = static_cast<int>(
+            std::floor(static_cast<float>(obs.base_points) * Traits::multiplier * chain_mult));
 
         if (contributes_to_chain && results && score.chain_count > results->max_chain) {
             results->max_chain = score.chain_count;
@@ -167,53 +168,46 @@ void process_tier_hit_pass(entt::registry& reg,
         score.score += points;
 
         auto& queue = popup_queue.*Traits::queue;
-        if (queue.size() >= queue.capacity()) {
-            ++popup_queue.capacity_exceeded_count;
-        }
-        queue.push_back({r.popup_xy.x, r.popup_xy.y, points});
-        spawn_score_particles(reg, r.popup_xy, Traits::particle_color);
+        queue.push_back({wp.position.x, wp.position.y, points});
+        spawn_score_particles(reg, wp.position, Traits::particle_color);
 
-        reg.get_or_emplace<ResolvedObstacleTag>(r.e);
-        reg.remove<Obstacle>(r.e);
-        reg.remove<ScoredTag>(r.e);
-        remove_timing_grade_and_tags(reg, r.e);
+        reg.get_or_emplace<ResolvedObstacleTag>(e);
+        reg.remove<Obstacle>(e);
+        reg.remove<ScoredTag>(e);
+        remove_timing_grade_and_tags(reg, e);
     }
+
+    reg.remove<PendingHitResolveTag>(drain.begin(), drain.end());
 }
 
 void process_ungraded_hit_pass(entt::registry& reg,
                                ScoreState& score,
                                SongResults* results,
-                               ScoringSystemScratch& scratch,
                                ScorePopupRequestQueue& popup_queue) {
-    auto& hit_buf = scratch.hit_buf;
-    hit_buf.clear();
-
-    auto view = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldPosition>(
-        entt::exclude<MissTag, NonScorableTag, TimingGrade>);
-    for (auto [e, obs, wt] : view.each()) {
-        HitRecord r;
-        r.e          = e;
-        r.popup_xy   = wt.position;
-        r.obs        = obs;
-        r.has_timing = false;
-        if (hit_buf.size() >= hit_buf.capacity()) {
-            ++scratch.hit_capacity_exceeded_count;
+    {
+        auto gather = reg.view<ObstacleTag, ScoredTag, Obstacle, WorldPosition>(
+            entt::exclude<MissTag, NonScorableTag, TimingGrade>);
+        for (auto e : gather) {
+            reg.emplace<PendingHitResolveTag>(e);
         }
-        hit_buf.push_back(r);
     }
 
-    if (hit_buf.empty()) return;
+    auto drain = reg.view<PendingHitResolveTag>();
+    if (drain.size() == 0u) return;
 
-    for (auto& r : hit_buf) {
-        const bool contributes_to_chain = r.obs.base_points > 0;
+    for (auto e : drain) {
+        const auto& obs = reg.get<Obstacle>(e);
+        const auto& wp  = reg.get<WorldPosition>(e);
+
+        const bool contributes_to_chain = obs.base_points > 0;
         if (contributes_to_chain) {
             score.chain_count++;
         }
         const float chain_mult = chain_multiplier_for_count(score.chain_count);
         // Ungraded hits never had a tier — pre-migration the switch fell
         // through with timing_mult = 1.0f. Preserve that exactly.
-        int points = static_cast<int>(
-            std::floor(static_cast<float>(r.obs.base_points) * chain_mult));
+        const int points = static_cast<int>(
+            std::floor(static_cast<float>(obs.base_points) * chain_mult));
 
         if (contributes_to_chain && results && score.chain_count > results->max_chain) {
             results->max_chain = score.chain_count;
@@ -221,16 +215,15 @@ void process_ungraded_hit_pass(entt::registry& reg,
 
         score.score += points;
 
-        if (popup_queue.untimed.size() >= popup_queue.untimed.capacity()) {
-            ++popup_queue.capacity_exceeded_count;
-        }
-        popup_queue.untimed.push_back({r.popup_xy.x, r.popup_xy.y, points});
-        spawn_score_particles(reg, r.popup_xy, kUntimedParticleColor);
+        popup_queue.untimed.push_back({wp.position.x, wp.position.y, points});
+        spawn_score_particles(reg, wp.position, kUntimedParticleColor);
 
-        reg.get_or_emplace<ResolvedObstacleTag>(r.e);
-        reg.remove<Obstacle>(r.e);
-        reg.remove<ScoredTag>(r.e);
+        reg.get_or_emplace<ResolvedObstacleTag>(e);
+        reg.remove<Obstacle>(e);
+        reg.remove<ScoredTag>(e);
     }
+
+    reg.remove<PendingHitResolveTag>(drain.begin(), drain.end());
 }
 
 }  // namespace
@@ -253,86 +246,74 @@ void scoring_system(entt::registry& reg, float dt) {
     }
 
     auto* results = reg.ctx().find<SongResults>();   // #309: hoisted above loop
-
-    // Hoist single scratch lookup — miss_buf and hit_buf share the same struct.
-    auto& scratch     = reg.ctx().get<ScoringSystemScratch>();
     auto& popup_queue = reg.ctx().get<ScorePopupRequestQueue>();
 
     // Miss pass: single owner of ENERGY_DRAIN_MISS and miss_count.
-    // Collect first, then remove view components after iteration (#315).
+    // Gather → drain via `PendingMissResolveTag` row table (issue #1629):
+    // gather is read-only over the obstacle view (EnTT-iteration-safe);
+    // drain iterates the disjoint pending storage and strips Obstacle/
+    // ScoredTag/MissTag/TimingGrade safely. `remove_timing_grade_and_tags`
+    // is idempotent (a `remove<T>` on an absent component is a no-op), so
+    // both graded and ungraded miss rows can call it unconditionally —
+    // dropping the former `MissRecord::has_timing` bool entirely.
     {
-        auto& miss_buf = scratch.miss_buf;
-        miss_buf.clear();
-
-        auto miss_view_graded = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle, TimingGrade>(
+        auto miss_graded = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle, TimingGrade>(
             entt::exclude<NonScorableTag>);
-        for (auto e : miss_view_graded) {
+        for (auto e : miss_graded) {
             enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
             if (results) results->miss_count++;
             score.chain_count = 0;
-            if (miss_buf.size() >= miss_buf.capacity()) {
-                ++scratch.miss_capacity_exceeded_count;
-            }
-            miss_buf.push_back({e, true});
+            reg.emplace<PendingMissResolveTag>(e);
         }
 
-        auto miss_view_ungraded = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle>(
+        auto miss_ungraded = reg.view<ObstacleTag, ScoredTag, MissTag, Obstacle>(
             entt::exclude<TimingGrade, NonScorableTag>);
-        for (auto e : miss_view_ungraded) {
+        for (auto e : miss_ungraded) {
             enqueue_energy_effect(reg, -constants::ENERGY_DRAIN_MISS, true);
             if (results) results->miss_count++;
             score.chain_count = 0;
-            if (miss_buf.size() >= miss_buf.capacity()) {
-                ++scratch.miss_capacity_exceeded_count;
-            }
-            miss_buf.push_back({e, false});
+            reg.emplace<PendingMissResolveTag>(e);
         }
-        // Apply structural removals after iteration — safe.
-        for (auto& r : miss_buf) {
-            reg.get_or_emplace<ResolvedObstacleTag>(r.e);
-            reg.remove<Obstacle>(r.e);
-            reg.remove<ScoredTag>(r.e);
-            if (reg.all_of<MissTag>(r.e)) reg.remove<MissTag>(r.e);
-            if (r.has_timing) remove_timing_grade_and_tags(reg, r.e);
+
+        auto miss_drain = reg.view<PendingMissResolveTag>();
+        for (auto e : miss_drain) {
+            reg.get_or_emplace<ResolvedObstacleTag>(e);
+            reg.remove<Obstacle>(e);
+            reg.remove<ScoredTag>(e);
+            reg.remove<MissTag>(e);
+            remove_timing_grade_and_tags(reg, e);
         }
+        reg.remove<PendingMissResolveTag>(miss_drain.begin(), miss_drain.end());
     }
 
     // Hit pass: one transform per former TimingTier value plus one ungraded
     // transform (#1202/#1204). Per-tier constants live in tier_score_traits;
     // no `switch` on a discriminator anywhere in the hit pipeline.
-    process_tier_hit_pass<TimingPerfectTag>(reg, score, results, scratch, popup_queue);
-    process_tier_hit_pass<TimingGoodTag>   (reg, score, results, scratch, popup_queue);
-    process_tier_hit_pass<TimingOkTag>     (reg, score, results, scratch, popup_queue);
-    process_tier_hit_pass<TimingBadTag>    (reg, score, results, scratch, popup_queue);
-    process_ungraded_hit_pass              (reg, score, results, scratch, popup_queue);
+    process_tier_hit_pass<TimingPerfectTag>(reg, score, results, popup_queue);
+    process_tier_hit_pass<TimingGoodTag>   (reg, score, results, popup_queue);
+    process_tier_hit_pass<TimingOkTag>     (reg, score, results, popup_queue);
+    process_tier_hit_pass<TimingBadTag>    (reg, score, results, popup_queue);
+    process_ungraded_hit_pass              (reg, score, results, popup_queue);
 
     // ── NonScorable cleanup ───────────────────────────────────────────────────
     // Entities excluded from the hit pass via NonScorableTag still need their
     // ScoredTag and Obstacle stripped after collision resolution so they are not
-    // re-processed on the next frame. Collect-then-remove follows the same EnTT
-    // safety pattern as the hit/miss passes above. (#315)
+    // re-processed on the next frame. Gather → drain via
+    // `PendingNonScorableCleanupTag` row table (issue #1629).
     {
-        // Re-use hit_buf (already cleared above) as a scratch collect buffer.
-        auto& cleanup_buf = scratch.hit_buf;
-        cleanup_buf.clear();
-
-        auto ns_view = reg.view<ObstacleTag, ScoredTag, NonScorableTag>();
-        for (auto e : ns_view) {
-            HitRecord r;
-            r.e = e;
-            r.has_timing = reg.all_of<TimingGrade>(e);
-            if (cleanup_buf.size() >= cleanup_buf.capacity()) {
-                ++scratch.hit_capacity_exceeded_count;
-            }
-            cleanup_buf.push_back(r);
+        auto gather = reg.view<ObstacleTag, ScoredTag, NonScorableTag>();
+        for (auto e : gather) {
+            reg.emplace<PendingNonScorableCleanupTag>(e);
         }
-        for (auto& r : cleanup_buf) {
-            reg.get_or_emplace<ResolvedObstacleTag>(r.e);
-            reg.remove<Obstacle>(r.e);
-            reg.remove<ScoredTag>(r.e);
-            if (reg.all_of<MissTag>(r.e)) reg.remove<MissTag>(r.e);
-            if (r.has_timing) remove_timing_grade_and_tags(reg, r.e);
+        auto drain = reg.view<PendingNonScorableCleanupTag>();
+        for (auto e : drain) {
+            reg.get_or_emplace<ResolvedObstacleTag>(e);
+            reg.remove<Obstacle>(e);
+            reg.remove<ScoredTag>(e);
+            reg.remove<MissTag>(e);
+            remove_timing_grade_and_tags(reg, e);
         }
+        reg.remove<PendingNonScorableCleanupTag>(drain.begin(), drain.end());
     }
 
     // Smooth score display

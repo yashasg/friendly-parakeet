@@ -56,7 +56,13 @@ Declare in `all_systems.h`, call once from `game_loop_init`.
 
 ## Exemptions
 
-Scratch-pad ctx objects (e.g., `ObstacleDespawnScratch`, `ScoringSystemScratch`) used as per-frame accumulators are intentionally optional — they legitimately use find/emplace and are not "always-present singletons."
+Scratch-pad ctx accumulator queues (e.g., `ScorePopupRequestQueue`) used as
+per-frame intent buffers are intentionally optional — they legitimately use
+find/emplace and are not "always-present singletons." Most former scratch-pad
+ctx accumulators have since migrated to per-frame row tables via Fabian
+Principle 3 (see #1627 `PendingEnergyEffectTag`, #1628 `*ExpiredTag` /
+`PendingObstacleDespawnTag`, #1629 `Pending{Miss,Hit,NonScorableCleanup}ResolveTag`);
+new scratch should default to row tables, not new ctx singletons.
 
 ## Measured Impact
 

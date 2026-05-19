@@ -2,7 +2,6 @@
 #include <cstddef>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "test_helpers.h"
-#include "systems/scoring_system.h"
 
 namespace {
 
@@ -479,17 +478,12 @@ TEST_CASE("scoring: obstacle/timing points still apply after playback has finish
     CHECK(score.score >= constants::PTS_SHAPE_GATE);
 }
 
-TEST_CASE("runtime scratch: dense scoring burst stays within reserved capacity", "[scoring][issue557]") {
+TEST_CASE("runtime scratch: dense scoring burst processes all hits correctly", "[scoring][issue557][issue1629]") {
     auto reg = make_registry();
     constexpr int dense_count = 6;
     runtime_system_scratch_reserve(reg, dense_count);
 
-    auto& scratch = reg.ctx().get<ScoringSystemScratch>();
     auto& popup_queue = reg.ctx().get<ScorePopupRequestQueue>();
-    const auto hit_capacity = scratch.hit_buf.capacity();
-    // Per-tier queues (post-#1202/#1204): the dense burst below all goes
-    // into queue.good, so guard the Good queue's capacity for this test.
-    const auto popup_capacity = popup_queue.good.capacity();
 
     for (int i = 0; i < dense_count; ++i) {
         auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + static_cast<float>(i));
@@ -499,29 +493,31 @@ TEST_CASE("runtime scratch: dense scoring burst stays within reserved capacity",
 
     scoring_system(reg, 0.0f);
 
-    CHECK(scratch.hit_buf.capacity() == hit_capacity);
-    CHECK(popup_queue.good.capacity() == popup_capacity);
-    CHECK(scratch.hit_capacity_exceeded_count == 0);
-    CHECK(popup_queue.capacity_exceeded_count == 0);
+    // Per-frame row tables (issue #1629): PendingHitResolveTag / PendingMissResolveTag /
+    // PendingNonScorableCleanupTag are emplaced during gather and batch-removed
+    // at end of each pass. No rows should remain after scoring_system returns.
+    CHECK(reg.view<PendingHitResolveTag>().size() == 0u);
+    CHECK(reg.view<PendingMissResolveTag>().size() == 0u);
+    CHECK(reg.view<PendingNonScorableCleanupTag>().size() == 0u);
+    CHECK(popup_queue.good.size() == static_cast<std::size_t>(dense_count));
     // PendingEnergyEffects → row table (issue #1627): each enqueued effect is
     // now a `PendingEnergyEffectTag` row entity, not a vector slot. There is
     // no per-frame reserved capacity to guard — the storage grows naturally
     // and `energy_system` destroys all rows at the start of its tick.
     CHECK(reg.view<PendingEnergyEffectTag>().size() == static_cast<std::size_t>(dense_count));
-    CHECK(popup_queue.good.size() == static_cast<std::size_t>(dense_count));
 }
 
-// #1089: miss_capacity_exceeded_count is incremented from scoring_system's
-// miss pass when miss_buf would grow past its reserve. Mirror the hit-burst
-// coverage above so the counter is observed and not just write-only.
-TEST_CASE("runtime scratch: dense miss burst stays within reserved capacity",
-          "[scoring][issue1089]") {
+// #1089 / #1629: the miss pass row table is drained inside scoring_system —
+// no rows should leak out and the per-frame miss-count should match the
+// graded burst exactly. Mirrors the hit-burst coverage above.
+TEST_CASE("runtime scratch: dense miss burst processes all misses correctly",
+          "[scoring][issue1089][issue1629]") {
     auto reg = make_registry();
     constexpr int dense_count = 6;
     runtime_system_scratch_reserve(reg, dense_count);
 
-    auto& scratch = reg.ctx().get<ScoringSystemScratch>();
-    const auto miss_capacity = scratch.miss_buf.capacity();
+    auto* results = reg.ctx().find<SongResults>();
+    REQUIRE(results != nullptr);
 
     for (int i = 0; i < dense_count; ++i) {
         auto obs = make_shape_gate(reg, Shape::Circle, constants::PLAYER_Y + static_cast<float>(i));
@@ -532,6 +528,6 @@ TEST_CASE("runtime scratch: dense miss burst stays within reserved capacity",
 
     scoring_system(reg, 0.0f);
 
-    CHECK(scratch.miss_buf.capacity() == miss_capacity);
-    CHECK(scratch.miss_capacity_exceeded_count == 0u);
+    CHECK(reg.view<PendingMissResolveTag>().size() == 0u);
+    CHECK(results->miss_count == dense_count);
 }

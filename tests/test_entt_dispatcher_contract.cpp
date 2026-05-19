@@ -10,7 +10,6 @@
 #include <entt/entt.hpp>
 #include "components/game_state.h"
 #include "systems/input_events.h"
-#include "systems/scoring_system.h"
 #include "test_helpers.h"
 
 struct GoCounter {
@@ -191,7 +190,10 @@ TEST_CASE("runtime scratch queues are explicit registry context state",
           "[ecs][scratch]") {
     auto reg = make_registry();
 
-    CHECK(reg.ctx().contains<ScoringSystemScratch>());
+    // ScoringSystemScratch (miss_buf / hit_buf) ctx singleton was eradicated
+    // by issue #1629 — its contents now live as per-frame row entities
+    // tagged `PendingMissResolveTag` / `PendingHitResolveTag` /
+    // `PendingNonScorableCleanupTag` (no ctx residency to assert).
     // PendingEnergyEffects ctx singleton was eradicated by issue #1627 — its
     // contents now live as per-frame row entities tagged
     // `PendingEnergyEffectTag` (no ctx residency to assert).

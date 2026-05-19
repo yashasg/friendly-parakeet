@@ -1,7 +1,6 @@
 #include "all_systems.h"
 #include "camera_system.h"
 #include "game_state_system.h"
-#include "scoring_system.h"
 #include "gameplay_intents.h"
 #include "../components/rendering.h"
 
@@ -15,7 +14,6 @@ constexpr std::size_t kMinimumGameplayScratchCapacity = 8;
 }  // namespace
 
 void runtime_system_scratch_init(entt::registry& reg) {
-    reg.ctx().insert_or_assign(ScoringSystemScratch{});
     reg.ctx().insert_or_assign(ScorePopupRequestQueue{});
     // WasmSmokeLastLane uses row presence as the "lane reported" predicate
     // (Fabian Principle 3 — no sentinel NULL columns). Erase any stale row
@@ -28,13 +26,13 @@ void runtime_system_scratch_init(entt::registry& reg) {
 
 void runtime_system_scratch_reserve(entt::registry& reg, std::size_t beat_capacity) {
     const std::size_t capacity = std::max(kMinimumGameplayScratchCapacity, beat_capacity);
-    auto& scoring = reg.ctx().get<ScoringSystemScratch>();
-    scoring.miss_buf.reserve(capacity);
-    scoring.hit_buf.reserve(capacity);
 
     // PendingEnergyEffects events were a `std::vector<Event>` array column —
-    // eradicated by issue #1627 into a per-frame row table. No reserve
-    // needed; entt's storage grows as `scoring_system` emplaces rows.
+    // eradicated by issue #1627 into a per-frame row table. ScoringSystemScratch
+    // (miss_buf / hit_buf) was eradicated similarly by issue #1629. No reserve
+    // is needed for either; entt's storage grows as `scoring_system` emplaces
+    // PendingMissResolveTag / PendingHitResolveTag / PendingEnergyEffectTag rows.
+    //
     // Each per-tier popup queue is reserved independently — the total capacity
     // budget is sized so any single tier can absorb a full-frame burst without
     // reallocating. (Per #1202/#1204, ScorePopupRequestQueue is now 5 per-tier
