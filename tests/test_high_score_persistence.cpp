@@ -45,11 +45,22 @@ TEST_CASE("High score: make_key_str rejects invalid capacity", "[high_score]") {
     char buf[HighScoreState::KEY_CAP]{};
     buf[0] = 'x';
 
+    CHECK(high_score::make_key_str(nullptr, HighScoreState::KEY_CAP, "song_001", "easy") == -1);
     CHECK(high_score::make_key_str(buf, 0, "song_001", "easy") == -1);
     CHECK(buf[0] == 'x');
 
     CHECK(high_score::make_key_str(buf, -1, "song_001", "easy") == -1);
     CHECK(buf[0] == 'x');
+}
+
+TEST_CASE("High score: make_key_str rejects truncated keys", "[high_score][issue1694]") {
+    char buf[HighScoreState::KEY_CAP]{};
+    buf[0] = 'x';
+
+    CHECK(high_score::make_key_str(buf, HighScoreState::KEY_CAP,
+                                   "song_id_that_is_far_too_long", "hard") == -1);
+    CHECK(buf[0] == '\0');
+    CHECK(high_score::make_key_hash("song_id_that_is_far_too_long", "hard") == 0);
 }
 
 TEST_CASE("High score: no hash collisions across all 9 shipped song+difficulty keys", "[high_score]") {
@@ -154,6 +165,14 @@ TEST_CASE("High score persistence: round-trips score map", "[high_score]") {
     remove_path(dir);
 }
 
+TEST_CASE("High score persistence: rejects overlong keys without truncating", "[high_score][issue1694]") {
+    entt::registry reg;
+    CHECK_FALSE(high_score::set_score(reg, "song_id_that_is_far_too_long|hard", 1000));
+    CHECK_FALSE(high_score::ensure_entry(reg, "song_id_that_is_far_too_long|hard"));
+    CHECK(high_score::entry_count(reg) == 0);
+    CHECK(high_score::get_score(reg, "song_id_that_is_far_too_long|hard") == 0);
+}
+
 TEST_CASE("High score persistence: supports current-directory files", "[high_score]") {
     test_paths::ScopedPath scoped_file{
         test_paths::unique_relative_path("high_scores_current_dir_tmp.json")};
@@ -228,6 +247,27 @@ TEST_CASE("High score persistence: invalid schema preserves state", "[high_score
 
     CHECK(high_score::load_high_scores(reg, file).status == persistence::Status::CorruptData);
     CHECK(high_score::get_score(reg, "song_001|easy") == 500);
+
+    remove_path(dir);
+}
+
+TEST_CASE("High score persistence: overlong JSON key is corrupt", "[high_score][issue1694]") {
+    const auto dir = temp_high_score_path("shapeshifter_high_score_overlong_key");
+    const auto file = dir / "overlong_key.json";
+    remove_path(dir);
+    std::filesystem::create_directories(dir);
+
+    {
+        std::ofstream out(file);
+        out << R"({"scores":{"song_id_that_is_far_too_long|hard":1234}})";
+    }
+
+    entt::registry reg;
+    REQUIRE(high_score::set_score(reg, "song_001|easy", 500));
+
+    CHECK(high_score::load_high_scores(reg, file).status == persistence::Status::CorruptData);
+    CHECK(high_score::get_score(reg, "song_001|easy") == 500);
+    CHECK(high_score::entry_count(reg) == 1);
 
     remove_path(dir);
 }

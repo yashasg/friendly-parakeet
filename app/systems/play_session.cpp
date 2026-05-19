@@ -212,12 +212,20 @@ void setup_play_session(entt::registry& reg) {
             stem.erase(stem.size() - BEATMAP_SUFFIX.size());
         }
         char key_buf[HighScoreState::KEY_CAP]{};
-        high_score::make_key_str(key_buf, HighScoreState::KEY_CAP,
-                                 stem.c_str(), beatmap.difficulty.c_str());
+        const int32_t key_len = high_score::make_key_str(
+            key_buf, HighScoreState::KEY_CAP, stem.c_str(), beatmap.difficulty.c_str());
         if (auto* session = reg.ctx().find<HighScoreSession>()) {
-            session->key_hash = entt::hashed_string::value(static_cast<const char*>(key_buf));
+            session->key_hash = key_len >= 0
+                ? entt::hashed_string::value(static_cast<const char*>(key_buf))
+                : 0;
         }
-        high_score::ensure_entry(reg, key_buf);
+        if (key_len >= 0) {
+            high_score::ensure_entry(reg, key_buf);
+        } else {
+            TraceLog(LOG_WARNING,
+                     "High score key too long for song '%s' difficulty '%s'; high score disabled for session",
+                     stem.c_str(), beatmap.difficulty.c_str());
+        }
     }
 
     // Init song state

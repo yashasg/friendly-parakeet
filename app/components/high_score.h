@@ -17,7 +17,7 @@
 // runtime overflow guard in set_score / ensure_entry / high_score_state_from_json.
 struct HighScoreState {
     static constexpr int32_t MAX_ENTRIES = 9;
-    static constexpr int32_t KEY_CAP     = 32; // fits "song_id|difficulty\0"
+    static constexpr int32_t KEY_CAP     = 32; // max stored key bytes including NUL
 };
 
 // Row component: one entity per stored high score. The printable `key` is

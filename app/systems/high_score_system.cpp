@@ -29,15 +29,23 @@ persistence::Result get_high_scores_file_path(
 }
 
 int32_t make_key_str(char* buf, int32_t cap, const char* song_id, const char* difficulty) {
-    if (cap <= 0) {
+    if (buf == nullptr || cap <= 0) {
         return -1;
     }
-    return std::snprintf(buf, static_cast<std::size_t>(cap), "%s|%s", song_id, difficulty);
+    const int32_t written =
+        std::snprintf(buf, static_cast<std::size_t>(cap), "%s|%s", song_id, difficulty);
+    if (written < 0 || written >= cap) {
+        buf[0] = '\0';
+        return -1;
+    }
+    return written;
 }
 
 entt::hashed_string::hash_type make_key_hash(const char* song_id, const char* difficulty) {
     char buf[HighScoreState::KEY_CAP]{};
-    make_key_str(buf, HighScoreState::KEY_CAP, song_id, difficulty);
+    if (make_key_str(buf, HighScoreState::KEY_CAP, song_id, difficulty) < 0) {
+        return 0;
+    }
     // Cast to const char* to select the const_wrapper (runtime) overload of
     // hashed_string::value(), not the consteval array-literal overload.
     return entt::hashed_string::value(static_cast<const char*>(buf));
@@ -49,6 +57,9 @@ namespace {
 // matching row. The table caps at MAX_ENTRIES (9), so O(N) per lookup is
 // the dense-flat-array equivalent of the prior inline `std::array` scan.
 entt::entity find_entry_by_key(const entt::registry& reg, const char* key) {
+    if (key == nullptr || std::strlen(key) >= HighScoreState::KEY_CAP) {
+        return entt::null;
+    }
     auto view = reg.view<HighScoreEntry>();
     for (auto entity : view) {
         const auto& entry = view.get<HighScoreEntry>(entity);
@@ -69,10 +80,13 @@ entt::entity find_entry_by_hash(const entt::registry& reg, entt::hashed_string::
     return entt::null;
 }
 
-void write_key(HighScoreEntry& entry, const char* key) {
-    std::strncpy(entry.key, key, HighScoreState::KEY_CAP - 1);
-    entry.key[HighScoreState::KEY_CAP - 1] = '\0';
+bool write_key(HighScoreEntry& entry, const char* key) {
+    if (key == nullptr || std::strlen(key) >= HighScoreState::KEY_CAP) {
+        return false;
+    }
+    std::strncpy(entry.key, key, HighScoreState::KEY_CAP);
     entry.key_hash = entt::hashed_string::value(static_cast<const char*>(entry.key));
+    return true;
 }
 
 }  // namespace
@@ -94,6 +108,11 @@ int32_t get_score_by_hash(const entt::registry& reg, entt::hashed_string::hash_t
 }
 
 bool set_score(entt::registry& reg, const char* key, int32_t score) {
+    if (key == nullptr || std::strlen(key) >= HighScoreState::KEY_CAP) {
+        TraceLog(LOG_WARNING, "High score key too long; dropping score for key '%s'",
+                 key == nullptr ? "<null>" : key);
+        return false;
+    }
     if (const auto existing = find_entry_by_key(reg, key); existing != entt::null) {
         reg.get<HighScoreEntry>(existing).score = score;
         return true;
@@ -110,6 +129,11 @@ bool set_score(entt::registry& reg, const char* key, int32_t score) {
 }
 
 bool ensure_entry(entt::registry& reg, const char* key) {
+    if (key == nullptr || std::strlen(key) >= HighScoreState::KEY_CAP) {
+        TraceLog(LOG_WARNING, "High score key too long; cannot create entry for key '%s'",
+                 key == nullptr ? "<null>" : key);
+        return false;
+    }
     if (find_entry_by_key(reg, key) != entt::null) return true;
     if (entry_count(reg) < HighScoreState::MAX_ENTRIES) {
         const auto entity = reg.create();
@@ -189,7 +213,9 @@ bool high_score_state_from_json(const nlohmann::json& obj, entt::registry& reg) 
             }
 
             HighScoreEntry entry{};
-            write_key(entry, key.c_str());
+            if (!write_key(entry, key.c_str())) {
+                return false;
+            }
             entry.score = static_cast<std::int32_t>(raw);
             staged.push_back(entry);
         }
