@@ -28,7 +28,7 @@ at runtime boundaries, without wrapper abstraction layers.
 - C++20 compiler (Clang 20 recommended)
 - CMake 3.20+
 - [vcpkg](https://vcpkg.io)
-- Node.js 22+ (optional, enables JavaScript test suites during `ctest` and `./run.sh test`)
+- Node.js 20+ (optional for native builds; CMake registers JavaScript tests when `node` is available)
 
 ### Quick Start
 
@@ -37,7 +37,7 @@ export VCPKG_ROOT=/path/to/vcpkg
 
 ./build.sh           # Release build
 ./run.sh             # Build + run game
-./run.sh test        # Build + run CTest gates (skips optional Node tests if node/npm is unavailable)
+./run.sh test        # Build + run CTest gates (Node-based tests are registered only when node is available)
 ./run.sh wasm-e2e    # Pre-PR WASM smoke (requires a prior Emscripten build of build-web/, see below)
 cmake --build build --target shapeshifter_benchmarks  # Run benchmarks on demand
 ```
