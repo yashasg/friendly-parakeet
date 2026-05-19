@@ -204,7 +204,6 @@ TEST_CASE("song_state: init from beat map", "[rhythm][songstate]") {
     init_song_state(state, map);
     CHECK(state.bpm == 140.0f);
     CHECK(state.offset == 0.3f);
-    CHECK_FALSE(state.playing);
     CHECK(state.song_time == 0.0f);
     CHECK_THAT(state.beat_period, WithinAbs(60.0f / 140.0f, 0.001f));
 }
@@ -214,7 +213,7 @@ TEST_CASE("song_state: init from beat map", "[rhythm][songstate]") {
 TEST_CASE("song_playback: advances song_time", "[rhythm][playback]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    song.playing = true; song.song_time = 0.0f;
+    reg.ctx().emplace<SongPlayingTag>(); song.song_time = 0.0f;
     song_playback_system(reg, 0.016f);
     CHECK_THAT(song.song_time, WithinAbs(0.016f, 0.001f));
 }
@@ -222,7 +221,7 @@ TEST_CASE("song_playback: advances song_time", "[rhythm][playback]") {
 TEST_CASE("song_playback: increments current_beat", "[rhythm][playback]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    song.playing = true; song.offset = 0.0f; song.song_time = 0.0f;
+    reg.ctx().emplace<SongPlayingTag>(); song.offset = 0.0f; song.song_time = 0.0f;
     song_playback_system(reg, 0.5f);
     CHECK(beat_cursor_value(reg) >= 1);
 }
@@ -230,16 +229,16 @@ TEST_CASE("song_playback: increments current_beat", "[rhythm][playback]") {
 TEST_CASE("song_playback: detects song end", "[rhythm][playback]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    song.playing = true; song.duration_sec = 1.0f; song.song_time = 0.99f;
+    reg.ctx().emplace<SongPlayingTag>(); song.duration_sec = 1.0f; song.song_time = 0.99f;
     song_playback_system(reg, 0.02f);
-    CHECK(song.finished);
-    CHECK_FALSE(song.playing);
+    CHECK(reg.ctx().contains<SongFinishedTag>());
+    CHECK_FALSE(reg.ctx().contains<SongPlayingTag>());
 }
 
 TEST_CASE("song_playback: does nothing when not playing", "[rhythm][playback]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    song.playing = false; song.song_time = 0.0f;
+    reg.ctx().erase<SongPlayingTag>(); song.song_time = 0.0f;
     song_playback_system(reg, 0.016f);
     CHECK(song.song_time == 0.0f);
 }
@@ -251,7 +250,7 @@ TEST_CASE("beat_scheduler: spawns obstacle at spawn_time", "[rhythm][scheduler]"
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
     map.shape_gate_circle_beats.push_back({4, 1});
-    song.playing = true;
+    reg.ctx().emplace<SongPlayingTag>();
     // Advance past spawn_time
     song.song_time = 0.1f;
     beat_scheduler_system(reg, 0.016f);
@@ -263,7 +262,7 @@ TEST_CASE("beat_scheduler: obstacle has correct BeatInfo", "[rhythm][scheduler]"
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
     map.shape_gate_triangle_beats.push_back({8, 1});
-    song.playing = true; song.song_time = 2.5f;
+    reg.ctx().emplace<SongPlayingTag>(); song.song_time = 2.5f;
     beat_scheduler_system(reg, 0.016f);
     auto obs_view = reg.view<ObstacleTag, BeatInfo>();
     int obs_count = 0; for (auto _ : obs_view) { (void)_; obs_count++; }
@@ -279,7 +278,7 @@ TEST_CASE("beat_scheduler: does not spawn before spawn_time", "[rhythm][schedule
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
     map.shape_gate_circle_beats.push_back({20, 1});
-    song.playing = true; song.song_time = 0.5f;
+    reg.ctx().emplace<SongPlayingTag>(); song.song_time = 0.5f;
     beat_scheduler_system(reg, 0.016f);
     CHECK(reg.view<ObstacleTag>().size() == 0);
 }
@@ -290,7 +289,7 @@ TEST_CASE("beat_scheduler: spawns multiple when time catches up", "[rhythm][sche
     auto& map = beat_map(reg);
     map.shape_gate_circle_beats.push_back({4, 1});
     map.shape_gate_circle_beats.push_back({8, 1});
-    song.playing = true; song.song_time = 3.0f;
+    reg.ctx().emplace<SongPlayingTag>(); song.song_time = 3.0f;
     beat_scheduler_system(reg, 0.016f);
     CHECK(reg.view<ObstacleTag>().size() == 2);
 }
@@ -300,7 +299,7 @@ TEST_CASE("beat_scheduler: rhythm obstacles use BeatInfo without Vector2", "[rhy
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
     map.shape_gate_circle_beats.push_back({4, 1});
-    song.playing = true; song.song_time = 0.1f;
+    reg.ctx().emplace<SongPlayingTag>(); song.song_time = 0.1f;
     beat_scheduler_system(reg, 0.016f);
     auto obs_view = reg.view<ObstacleTag, BeatInfo>();
     REQUIRE(std::distance(obs_view.begin(), obs_view.end()) == 1);
@@ -652,9 +651,8 @@ TEST_CASE("game_state: enter_game_over marks song finished on depletion", "[rhyt
     reg.ctx().get<EnergyState>().energy = 0.0f;
     game_state_system(reg, 0.016f);
     game_state_system(reg, 0.016f);
-    auto& song = reg.ctx().get<SongState>();
-    CHECK(song.finished);
-    CHECK_FALSE(song.playing);
+    CHECK(reg.ctx().contains<SongFinishedTag>());
+    CHECK_FALSE(reg.ctx().contains<SongPlayingTag>());
 }
 
 // Scoring with Timing
@@ -862,7 +860,7 @@ TEST_CASE("integration: obstacle arrives on-beat within 1 frame", "[rhythm][inte
     auto& song = reg.ctx().get<SongState>();
     auto& map = beat_map(reg);
     map.shape_gate_circle_beats.push_back({4, 1});
-    song.playing = true; song.song_time = 0.1f;
+    reg.ctx().emplace<SongPlayingTag>(); song.song_time = 0.1f;
     constexpr float dt = 1.0f / 60.0f;
     bool obstacle_at_player = false;
     int frames = 0;

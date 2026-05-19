@@ -141,8 +141,8 @@ TEST_CASE("redfoot/#168: energy depletion falls back to ENERGY DEPLETED",
     sync_game_phase_tags<GamePhasePlayingTag>(reg);
     reg.ctx().emplace<entt::dispatcher>();
     auto& energy = reg.ctx().emplace<EnergyState>();
-    auto& song = reg.ctx().emplace<SongState>();
-    song.playing = true;
+    reg.ctx().emplace<SongState>();
+    reg.ctx().emplace<SongPlayingTag>();
     energy.energy = 0.0f;
 
     game_state_system(reg, 0.016f);
@@ -157,8 +157,8 @@ TEST_CASE("redfoot/#168: energy depletion writes terminal cause",
     sync_game_phase_tags<GamePhasePlayingTag>(reg);
     reg.ctx().emplace<entt::dispatcher>();
     auto& energy = reg.ctx().emplace<EnergyState>();
-    auto& song = reg.ctx().emplace<SongState>();
-    song.playing = true;
+    reg.ctx().emplace<SongState>();
+    reg.ctx().emplace<SongPlayingTag>();
     REQUIRE(reg.ctx().find<EnergyDepletedDeath>() == nullptr);
     energy.energy = 0.0f;
 

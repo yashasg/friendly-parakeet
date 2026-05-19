@@ -18,7 +18,7 @@ void energy_bar_system(entt::registry& reg, [[maybe_unused]] float dt) {
     const auto* settings = find_settings_state(reg);
     const bool reduce_motion = settings && settings->reduce_motion;
     const auto* song = reg.ctx().find<SongState>();
-    const bool song_playing = song && song->playing;
+    const bool song_playing = song && reg.ctx().contains<SongPlayingTag>();
 
     float bounce = 0.0f;
     if (song_playing && !reduce_motion && song->beat_period > 0.0f) {

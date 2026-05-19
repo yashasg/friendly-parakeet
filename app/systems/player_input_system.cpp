@@ -115,7 +115,9 @@ namespace {
 void player_input_handle_shape_press_impl(entt::registry& reg, Shape pressed_shape) {
     if (!gameplay_input_enabled(reg)) return;
     auto* song = reg.ctx().find<SongState>();
-    const bool rhythm_mode = (song != nullptr && (song->playing || song->finished));
+    const auto& ctx = reg.ctx();
+    const bool rhythm_mode = (song != nullptr) &&
+        (ctx.contains<SongPlayingTag>() || ctx.contains<SongFinishedTag>());
 
     const int pressed_shape_index = shape_index(pressed_shape);
     if (pressed_shape_index < 0) return;  // unreachable: callers pass Circle/Square/Triangle

@@ -36,7 +36,7 @@ static entt::entity make_split_path_at(entt::registry& reg, Shape shape, int8_t 
 static void tick_systems(entt::registry& reg, int frames, float dt = 1.0f / 60.0f) {
     for (int i = 0; i < frames; ++i) {
         auto* song = reg.ctx().find<SongState>();
-        if (song && song->playing) song->song_time += dt;
+        if (song && reg.ctx().contains<SongPlayingTag>()) song->song_time += dt;
 
         test_player_system(reg, dt);
         game_state_system(reg, dt);

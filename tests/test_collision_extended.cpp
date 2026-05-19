@@ -251,10 +251,9 @@ TEST_CASE("collision: finished song still requires active shape window",
           "[collision][rhythm][issue950]") {
     auto idle_reg = make_rhythm_registry();
     auto idle_player = make_rhythm_player(idle_reg);
-    auto& idle_song = idle_reg.ctx().get<SongState>();
 
-    idle_song.playing = false;
-    idle_song.finished = true;
+    idle_reg.ctx().erase<SongPlayingTag>();
+    idle_reg.ctx().emplace<SongFinishedTag>();
     set_player_shape_tag(idle_reg, idle_player, Shape::Circle);
     set_target_shape_tag(idle_reg, idle_player, Shape::Circle);
     set_window_phase_idle(idle_reg, idle_player);
@@ -271,8 +270,8 @@ TEST_CASE("collision: finished song still requires active shape window",
     auto active_player = make_rhythm_player(active_reg);
     auto& active_song = active_reg.ctx().get<SongState>();
 
-    active_song.playing = false;
-    active_song.finished = true;
+    active_reg.ctx().erase<SongPlayingTag>();
+    active_reg.ctx().emplace<SongFinishedTag>();
     active_song.song_time = 5.0f;
     set_player_shape_tag(active_reg, active_player, Shape::Circle);
     set_target_shape_tag(active_reg, active_player, Shape::Circle);

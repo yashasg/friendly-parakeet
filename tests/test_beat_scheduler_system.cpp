@@ -37,7 +37,7 @@ TEST_CASE("beat_scheduler: no spawn when SongState absent", "[beat_scheduler]") 
 
 TEST_CASE("beat_scheduler: no spawn when song not playing", "[beat_scheduler]") {
     auto reg = make_rhythm_registry();
-    reg.ctx().get<SongState>().playing = false;
+    reg.ctx().erase<SongPlayingTag>();
 
     auto& map = beat_map(reg);
     map.shape_gate_circle_beats.push_back({0, 1});

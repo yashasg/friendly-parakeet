@@ -11,7 +11,9 @@
 
 void player_movement_system(entt::registry& reg, float dt) {
     auto* song = reg.ctx().find<SongState>();
-    const bool rhythm_mode = (song != nullptr && (song->playing || song->finished));
+    const auto& ctx = reg.ctx();
+    const bool rhythm_mode = (song != nullptr) &&
+        (ctx.contains<SongPlayingTag>() || ctx.contains<SongFinishedTag>());
 
     auto view = reg.view<PlayerTag, WorldPosition, PlayerShape, Lane>();
     for (auto [entity, transform, pshape, lane] : view.each()) {

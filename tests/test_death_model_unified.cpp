@@ -66,7 +66,7 @@ TEST_CASE("death_model: GameOver is requested when energy depletes", "[death_mod
     game_state_system(reg, 0.016f);
 
     CHECK(reg.ctx().contains<GamePhaseGameOverTag>());
-    CHECK_FALSE(reg.ctx().get<SongState>().playing);
+    CHECK_FALSE(reg.ctx().contains<SongPlayingTag>());
 }
 
 TEST_CASE("death_model: timing recovery can preserve survival margin", "[death_model]") {

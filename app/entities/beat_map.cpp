@@ -1095,8 +1095,9 @@ void init_song_state(SongState& state, const BeatMap& map) {
     // membership IS "at least one beat has been crossed" (issue #1545 /
     // Fabian Principle 3). `setup_play_session` erases any prior row at
     // session init, so this function intentionally does not touch it.
-    state.playing      = false;
-    state.finished     = false;
+    // The former `playing` / `finished` field resets likewise migrated to
+    // ctx tag erases on the caller side (issue #1624 / Fabian Principle 3
+    // / `SongPlayingTag` + `SongFinishedTag`); see `setup_play_session`.
     state.next_shape_gate_circle_idx         = 0;
     state.next_shape_gate_square_idx         = 0;
     state.next_shape_gate_triangle_idx       = 0;

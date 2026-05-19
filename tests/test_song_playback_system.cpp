@@ -46,7 +46,7 @@ TEST_CASE("song_playback: no advancement when not Playing", "[song_playback]") {
 TEST_CASE("song_playback: no advancement when song not playing", "[song_playback]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    song.playing = false;
+    reg.ctx().erase<SongPlayingTag>();
     song.song_time = 1.0f;
 
     song_playback_system(reg, 0.5f);
@@ -57,7 +57,7 @@ TEST_CASE("song_playback: no advancement when song not playing", "[song_playback
 TEST_CASE("song_playback: finished songs keep post-finish timeline advancing", "[song_playback]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    song.finished = true;
+    reg.ctx().emplace<SongFinishedTag>();
     song.song_time = 50.0f;
 
     song_playback_system(reg, 0.5f);
@@ -136,8 +136,8 @@ TEST_CASE("song_playback: song finishes at duration", "[song_playback]") {
 
     song_playback_system(reg, 1.0f);  // song_time = 60.5 > duration
 
-    CHECK(song.finished);
-    CHECK_FALSE(song.playing);
+    CHECK(reg.ctx().contains<SongFinishedTag>());
+    CHECK_FALSE(reg.ctx().contains<SongPlayingTag>());
 }
 
 TEST_CASE("song_playback: song does not finish before duration", "[song_playback]") {
@@ -148,8 +148,8 @@ TEST_CASE("song_playback: song does not finish before duration", "[song_playback
 
     song_playback_system(reg, 1.0f);  // song_time = 59.0 < duration
 
-    CHECK_FALSE(song.finished);
-    CHECK(song.playing);
+    CHECK_FALSE(reg.ctx().contains<SongFinishedTag>());
+    CHECK(reg.ctx().contains<SongPlayingTag>());
 }
 
 TEST_CASE("song_playback: song finishes exactly at duration", "[song_playback]") {
@@ -160,8 +160,8 @@ TEST_CASE("song_playback: song finishes exactly at duration", "[song_playback]")
 
     song_playback_system(reg, 1.0f);  // song_time = 60.0 == duration
 
-    CHECK(song.finished);
-    CHECK_FALSE(song.playing);
+    CHECK(reg.ctx().contains<SongFinishedTag>());
+    CHECK_FALSE(reg.ctx().contains<SongPlayingTag>());
 }
 
 TEST_CASE("song_playback: finished song stays latched and does not restart on later ticks",
@@ -172,18 +172,18 @@ TEST_CASE("song_playback: finished song stays latched and does not restart on la
     song.song_time = 1.9f;
 
     song_playback_system(reg, 0.2f);
-    REQUIRE(song.finished);
-    REQUIRE_FALSE(song.playing);
+    REQUIRE(reg.ctx().contains<SongFinishedTag>());
+    REQUIRE_FALSE(reg.ctx().contains<SongPlayingTag>());
     const float finished_time = song.song_time;
     const int finished_beat = beat_cursor_value(reg);
 
     song_playback_system(reg, 1.5f);
 
-    CHECK(song.finished);
-    CHECK_FALSE(song.playing);
+    CHECK(reg.ctx().contains<SongFinishedTag>());
+    CHECK_FALSE(reg.ctx().contains<SongPlayingTag>());
     CHECK(song.song_time > finished_time);
     CHECK(beat_cursor_value(reg) == finished_beat);
-    CHECK_FALSE(song.restart_music);
+    CHECK_FALSE(reg.ctx().contains<RestartMusicRequestTag>());
 }
 
 TEST_CASE("song_playback: obstacles can clear after playback ends without soft-lock",
@@ -194,8 +194,8 @@ TEST_CASE("song_playback: obstacles can clear after playback ends without soft-l
     auto& song = reg.ctx().get<SongState>();
     song.duration_sec = 1.0f;
     song.song_time = 0.95f;
-    song.playing = true;
-    song.finished = false;
+    reg.ctx().emplace<SongPlayingTag>();
+    reg.ctx().erase<SongFinishedTag>();
 
     const float start_y = constants::DESTROY_Y - 5.0f;
     const float spawn_time = song.song_time
@@ -207,8 +207,8 @@ TEST_CASE("song_playback: obstacles can clear after playback ends without soft-l
     reg.emplace<BeatInfo>(obstacle, BeatInfo{0, song.song_time, spawn_time});
 
     tick_fixed_systems(reg, 0.1f);
-    REQUIRE(song.finished);
-    CHECK_FALSE(song.playing);
+    REQUIRE(reg.ctx().contains<SongFinishedTag>());
+    CHECK_FALSE(reg.ctx().contains<SongPlayingTag>());
     CHECK(reg.view<ObstacleTag>().empty());
 
     tick_fixed_systems(reg, 0.016f);
@@ -223,13 +223,13 @@ TEST_CASE("song_playback: end-of-song transitions to SongComplete and remains st
     auto& song = reg.ctx().get<SongState>();
     song.duration_sec = 1.0f;
     song.song_time = 0.95f;
-    song.playing = true;
-    song.finished = false;
-    song.restart_music = false;
+    reg.ctx().emplace<SongPlayingTag>();
+    reg.ctx().erase<SongFinishedTag>();
+    reg.ctx().erase<RestartMusicRequestTag>();
 
     song_playback_system(reg, 0.1f);
-    REQUIRE(song.finished);
-    REQUIRE_FALSE(song.playing);
+    REQUIRE(reg.ctx().contains<SongFinishedTag>());
+    REQUIRE_FALSE(reg.ctx().contains<SongPlayingTag>());
 
     game_state_system(reg, 0.016f);
     REQUIRE(reg.ctx().contains<NextPhaseSongCompleteTag>());
@@ -241,10 +241,10 @@ TEST_CASE("song_playback: end-of-song transitions to SongComplete and remains st
     const float terminal_song_time = song.song_time;
     song_playback_system(reg, 1.0f);
 
-    CHECK(song.finished);
-    CHECK_FALSE(song.playing);
+    CHECK(reg.ctx().contains<SongFinishedTag>());
+    CHECK_FALSE(reg.ctx().contains<SongPlayingTag>());
     CHECK(song.song_time == terminal_song_time);
-    CHECK_FALSE(song.restart_music);
+    CHECK_FALSE(reg.ctx().contains<RestartMusicRequestTag>());
 }
 
 // ── song_playback_system: beat tracking edge cases ───────────
@@ -290,6 +290,7 @@ TEST_CASE("song_playback: pause to playing resume guard is one-shot",
           "[song_playback][regression][issue504]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
+    (void)song;
 
     // Per issue #1618 / Fabian Principle 3, presence of `MusicContext`
     // ctx singleton IS "stream loaded"; `MusicPlayingTag` / `MusicPausedTag`
@@ -301,7 +302,7 @@ TEST_CASE("song_playback: pause to playing resume guard is one-shot",
     reg.ctx().emplace<MusicPausedTag>();
 
     set_test_phase<GamePhasePlayingTag>(reg);
-    song.playing = true;
+    reg.ctx().emplace<SongPlayingTag>();
 
     song_playback_system(reg, 0.016f);
     CHECK_FALSE(reg.ctx().contains<MusicPausedTag>());

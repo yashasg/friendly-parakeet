@@ -41,8 +41,8 @@ TEST_CASE("player_action: post-song rhythm context still starts window for trail
     auto& sw = reg.get<ShapeWindow>(player);
     auto& song = reg.ctx().get<SongState>();
     song.song_time = song.duration_sec + 0.25f;
-    song.playing = false;
-    song.finished = true;
+    reg.ctx().erase<SongPlayingTag>();
+    reg.ctx().emplace<SongFinishedTag>();
 
     auto btn = make_shape_button(reg, Shape::Square);
     press_button(reg, btn);
@@ -286,10 +286,9 @@ TEST_CASE("player_movement: post-song rhythm context still leaves morph_t to sha
           "[player][issue866]") {
     auto reg = make_rhythm_registry();
     auto p = make_rhythm_player(reg);
-    auto& song = reg.ctx().get<SongState>();
     auto& ps = reg.get<PlayerShape>(p);
-    song.playing = false;
-    song.finished = true;
+    reg.ctx().erase<SongPlayingTag>();
+    reg.ctx().emplace<SongFinishedTag>();
     ps.morph_t = 0.3f;
 
     player_movement_system(reg, 0.016f);

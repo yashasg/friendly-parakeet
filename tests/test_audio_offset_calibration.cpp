@@ -368,7 +368,7 @@ TEST_CASE("game camera floor pulse honors audio_offset_ms",
     auto& song = reg.ctx().get<SongState>();
     song.song_time = 1.25f;
     set_beat_cursor(reg, 0);
-    song.playing = true;
+    reg.ctx().emplace<SongPlayingTag>();
 
     auto& map = beat_map(reg);
     map.beat_times = {1.0f};

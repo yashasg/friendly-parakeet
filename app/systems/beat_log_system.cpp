@@ -16,7 +16,8 @@ void beat_log_system(entt::registry& reg, [[maybe_unused]] float dt) {
     if (!log || !log->file) return;
 
     auto* song = ctx.find<SongState>();
-    if (!song || !song->playing || song->finished) return;
+    if (!song) return;
+    if (!ctx.contains<SongPlayingTag>() || ctx.contains<SongFinishedTag>()) return;
 
     const auto* cursor = ctx.find<BeatCursor>();
     if (!cursor) return;  // no beat crossed yet → nothing to log

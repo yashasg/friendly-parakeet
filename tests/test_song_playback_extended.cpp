@@ -39,8 +39,8 @@ TEST_CASE("song_playback: song ends when duration exceeded", "[song_playback]") 
 
     song_playback_system(reg, 0.2f);
 
-    CHECK(song.finished);
-    CHECK_FALSE(song.playing);
+    CHECK(reg.ctx().contains<SongFinishedTag>());
+    CHECK_FALSE(reg.ctx().contains<SongPlayingTag>());
 }
 
 TEST_CASE("song_playback: does nothing when not in Playing phase", "[song_playback]") {
@@ -57,7 +57,7 @@ TEST_CASE("song_playback: does nothing when not in Playing phase", "[song_playba
 TEST_CASE("song_playback: does nothing when song not playing", "[song_playback]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    song.playing = false;
+    reg.ctx().erase<SongPlayingTag>();
     float original_time = song.song_time;
 
     song_playback_system(reg, 1.0f);
@@ -68,7 +68,7 @@ TEST_CASE("song_playback: does nothing when song not playing", "[song_playback]"
 TEST_CASE("song_playback: finished song keeps advancing post-finish timeline", "[song_playback]") {
     auto reg = make_rhythm_registry();
     auto& song = reg.ctx().get<SongState>();
-    song.finished = true;
+    reg.ctx().emplace<SongFinishedTag>();
     float original_time = song.song_time;
 
     song_playback_system(reg, 1.0f);

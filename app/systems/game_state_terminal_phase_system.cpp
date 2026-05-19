@@ -64,10 +64,13 @@ void game_state_enter_terminal_phase_game_over(entt::registry& reg) {
 
     enter_phase<GamePhaseGameOverTag>(reg);
 
-    if (auto* song = reg.ctx().find<SongState>()) {
-        song->finished = true;
-        song->playing = false;
-    }
+    // Terminal song stop: flip the song-lifecycle tags (Fabian Principle 3
+    // / issue #1624). `SongFinishedTag` and `SongPlayingTag` are mutex;
+    // emplace one and erase the other regardless of whether a SongState
+    // payload still exists (mirrors the prior `song.finished = true;
+    // song.playing = false;` invariant).
+    reg.ctx().emplace<SongFinishedTag>();
+    reg.ctx().erase<SongPlayingTag>();
 }
 
 void game_state_enter_terminal_phase_song_complete(entt::registry& reg) {

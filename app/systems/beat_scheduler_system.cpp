@@ -143,7 +143,7 @@ void schedule_onset_marker_bin(ScheduleContext& ctx,
 void beat_scheduler_system(entt::registry& reg, [[maybe_unused]] float dt) {
     auto* song = reg.ctx().find<SongState>();
     auto* map  = find_beat_map(reg);
-    if (!song || !map || !song->playing) return;
+    if (!song || !map || !reg.ctx().contains<SongPlayingTag>()) return;
     if (!std::isfinite(song->scroll_speed) || song->scroll_speed <= 0.0f) {
         TraceLog(LOG_WARNING, "beat_scheduler_system skipped: invalid scroll_speed %.3f", song->scroll_speed);
         return;

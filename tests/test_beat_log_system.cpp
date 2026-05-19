@@ -72,8 +72,7 @@ TEST_CASE("beat_log: no-op when not in Playing phase", "[beat_log]") {
 
 TEST_CASE("beat_log: no-op when song not playing", "[beat_log]") {
     auto reg = make_rhythm_registry();
-    auto& song = reg.ctx().get<SongState>();
-    song.playing = false;
+    reg.ctx().erase<SongPlayingTag>();
     set_beat_cursor(reg, 2);
 
     auto slog = make_open_log();
