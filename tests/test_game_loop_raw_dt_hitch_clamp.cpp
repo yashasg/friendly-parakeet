@@ -6,8 +6,10 @@
 // debugger break, or web tab-inactive interval, GetFrameTime() reports the
 // full hitch duration (seconds), which:
 //
-//   • input_system: accumulated touch_slots[i].duration += raw_dt, spuriously
-//     crossing long-press / gesture-duration thresholds.
+//   • input_system: accumulated ActiveTouchSlot::duration += raw_dt
+//     (formerly `touch_slots[i].duration` before #1612 normalized the
+//     fixed-size array column into a row table), spuriously crossing
+//     long-press / gesture-duration thresholds.
 //   • test_player_system: ticked every queued action timer by the full hitch,
 //     fast-forwarding the entire AI plan in a single frame (relevant to the
 //     WASM smoke flake history — see #1341).
@@ -72,19 +74,23 @@ TEST_CASE("test_player_system: action timers advance by at most kMaxFrameDt unde
 TEST_CASE("InputState: touch-slot duration advances by at most kMaxFrameDt under a hitch",
           "[input][game_loop][issue-1352]") {
     auto reg = make_rhythm_registry();
-    auto& input = reg.ctx().get<InputState>();
 
-    // Simulate an active touch carried over a hitch frame.
-    input.touch_slots[0].active   = true;
-    input.touch_slots[0].duration = 0.0f;
+    // Simulate an active touch carried over a hitch frame. Per Fabian
+    // Principle 3 / #1612, the former `InputState::touch_slots[N]`
+    // fixed-size array column was normalized into an `ActiveTouchSlot`
+    // row table — presence in the registry IS slot activity.
+    auto slot_entity = reg.create();
+    auto& slot       = reg.emplace<ActiveTouchSlot>(slot_entity);
+    slot.id          = 0;
+    slot.duration    = 0.0f;
 
     // game_loop_frame clamps GetFrameTime() through clamp_frame_dt before
     // calling input_system. Reproduce the same accumulation expression
-    // input_system uses (app/systems/input_system.cpp:357) to assert the
-    // bounded-advance contract.
+    // input_system uses (the touching/duration loop in input_system.cpp)
+    // to assert the bounded-advance contract.
     constexpr float k5sHitch = 5.0f;
     const float raw_dt = clamp_frame_dt(k5sHitch);
-    input.touch_slots[0].duration += raw_dt;
+    slot.duration += raw_dt;
 
-    CHECK(input.touch_slots[0].duration <= kMaxFrameDt);
+    CHECK(slot.duration <= kMaxFrameDt);
 }

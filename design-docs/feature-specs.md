@@ -109,16 +109,19 @@ The Input System translates raw touch / mouse / keyboard events into game action
 struct InputSourceMouse {};
 struct InputSourceTouch {};
 
-// ── Per-touch tracking slot (multi-touch support) ──
-struct TouchSlot {
-    static constexpr int InvalidId = -1;
-
-    int   id = InvalidId;
-    bool  active = false;
-    bool  started_in_button_zone = false;
-    float start_x = 0.0f, start_y = 0.0f;
-    float curr_x  = 0.0f, curr_y  = 0.0f;
-    float duration = 0.0f;
+// ── Active touch slot — one row per currently-tracked finger (#1612) ──
+// Per Fabian Principle 3, the former fixed-size `TouchSlot
+// touch_slots[MaxTrackedTouches]` array column on `InputState` + its
+// `id == InvalidId = -1` NULL column was normalized into a row table:
+// presence in `view<ActiveTouchSlot>()` IS slot activity, and the
+// `MaxTrackedTouches = 2` policy cap survives as a runtime allocation
+// guard at the create site in `input_system`.
+struct ActiveTouchSlot {
+    int   id;
+    bool  started_in_button_zone;
+    float start_x, start_y;
+    float curr_x,  curr_y;
+    float duration;
 };
 
 // ── Per-frame input state, singleton component ──
@@ -143,7 +146,6 @@ struct InputState {
     bool  suppress_mouse_release = false;
     bool  button_touch_up        = false;
     float button_end_x = 0.0f, button_end_y = 0.0f;
-    TouchSlot touch_slots[MaxTrackedTouches] = {};
 };
 
 // ── Event types: semantic player intentions ──

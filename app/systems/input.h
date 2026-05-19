@@ -24,18 +24,27 @@
 struct InputSourceMouse {};
 struct InputSourceTouch {};
 
-struct TouchSlot {
-    static constexpr int InvalidId = -1;
-
-    int id = InvalidId;
-    bool active = false;
-    bool started_in_button_zone = false;
-    float start_x = 0.0f, start_y = 0.0f;
-    float curr_x = 0.0f, curr_y = 0.0f;
-    float duration = 0.0f;
+// One row per currently-tracked finger (issue #1612 / Fabian Principle 3).
+// Presence in `reg.view<ActiveTouchSlot>()` IS membership in "currently
+// tracked"; the parent `InputState` no longer carries a fixed-size
+// `TouchSlot touch_slots[MaxTrackedTouches]` array column nor the
+// `id == InvalidId = -1` NULL column that gated it. The
+// `InputState::MaxTrackedTouches` policy cap survives as a runtime
+// allocation guard at the create site in input_system. The `id` field
+// is the raylib touch id used to match this row against the live
+// `GetTouchPointId(i)` table each frame — it is a real attribute of an
+// active touch, not a sentinel.
+struct ActiveTouchSlot {
+    int   id;
+    bool  started_in_button_zone;
+    float start_x, start_y;
+    float curr_x,  curr_y;
+    float duration;
 };
 
 struct InputState {
+    // Runtime cap on concurrent `ActiveTouchSlot` rows. Enforced at the
+    // create site in input_system; no longer the dim of an inline array.
     static constexpr int MaxTrackedTouches = 2;
 
     float start_x  = 0.0f, start_y = 0.0f;
@@ -50,7 +59,6 @@ struct InputState {
     bool  quit_requested = false;
     bool button_touch_up = false;
     float button_end_x = 0.0f, button_end_y = 0.0f;
-    TouchSlot touch_slots[MaxTrackedTouches] = {};
 };
 
 // Note: directional intent is identity-encoded in per-direction event types

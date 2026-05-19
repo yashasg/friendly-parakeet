@@ -468,14 +468,19 @@ struct EnergyState {
 struct InputSourceMouse {};
 struct InputSourceTouch {};
 
-struct TouchSlot {
-    static constexpr int InvalidId = -1;
-    int   id      = InvalidId;
-    bool  active  = false;
-    bool  started_in_button_zone = false;
-    float start_x = 0.0f, start_y = 0.0f;
-    float curr_x  = 0.0f, curr_y  = 0.0f;
-    float duration = 0.0f;
+/// Active touch slot — one row per currently-tracked finger (#1612 /
+/// Fabian Principle 3). Presence in `view<ActiveTouchSlot>()` IS slot
+/// activity; the parent `InputState` no longer carries a fixed-size
+/// `TouchSlot touch_slots[]` array column nor the `id == InvalidId`
+/// NULL column that gated it. The `MaxTrackedTouches = 2` policy cap
+/// survives as a runtime allocation guard at the create site in
+/// `input_system`.
+struct ActiveTouchSlot {
+    int   id;
+    bool  started_in_button_zone;
+    float start_x, start_y;
+    float curr_x,  curr_y;
+    float duration;
 };
 
 struct InputState {
@@ -497,7 +502,6 @@ struct InputState {
     bool  suppress_mouse_release = false;
     bool  button_touch_up       = false;  // released inside a HUD button zone
     float button_end_x = 0.0f, button_end_y = 0.0f;
-    TouchSlot touch_slots[MaxTrackedTouches] = {};
 };
 ```
 
@@ -1744,7 +1748,7 @@ app/
 │   └── song_state.h             ← SongState, BeatCursor (row table, issue #1545)
 │
 ├── systems/                     ← all system free functions
-│   ├── input.h                  ← InputState, TouchSlot, InputSourceMouse, InputSourceTouch (singleton hardware-capture state)
+│   ├── input.h                  ← InputState, ActiveTouchSlot, InputSourceMouse, InputSourceTouch (singleton hardware-capture state + per-finger touch row)
 │   ├── all_systems.h            ← convenience #include for all systems
 │   ├── input_system.cpp         ← raylib polling → semantic dispatcher events
 │   ├── game_state_system.cpp    ← phase transitions
