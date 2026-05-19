@@ -76,7 +76,7 @@ TEST_CASE("screen_transform ordering: stale identity ST mismaps letterbox-offset
 
 // ═══════════════════════════════════════════════════════════════════════
 // Theme 2 – game_camera_system slab_matrix dimension order: MeshChild field
-//           contract.  spawn_obstacle_meshes stores depth = DrawSize.h
+//           contract.  obstacle mesh spawners store depth = DrawSize.h
 //           (scroll-axis) and height = 3D height constant (Y-axis).
 //           game_camera_system must pass mc.height as h (Y) and mc.depth as
 //           d (Z) to slab_matrix, not the other way around.
@@ -122,7 +122,7 @@ TEST_CASE("MeshChild: ShapeGate renders shape-only (no side slabs)",
            "[camera][slab][pr43]") {
     auto reg = make_registry();
     auto obs = make_shape_gate(reg, Shape::Circle, 500.0f);
-    spawn_obstacle_meshes(reg, obs);
+    spawn_shape_gate_meshes(reg, obs);
 
     int slab_count = 0;
     int shape_count = 0;
