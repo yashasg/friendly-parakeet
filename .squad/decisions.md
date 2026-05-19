@@ -80,16 +80,8 @@
   test allows this when overall easy/hard ratio ≥ 1.5×.
 
 ### 1) Replace signal-maintained obstacle singleton counter with native EnTT storage size
-- **File/path:**  
-  - `app/util/obstacle_counter.h`  
-  - `app/util/obstacle_counter.cpp`  
-  - `app/session/play_session.cpp`  
-  - `app/systems/game_state_system.cpp`  
-- **Current pattern:** `ObstacleCounter` (`ctx`) + `on_construct<ObstacleTag>`/`on_destroy<ObstacleTag>` wiring and reset logic to detect “all obstacles drained.”
-- **EnTT replacement/API:** `reg.storage<ObstacleTag>().empty()` (or `.size()` if count is needed).
-- **Touched dependencies:** session setup/reset, game-state transition logic, signal wiring lifecycle.
-- **Migration risks:** low; main risk is stale reads during transition if check placement changes.
-- **Proposed order:** **#1** (lowest-risk, highest simplification).
+- **Status: completed.** `ObstacleCounter` and `app/util/obstacle_counter.{h,cpp}` were eradicated and replaced by `reg.storage<ObstacleTag>().empty()` checks. `app/session/` was also subsequently deleted (see "Forbidden as feature-layer folders" below); `play_session.cpp` now lives in `app/systems/`.
+- **Original recommendation (kept for history):** Replace `ObstacleCounter` (`ctx`) + `on_construct<ObstacleTag>`/`on_destroy<ObstacleTag>` wiring with `reg.storage<ObstacleTag>().empty()` / `.size()`.
 
 ### 2) Move singleton cameras from singleton entities to `registry.ctx()`
 - **File/path:**  
@@ -105,27 +97,16 @@
 - **Proposed order:** **#2** after obstacle-counter cleanup.
 
 ### 3) Eager-init ctx scratch singletons and stop repeated lazy `find/emplace` in hot systems
-- **File/path:**  
-  - `app/systems/scoring_system.cpp` (`ScoringSystemScratch`, `PendingEnergyEffects`, `ScorePopupRequestQueue`)  
-  - `app/systems/obstacle_despawn_system.cpp` (`ObstacleDespawnScratch`)  
-  - `app/systems/particle_system.cpp` (`ParticleSystemScratch`)  
-  - `app/systems/popup_display_system.cpp` (`PopupDisplayScratch`)
-- **Current pattern:** per-frame helper functions do `ctx().find<T>()` then `ctx().emplace<T>()`.
-- **EnTT replacement/API:** eager-emplace in init/session setup; use `ctx().get<T>()` in frame loops.
-- **Touched dependencies:** game loop/session init contract, tests with minimal registries.
-- **Migration risks:** low; initialization contract needs one authoritative owner.
-- **Proposed order:** **#3**.
+- **Status: superseded / completed.** Each scratch type listed was subsequently eradicated outright (not just eager-emplaced) under Fabian Principle 3 — `ScoringSystemScratch` (#1629), `PendingEnergyEffects.events` (#1627), `ScorePopupRequestQueue` (#1626), `ObstacleDespawnScratch` / `ParticleSystemScratch` / `PopupDisplayScratch` / `MeshChildCleanupScratch` (#1628). The lazy `find/emplace` hot path is gone with them; consumers now walk row-table tags (see `app/tags/tags.h:138-180`).
+- **Original recommendation (kept for history):** Replace per-frame `ctx().find<T>() + emplace<T>()` boilerplate with eager-emplace at init/session setup, then `ctx().get<T>()` in frame loops.
 
 ### 4) Drop manual wiring flags in favor of EnTT connection ownership
-- **File/path:**  
-  - `app/input/input_dispatcher.cpp` (`InputDispatcherWiringState`)  
-  - `app/entities/obstacle_render_entity.cpp` (`ObstacleMeshLifetimeState`, `ObstacleModelLifecycleState`)  
-  - `app/session/test_player_session.cpp` (`TestPlayerSessionSignals`)
-- **Current pattern:** custom `ctx` structs with `bool wired` and manual connect/disconnect bookkeeping.
-- **EnTT replacement/API:** store `entt::scoped_connection` (or a connection-owner struct) in `ctx` for deterministic connect/disconnect lifecycle.
-- **Touched dependencies:** startup/shutdown wiring, test-player signal setup, model/mesh cleanup hooks.
-- **Migration risks:** medium; disconnect timing must remain correct relative to `reg.clear()` and resource teardown.
-- **Proposed order:** **#4**.
+- **Status: partially completed.** Input dispatcher and obstacle render lifecycle wiring moved to `entt::scoped_connection` (see Kujan review at "EnTT Round 2 + SongState Regression" below). `TestPlayerSessionSignals` still uses custom ctx wiring at `app/systems/test_player_session.cpp:17` and remains the open tail of this recommendation.
+- **File/path (current locations):**
+  - `app/systems/input_dispatcher.cpp` (`InputDispatcherWiringState`) — done.
+  - `app/entities/obstacle_render_entity.cpp` (`ObstacleMeshLifetimeState`, `ObstacleModelLifecycleState`) — done.
+  - `app/systems/test_player_session.cpp` (`TestPlayerSessionSignals`) — open.
+- **Original recommendation (kept for history):** replace custom `ctx` structs with `bool wired` + manual connect/disconnect bookkeeping by storing `entt::scoped_connection` (or a connection-owner struct) in `ctx` for deterministic connect/disconnect lifecycle.
 
 ## Medium-confidence / design-gated candidates
 
@@ -169,7 +150,7 @@
 - **Why not EnTT alternative:** current pattern is EnTT-safe; in-loop remove/destroy on active pools risks iterator invalidation and missed entities.
 
 ### C) Keep raylib/platform resource ownership as explicit RAII/domain code
-- **File/path:** `app/systems/camera_system.cpp`, `app/rendering/camera_resources.h`, `app/audio/*`, `app/platform/*`
+- **File/path (post-`app/audio/`-and-`app/rendering/`-folder-deletion):** `app/systems/camera_system.cpp`, `app/components/camera_resources.h`, `app/components/audio.h` + `app/systems/audio_system.cpp` / `sfx_bank.cpp` / `song_playback_system.cpp`, `app/platform/*`.
 - **Why not EnTT resource/cache:** these are external API lifetimes (GPU/audio/platform callbacks), where explicit domain ownership is clearer and safer than generic cache indirection.
 
 ### D) Keep persistence/file I/O as domain services, not entity/component data
@@ -177,11 +158,11 @@
 - **Why not EnTT here:** this is cold I/O and serialization logic; turning into ECS flow reduces clarity without meaningful data-locality wins.
 
 ## Recommended migration order
-1. Replace `ObstacleCounter` with `storage<ObstacleTag>()` checks.  
-2. Convert singleton cameras to `ctx()` singletons.  
-3. Eager-init scratch ctx objects and remove lazy hot-path `find/emplace`.  
-4. Replace ad-hoc wiring flags with EnTT connection ownership (`scoped_connection`).  
-5. Decide if gameplay intent queues should be unified onto dispatcher.  
+1. ~~Replace `ObstacleCounter` with `storage<ObstacleTag>()` checks.~~ **Done** — `ObstacleCounter` eradicated; `app/util/obstacle_counter.{h,cpp}` deleted.
+2. Convert singleton cameras to `ctx()` singletons.
+3. ~~Eager-init scratch ctx objects and remove lazy hot-path `find/emplace`.~~ **Superseded by Principle 3 eradication** — `ScoringSystemScratch` (#1629), `PendingEnergyEffects.events` (#1627), `ScorePopupRequestQueue` (#1626), and the four "expired-entity" scratch types (#1628) became row-table tags; nothing left to eager-emplace.
+4. Replace ad-hoc wiring flags with EnTT connection ownership (`scoped_connection`). **Partially done** — input dispatcher + obstacle lifecycle wiring converted; `TestPlayerSessionSignals` in `app/systems/test_player_session.cpp` is the remaining tail.
+5. Decide if gameplay intent queues should be unified onto dispatcher.
 6. Only then consider structural micro-optimizations and organizer experiments.
 
 ## Parallel review convergence note
