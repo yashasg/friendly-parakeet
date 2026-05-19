@@ -183,6 +183,36 @@ TEST_CASE("Play session: high score key uses loaded fallback difficulty",
     CHECK(reg.ctx().get<CurrentSongHighScore>().value == 4321);
 }
 
+TEST_CASE("Play session: overlong high-score key disables session score entry",
+          "[play_session][high_score][issue1694]") {
+    const TempBeatMapFile beatmap("song_identifier_that_exceeds_key_capacity_beatmap.json", R"json({
+        "song_id": "long_key",
+        "title": "Long Key",
+        "bpm": 120,
+        "offset": 0,
+        "lead_beats": 4,
+        "duration_sec": 8,
+        "difficulties": {
+           "medium": {
+               "beats": [
+                   {"beat": 4, "kind": "shape_gate", "shape": "circle", "lane": 1}
+               ]
+           }
+        }
+    })json");
+
+    ScopedTraceLogSilencer silence_warning;
+    auto reg = make_registry();
+    reg.ctx().emplace<PlaySessionContentOverride>(
+        PlaySessionContentOverride{beatmap.path.string(), "medium"});
+
+    setup_play_session(reg);
+
+    CHECK(reg.ctx().get<HighScoreSession>().key_hash == 0);
+    CHECK(reg.ctx().get<CurrentSongHighScore>().value == 0);
+    CHECK(high_score::entry_count(reg) == 0);
+}
+
 TEST_CASE("Play session: SongResults total_notes excludes onset marker metadata",
           "[play_session][song_results][issue-773]") {
     bool saw_onset_marker = false;

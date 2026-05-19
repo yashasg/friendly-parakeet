@@ -26,7 +26,8 @@ persistence::Result get_high_scores_file_path(
 bool update_if_higher(entt::registry& reg, const HighScoreSession& session, int32_t new_score);
 
 // Build "song_id|difficulty" into caller-supplied buf (no heap allocation).
-// Returns snprintf-style char count (excluding NUL), or -1 if cap is invalid.
+// Returns snprintf-style char count (excluding NUL), or -1 if cap is invalid
+// or the key would not fit in the supplied buffer.
 // cap should be HighScoreState::KEY_CAP.
 int32_t make_key_str(char* buf, int32_t cap, const char* song_id, const char* difficulty);
 
