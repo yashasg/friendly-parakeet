@@ -236,9 +236,8 @@ TEST_CASE("test_player: swipe cooldown blocks immediate second swipe", "[test_pl
     action.timer = -1.0f;
     action.target_lane = 0;
     action.arrival_time = reg.ctx().get<SongState>().song_time + 1.0f;
-    if (tp.action_count < TestPlayerState::MAX_ACTIONS) {
-        tp.actions[tp.action_count++] = action;
-    }
+    // Per-obstacle TestPlayerAction row (Fabian Principle 3 / #1611).
+    reg.emplace<TestPlayerAction>(obs, action);
     reg.emplace<TestPlayerPlannedTag>(obs);
 
     test_player_system(reg, 0.016f);

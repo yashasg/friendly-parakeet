@@ -45,10 +45,14 @@ TEST_CASE("test_player_system: action timers advance by at most kMaxFrameDt unde
     tp.active = true;
     tp.rng.seed(42);
 
-    tp.action_count = 1;
-    tp.actions[0].timer        = 1.0f;
-    tp.actions[0].arrival_time = 10.0f;
-    tp.swipe_cooldown_timer    = 1.0f;
+    // Per Fabian Principle 3 / #1611, queued actions live as components on
+    // obstacle entities. Stand up a synthetic action row on a fresh entity to
+    // exercise the TICK clamp without needing a full obstacle/player setup.
+    auto action_entity = reg.create();
+    auto& action       = reg.emplace<TestPlayerAction>(action_entity);
+    action.timer        = 1.0f;
+    action.arrival_time = 10.0f;
+    tp.swipe_cooldown_timer = 1.0f;
 
     constexpr float k5sHitch = 5.0f;
     const float clamped = clamp_frame_dt(k5sHitch);
@@ -59,8 +63,10 @@ TEST_CASE("test_player_system: action timers advance by at most kMaxFrameDt unde
     // Without the upstream clamp, both timers would have dropped by ~5s in
     // one frame (fast-forwarding the entire AI plan). With the clamp,
     // they drop by at most kMaxFrameDt.
-    CHECK(tp.actions[0].timer        >= 1.0f - kMaxFrameDt - 1e-6f);
-    CHECK(tp.swipe_cooldown_timer    >= 1.0f - kMaxFrameDt - 1e-6f);
+    const auto* a = reg.try_get<TestPlayerAction>(action_entity);
+    REQUIRE(a != nullptr);
+    CHECK(a->timer                >= 1.0f - kMaxFrameDt - 1e-6f);
+    CHECK(tp.swipe_cooldown_timer >= 1.0f - kMaxFrameDt - 1e-6f);
 }
 
 TEST_CASE("InputState: touch-slot duration advances by at most kMaxFrameDt under a hitch",

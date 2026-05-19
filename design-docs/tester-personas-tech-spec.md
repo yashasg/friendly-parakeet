@@ -234,23 +234,27 @@ struct TestPlayerState {
     static constexpr float SWIPE_COOLDOWN = 0.125f;  // 125ms
     float swipe_cooldown_timer = 0.0f;
 
-    // Action queue — fixed capacity, no heap allocation in hot path.
+    // Runtime cap on simultaneously-queued TestPlayerAction rows (Fabian
+    // Principle 3 / issue #1611): not an array bound. The queue lives as
+    // `TestPlayerAction` components attached to obstacle entities; enqueue
+    // sites in `test_player_system.cpp` assert `view<TestPlayerAction>().size()
+    // < MAX_ACTIONS` before `emplace`.
     static constexpr int MAX_ACTIONS = 32;
-    TestPlayerAction actions[MAX_ACTIONS] = {};
-    int              action_count = 0;
 
     // ── Warm ─────────────────────────────────────────────────
     std::mt19937     rng;
 };
 ```
 
-**DoD note**: `std::vector` replaced with fixed-size arrays. We know
-the upper bound (~12 on-screen obstacles); `MAX_ACTIONS = 32` gives
-generous headroom. Fixed arrays avoid heap allocation and give
-deterministic memory layout. Planned-obstacle tracking no longer uses
-an inline `planned[]` array on the singleton — perception now tags
-each planned obstacle entity with the empty `TestPlayerPlannedTag`
-component, letting EnTT views drive the dedup check.
+**DoD note**: The queue is normalized per Fabian Principle 3 / issue #1611 —
+each scheduled action exists as a `TestPlayerAction` component on the
+obstacle entity it tracks (the `obstacle` field IS the foreign key — identity-
+driven membership). The former inline array column `actions[MAX_ACTIONS] +
+action_count` was eradicated; `MAX_ACTIONS = 32` survives as a runtime cap
+asserted at enqueue time (we know the upper bound — ~12 on-screen obstacles
+gives generous headroom). Planned-obstacle tracking is similarly identity-
+driven: perception tags each planned obstacle with the empty
+`TestPlayerPlannedTag` component, letting EnTT views drive the dedup check.
 
 ## Removed ring-zone component
 
@@ -315,7 +319,13 @@ frame:
 
 ```cpp
   bool key_injected = false;
-  for (int ei = 0; ei < state->action_count && !key_injected; ++ei) {
+  // Queued actions live as `TestPlayerAction` rows on obstacle entities
+  // (Fabian Principle 3 / #1611). Gather them into a small stack buffer,
+  // sort by `arrival_time` (closest first), then iterate.
+  std::array<std::pair<float, entt::entity>, TestPlayerState::MAX_ACTIONS> exec_buf{};
+  int exec_n = collect_pending_actions(reg, exec_buf);
+  for (int ei = 0; ei < exec_n && !key_injected; ++ei) {
+      auto& action = reg.get<TestPlayerAction>(exec_buf[ei].second);
       // Priority 1: Shape press → enqueue ShapePress*Event,    set key_injected
       // Priority 2: Lane change → enqueue Go{Left,Right}Event, set key_injected
       // Priority 3: Vertical    → enqueue Go{Up,Down}Event,    set key_injected

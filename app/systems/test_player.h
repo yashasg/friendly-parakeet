@@ -66,11 +66,16 @@ struct TestPlayerAction {
 };
 
 // ── Test player state (context singleton) ────────────────────
-// Hot state (accessed every frame): active, swipe_cooldown_timer,
-//   action_count, actions[].
+// Hot state (accessed every frame): active, swipe_cooldown_timer.
 // Warm state (accessed during perception): skill, rng.
+//
+// Per Fabian Principle 3 (.squad/decisions.md § 9 — no array columns), the
+// former `actions[MAX_ACTIONS] + action_count` inline array column is
+// eradicated. Each queued action now lives as a `TestPlayerAction` component
+// attached to the obstacle entity it tracks (the `obstacle` field IS the
+// foreign key — identity-driven membership). MAX_ACTIONS survives as a
+// runtime cap asserted at enqueue time, not a static array bound.
 struct TestPlayerState {
-    // ── Hot ──────────────────────────────────────────────────
     SkillConfig skill   = SKILL_PRO;
     bool        active  = false;
 
@@ -78,10 +83,9 @@ struct TestPlayerState {
     static constexpr float SWIPE_COOLDOWN = 0.125f;  // 125ms (midpoint of 100-150ms)
     float swipe_cooldown_timer = 0.0f;
 
+    // Runtime cap on simultaneously-queued TestPlayerAction rows. Enforced at
+    // the enqueue site in test_player_system.cpp; not an array bound.
     static constexpr int MAX_ACTIONS = 32;
-    TestPlayerAction actions[MAX_ACTIONS] = {};
-    int              action_count = 0;
 
-    // ── Warm ─────────────────────────────────────────────────
     std::mt19937     rng;
 };
