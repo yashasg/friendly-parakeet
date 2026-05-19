@@ -31,27 +31,6 @@
 
 namespace {
 
-const Font& popup_font_for_size(const TextContext& ctx, FontSize font_size) {
-    // Fabian Principle 1 / issue #1306: label-to-value lookup by ordinal,
-    // not by `switch`. `Font` carries runtime GPU state so a `constexpr`
-    // array of `Font` is not viable; instead the table is a `std::array`
-    // of pointer-to-data-members, indexed by `static_cast<size_t>(font_size)`.
-    // Row order must match the `FontSize` declaration in
-    // `app/components/text.h`.
-    static constexpr std::array<const Font TextContext::*, 3> kFontByFontSize{{
-        /* Small  */ &TextContext::font_small,
-        /* Medium */ &TextContext::font_medium,
-        /* Large  */ &TextContext::font_large,
-    }};
-    static_assert(kFontByFontSize.size() ==
-                  static_cast<std::size_t>(FontSize::Large) + 1,
-                  "kFontByFontSize must cover every FontSize enumerator");
-
-    const auto idx = static_cast<std::size_t>(font_size);
-    if (idx >= kFontByFontSize.size()) return ctx.font_medium;
-    return ctx.*kFontByFontSize[idx];
-}
-
 // ── Entity-driven UI render (issue #1287) ──────────────────────────────────
 //
 // Iterates the per-kind tag views populated by the rguilayout codegen
@@ -621,7 +600,24 @@ void ui_render_system(entt::registry& reg, float /*alpha*/) {
                 continue;
             }
 
-            const Font& font = popup_font_for_size(*text_ctx, pd.font_size);
+            // Fabian Principle 1 / issue #1306: label-to-value lookup by
+            // ordinal, not by `switch`. `Font` carries runtime GPU state so
+            // a `constexpr` array of `Font` is not viable; instead the table
+            // is a `std::array` of pointer-to-data-members, indexed by
+            // `static_cast<size_t>(font_size)`. Row order must match the
+            // `FontSize` declaration in `app/components/text.h`.
+            static constexpr std::array<const Font TextContext::*, 3> kFontByFontSize{{
+                /* Small  */ &TextContext::font_small,
+                /* Medium */ &TextContext::font_medium,
+                /* Large  */ &TextContext::font_large,
+            }};
+            static_assert(kFontByFontSize.size() ==
+                          static_cast<std::size_t>(FontSize::Large) + 1,
+                          "kFontByFontSize must cover every FontSize enumerator");
+            const auto font_idx = static_cast<std::size_t>(pd.font_size);
+            const Font& font = (font_idx < kFontByFontSize.size())
+                                   ? (*text_ctx).*kFontByFontSize[font_idx]
+                                   : text_ctx->font_medium;
             const float font_size = static_cast<float>(font.baseSize);
             const float spacing = 1.0f;
 
