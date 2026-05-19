@@ -30,6 +30,7 @@ TEST_CASE("game_state: finished song waits for obstacle drain before SongComplet
 
     auto e = reg.create();
     reg.emplace<ObstacleTag>(e);
+    reg.emplace<Obstacle>(e, int16_t{200});
 
     game_state_system(reg, 1.0f / 60.0f);
     CHECK_FALSE(is_phase_transition_pending(reg));

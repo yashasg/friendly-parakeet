@@ -63,6 +63,7 @@ TEST_CASE("game_state: song complete waits for obstacles to clear", "[gamestate]
     // Create an unscored obstacle
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
+    reg.emplace<Obstacle>(obs, int16_t{200});
     reg.emplace<WorldPosition>(obs, WorldPosition{{0.0f, 0.0f}});
 
     game_state_system(reg, 0.016f);
@@ -96,12 +97,28 @@ TEST_CASE("game_state: song complete waits for scored obstacle to be destroyed",
     // Obstacle scored but still alive (obstacle_despawn_system has not yet destroyed it)
     auto obs = reg.create();
     reg.emplace<ObstacleTag>(obs);
+    reg.emplace<Obstacle>(obs, int16_t{200});
     reg.emplace<ScoredTag>(obs);
     reg.emplace<WorldPosition>(obs, WorldPosition{{0.0f, 0.0f}});
 
     game_state_system(reg, 0.016f);
 
     CHECK_FALSE(is_phase_transition_pending(reg));
+}
+
+TEST_CASE("game_state: song complete ignores visual obstacle leftovers", "[gamestate][regression]") {
+    auto reg = make_rhythm_registry();
+    set_test_phase<GamePhasePlayingTag>(reg);
+    reg.ctx().emplace<SongFinishedTag>();
+    reg.ctx().erase<SongPlayingTag>();
+
+    auto visual_leftover = reg.create();
+    reg.emplace<ObstacleTag>(visual_leftover);
+    reg.emplace<WorldPosition>(visual_leftover, WorldPosition{{0.0f, 0.0f}});
+
+    game_state_system(reg, 0.016f);
+
+    CHECK(reg.ctx().contains<NextPhaseSongCompleteTag>());
 }
 
 TEST_CASE("game_state: enter_song_complete updates high score", "[gamestate]") {
