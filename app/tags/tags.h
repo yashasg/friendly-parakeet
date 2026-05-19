@@ -486,3 +486,10 @@ struct ApproachRingVisibleTag {};
 // the shared `clear_input_source` helper which drops both tags.
 struct InputSourceMouse {};
 struct InputSourceTouch {};
+
+// ── Active touch zone membership ───────────────────────────────
+// Each tracked touch carries exactly one of these tags. The tag table selects
+// button-release vs swipe-release processing; ActiveTouchSlot only stores the
+// raylib touch id and coordinates.
+struct ActiveButtonZoneTouch {};
+struct ActiveSwipeZoneTouch  {};
