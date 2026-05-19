@@ -87,12 +87,10 @@ TEST_CASE("High score: no hash collisions across all 9 shipped song+difficulty k
 
 TEST_CASE("High score: current score lookup and update never lowers stored score", "[high_score]") {
     entt::registry reg;
-    HighScoreSession session;
-    CHECK(high_score::get_current_high_score(reg, session) == 0);
 
-    // ensure_entry + session.key_hash mirrors the production setup_play_session path.
+    // ensure_entry + HighScoreSession mirrors the production setup_play_session path.
     REQUIRE(high_score::ensure_entry(reg, "song_001|easy"));
-    session.key_hash = high_score::make_key_hash("song_001", "easy");
+    HighScoreSession session{high_score::make_key_hash("song_001", "easy")};
     CHECK(high_score::get_current_high_score(reg, session) == 0);
 
     CHECK(high_score::update_if_higher(reg, session, 5000));
@@ -104,7 +102,6 @@ TEST_CASE("High score: current score lookup and update never lowers stored score
 
 TEST_CASE("High score: saturated table reports insert and hash update failures", "[high_score][issue1004]") {
     entt::registry reg;
-    HighScoreSession session;
     for (int32_t i = 0; i < HighScoreState::MAX_ENTRIES; ++i) {
         const std::string key = "song_" + std::to_string(i) + "|easy";
         REQUIRE(high_score::set_score(reg, key.c_str(), i * 100));
@@ -114,7 +111,7 @@ TEST_CASE("High score: saturated table reports insert and hash update failures",
     CHECK_FALSE(high_score::set_score(reg, "overflow|easy", 9000));
     CHECK_FALSE(high_score::ensure_entry(reg, "overflow|medium"));
 
-    session.key_hash = high_score::make_key_hash("overflow", "hard");
+    HighScoreSession session{high_score::make_key_hash("overflow", "hard")};
     CHECK_FALSE(high_score::update_if_higher(reg, session, 9000));
     CHECK(high_score::get_score(reg, "overflow|hard") == 0);
 
@@ -125,10 +122,9 @@ TEST_CASE("High score: saturated table reports insert and hash update failures",
 
 TEST_CASE("High score: tracks songs and difficulties independently", "[high_score]") {
     entt::registry reg;
-    HighScoreSession session;
+    HighScoreSession session{high_score::make_key_hash("song_001", "easy")};
 
     REQUIRE(high_score::ensure_entry(reg, "song_001|easy"));
-    session.key_hash = high_score::make_key_hash("song_001", "easy");
     CHECK(high_score::update_if_higher(reg, session, 1000));
 
     REQUIRE(high_score::ensure_entry(reg, "song_001|hard"));
@@ -330,10 +326,9 @@ TEST_CASE("High score persistence: load does not touch session key", "[high_scor
     REQUIRE(high_score::save_high_scores(original, file).ok());
 
     entt::registry loaded;
-    HighScoreSession session;
     // Simulate a session already active on song_002|hard before the load.
     const auto pre_load_hash = high_score::make_key_hash("song_002", "hard");
-    session.key_hash = pre_load_hash;
+    HighScoreSession session{pre_load_hash};
     REQUIRE(high_score::load_high_scores(loaded, file).ok());
 
     // Load must not clobber the in-progress session key.

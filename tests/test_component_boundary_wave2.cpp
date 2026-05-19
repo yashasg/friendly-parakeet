@@ -53,9 +53,13 @@ TEST_CASE("HighScoreEntry: default-constructed row is empty", "[boundary_wave2][
     CHECK(e.score == 0);
 }
 
-TEST_CASE("HighScoreSession: default-constructed has zero key hash", "[boundary_wave2][high_score]") {
-    HighScoreSession session{};
-    CHECK(session.key_hash == 0u);
+TEST_CASE("HighScoreSession: ctx row presence represents active session", "[boundary_wave2][high_score]") {
+    auto reg = make_registry();
+    CHECK_FALSE(reg.ctx().contains<HighScoreSession>());
+
+    reg.ctx().emplace<HighScoreSession>(
+        HighScoreSession{high_score::make_key_hash("song_001", "easy")});
+    CHECK(reg.ctx().contains<HighScoreSession>());
 }
 
 TEST_CASE("HighScoreEntry: rows live as registry entities, not in ctx", "[boundary_wave2][high_score]") {

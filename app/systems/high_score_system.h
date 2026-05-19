@@ -21,8 +21,8 @@ persistence::Result get_high_scores_file_path(
     const std::filesystem::path& root_override = {});
 
 // Update the stored score for session.key_hash if new_score is strictly higher.
-// Negative new_score is clamped to 0. Returns false when no active key exists
-// or the active key is missing from the entry table.
+// Negative new_score is clamped to 0. Returns false when the active key is
+// missing from the entry table.
 bool update_if_higher(entt::registry& reg, const HighScoreSession& session, int32_t new_score);
 
 // Build "song_id|difficulty" into caller-supplied buf (no heap allocation).
@@ -47,7 +47,7 @@ bool set_score(entt::registry& reg, const char* key, int32_t score);
 // Returns false if the table is full.
 bool ensure_entry(entt::registry& reg, const char* key);
 
-// Returns the stored score for the current session key, or 0 if no session active.
+// Returns the stored score for the current session key, or 0 if no entry exists.
 int32_t get_current_high_score(const entt::registry& reg, const HighScoreSession& session);
 
 // Count of stored entries (rows in the HighScoreEntry table).
