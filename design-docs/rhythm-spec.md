@@ -36,16 +36,17 @@
 
 ```json
 {
-  "song_id":      "string — snake_case identifier",
-  "title":        "string — display name",
-  "bpm":          144.87,
-  "offset":       3.142,
-  "lead_beats":   4,
+  "song_id": "string — snake_case identifier",
+  "title": "string — display name",
+  "bpm": 144.87,
+  "offset": 3.142,
+  "lead_beats": 4,
   "duration_sec": 97.9,
+  "beat_times": [3.142, 3.556, 3.970],
   "difficulties": {
-    "easy":   { "beats": [ /* obstacle array */ ], "count": 0 },
-    "medium": { "beats": [ /* obstacle array */ ], "count": 0 },
-    "hard":   { "beats": [ /* obstacle array */ ], "count": 0 }
+    "easy": { "beats": [ /* beat entry objects */ ] },
+    "medium": { "beats": [ /* beat entry objects */ ] },
+    "hard": { "beats": [ /* beat entry objects */ ] }
   },
   "structure": [
     { "section": "intro | verse | chorus | bridge | drop | outro",
@@ -54,22 +55,38 @@
 }
 ```
 
-## Obstacle object
+`difficulties.<name>.beats` is the preferred authoring path. A top-level
+`beats` array remains accepted only for backward compatibility. When
+`beat_times` is omitted, the loader derives grid timestamps from `offset`,
+`bpm`, and the highest referenced beat index.
+
+## Beat entry object
 
 ```json
 {
-  "beat":    4,
-  "shape":   "circle | square | triangle",
-  "lane":    0
+  "beat": 4,
+  "kind": "shape_gate | split_path | onset_marker",
+  "shape": "circle | square | triangle",
+  "lane": 0,
+  "time_sec": 4.188,
+  "timing_source": "onset"
 }
 ```
 
-| Field     | Required for                       | Description                         |
-|-----------|------------------------------------|-------------------------------------|
-| `beat`    | all                                | Index into the beat grid            |
-| `kind`    | all                                | Obstacle type                       |
-| `shape`   | `shape_gate`                       | Shape player must morph to          |
-| `lane`    | `shape_gate`                       | Lane the gate occupies (0=L,1=C,2=R)|
+| Field | Required for | Description |
+|-------|--------------|-------------|
+| `beat` | all | Non-negative beat-grid index. Indexed entries resolve timing from `beat_times[beat]` when present, otherwise from `offset + beat * (60 / bpm)`. |
+| `kind` | optional | Obstacle type. Defaults to `shape_gate` for legacy rows. Valid values are `shape_gate`, `split_path`, and `onset_marker`. |
+| `shape` | `shape_gate`, `split_path` | Required player shape. Valid values are `circle`, `square`, and `triangle`; `hexagon` is rejected for required-shape rows. |
+| `lane` | `shape_gate`, `split_path` | Lane index 0-2. For ShapeGate this is the occupied lane; for SplitPath this is the required dodge lane. |
+| `time_sec` | optional | Authored arrival time in seconds. Presence routes the row to the timed BeatMap table and validation requires it to be finite, non-negative, and no later than `duration_sec`. |
+| `timing_source` | optional | Metadata for authored timing. Use `onset` for onset-snapped entries; non-onset timed rows warn when `time_sec` differs from the indexed beat time by more than 10 ms. |
+
+Runtime storage normalizes parsed rows into `BeatMap` vectors by obstacle kind,
+shape, and timing source: six ShapeGate/SplitPath indexed vectors, one
+OnsetMarker indexed vector, and seven `*_timed` siblings. Row membership in a
+specific vector is the discriminator; rows do not store `kind`, `shape`, or a
+`has_time_sec` flag after parsing.
 
 ## BPM does not change
 
