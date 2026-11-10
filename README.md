@@ -25,6 +25,8 @@ at runtime boundaries, without wrapper abstraction layers.
 
 ### Prerequisites
 
+All assets are stored directly in Git; Git LFS is not required.
+
 - C++20 compiler (Clang 20 recommended)
 - CMake 3.20+
 - [vcpkg](https://vcpkg.io)

@@ -24,8 +24,6 @@ jobs:
       CXX: clang++-20
     steps:
       - uses: actions/checkout@v6
-        with:
-          lfs: true
 
       - name: Setup Node.js for native tooling tests
         uses: actions/setup-node@v5

@@ -24,8 +24,6 @@ jobs:
       PLAYWRIGHT_CORE_VERSION: "1.55.0"
     steps:
       - uses: actions/checkout@v6
-        with:
-          lfs: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
